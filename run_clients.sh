@@ -16,7 +16,7 @@
 
 echo "Press CTRL-C to stop."
 
-logDir="$(PWD)/logs"
+logDir="$PWD/logs"
 
 if [ -d $logDir ]
 then

@@ -16,8 +16,8 @@
 
 # This script should be run from inside the loopix-messaging package directory
 
-logDir="$(PWD)/logs"
-pkiDir="$(PWD)/pki/database.db"
+logDir="$PWD/logs"
+pkiDir="$PWD/pki/database.db"
 
 if [ -d $pkiDir ]
 then
