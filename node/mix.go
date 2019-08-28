@@ -18,8 +18,9 @@
 package node
 
 import (
-	"loopix-messaging/sphinx"
 	"time"
+
+	"github.com/nymtech/loopix-messaging/sphinx"
 )
 
 type Mix struct {

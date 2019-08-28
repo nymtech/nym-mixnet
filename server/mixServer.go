@@ -18,15 +18,16 @@
 package server
 
 import (
-	"loopix-messaging/config"
-	"loopix-messaging/helpers"
-	"loopix-messaging/logging"
-	"loopix-messaging/networker"
-	"loopix-messaging/node"
-	"loopix-messaging/sphinx"
+	"github.com/nymtech/loopix-messaging/config"
+	"github.com/nymtech/loopix-messaging/helpers"
+	"github.com/nymtech/loopix-messaging/logging"
+	"github.com/nymtech/loopix-messaging/networker"
+	"github.com/nymtech/loopix-messaging/node"
+	"github.com/nymtech/loopix-messaging/sphinx"
 
-	"github.com/protobuf/proto"
 	"net"
+
+	"github.com/golang/protobuf/proto"
 )
 
 var logLocal = logging.PackageLogger()

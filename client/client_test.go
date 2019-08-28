@@ -15,8 +15,9 @@
 package client
 
 import (
-	"loopix-messaging/config"
 	sphinx "loopix-messaging/sphinx"
+
+	"github.com/nymtech/loopix-messaging/config"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/protobuf/proto"

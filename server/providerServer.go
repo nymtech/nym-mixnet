@@ -15,13 +15,13 @@
 package server
 
 import (
-	"loopix-messaging/config"
-	"loopix-messaging/helpers"
-	"loopix-messaging/networker"
-	"loopix-messaging/node"
-	"loopix-messaging/sphinx"
+	"github.com/nymtech/loopix-messaging/config"
+	"github.com/nymtech/loopix-messaging/helpers"
+	"github.com/nymtech/loopix-messaging/networker"
+	"github.com/nymtech/loopix-messaging/node"
+	"github.com/nymtech/loopix-messaging/sphinx"
 
-	"github.com/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 
 	"bytes"
 	"errors"

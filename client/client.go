@@ -18,13 +18,13 @@
 package client
 
 import (
-	"loopix-messaging/clientCore"
-	"loopix-messaging/config"
-	"loopix-messaging/helpers"
-	"loopix-messaging/logging"
-	"loopix-messaging/networker"
+	"github.com/nymtech/loopix-messaging/clientCore"
+	"github.com/nymtech/loopix-messaging/config"
+	"github.com/nymtech/loopix-messaging/helpers"
+	"github.com/nymtech/loopix-messaging/logging"
+	"github.com/nymtech/loopix-messaging/networker"
 
-	"github.com/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 
 	"crypto/elliptic"
 	"crypto/rand"

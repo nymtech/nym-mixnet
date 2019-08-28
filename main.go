@@ -15,19 +15,19 @@
 package main
 
 import (
-	"loopix-messaging/client"
-	"loopix-messaging/config"
-	"loopix-messaging/logging"
-	"loopix-messaging/pki"
-	"loopix-messaging/server"
-	"loopix-messaging/sphinx"
+	"github.com/nymtech/loopix-messaging/client"
+	"github.com/nymtech/loopix-messaging/config"
+	"github.com/nymtech/loopix-messaging/logging"
+	"github.com/nymtech/loopix-messaging/pki"
+	"github.com/nymtech/loopix-messaging/server"
+	"github.com/nymtech/loopix-messaging/sphinx"
 
 	"flag"
 	"fmt"
 
-	"loopix-messaging/helpers"
+	"github.com/nymtech/loopix-messaging/helpers"
 
-	"github.com/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 )
 
 var logLocal = logging.PackageLogger()

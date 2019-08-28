@@ -20,12 +20,12 @@
 package clientCore
 
 import (
-	"loopix-messaging/config"
-	"loopix-messaging/helpers"
-	"loopix-messaging/logging"
-	sphinx "loopix-messaging/sphinx"
+	"github.com/nymtech/loopix-messaging/config"
+	"github.com/nymtech/loopix-messaging/helpers"
+	"github.com/nymtech/loopix-messaging/logging"
+	sphinx "github.com/nymtech/loopix-messaging/sphinx"
 
-	"github.com/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 
 	"crypto/elliptic"
 	"errors"

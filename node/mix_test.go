@@ -15,8 +15,8 @@
 package node
 
 import (
-	"loopix-messaging/config"
-	sphinx "loopix-messaging/sphinx"
+	"github.com/nymtech/loopix-messaging/config"
+	sphinx "github.com/nymtech/loopix-messaging/sphinx"
 
 	"github.com/protobuf/proto"
 	"github.com/stretchr/testify/assert"

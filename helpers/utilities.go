@@ -19,10 +19,10 @@
 package helpers
 
 import (
-	"loopix-messaging/config"
-	"loopix-messaging/pki"
+	"github.com/nymtech/loopix-messaging/config"
+	"github.com/nymtech/loopix-messaging/pki"
 
-	"github.com/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 
 	"crypto/sha256"
 	"errors"

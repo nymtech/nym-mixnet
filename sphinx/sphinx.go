@@ -20,14 +20,14 @@
 package sphinx
 
 import (
-	"loopix-messaging/config"
-	"loopix-messaging/logging"
+	"github.com/nymtech/loopix-messaging/config"
+	"github.com/nymtech/loopix-messaging/logging"
 
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/elliptic"
 
-	"github.com/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 
 	"bytes"
 	"errors"
