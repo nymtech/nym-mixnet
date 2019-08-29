@@ -32,7 +32,11 @@ To run the network, i.e., mixnodes and providers run
 bash run_network.sh
 ```
 
-This spins up 3 mixnodes and 1 provider
+This spins up 3 mixnodes and 1 provider. To change the number of mixnodes to 5, do:
+
+```shell
+bash run_network.sh 5
+```
 
 To simulate the clients run
 
