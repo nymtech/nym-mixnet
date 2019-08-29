@@ -24,7 +24,7 @@ then
     echo "Logging directory already exists"
 else
     mkdir $logDir
-    echo "Created loggign directory"
+    echo "Created logging directory"
 fi
 
 NUMMIXES=$1
