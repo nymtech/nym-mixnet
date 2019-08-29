@@ -12,7 +12,7 @@
 #// See the License for the specific language governing permissions and
 #// limitations under the License.
 
-#!bin/sh
+#!/bin/bash
 
 echo "Press CTRL-C to stop."
 rm -rf "$PWD/pki/database.db"
