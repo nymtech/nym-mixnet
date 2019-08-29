@@ -15,12 +15,12 @@
 package client
 
 import (
-	sphinx "loopix-messaging/sphinx"
+	sphinx "github.com/nymtech/loopix-messaging/sphinx"
 
 	"github.com/nymtech/loopix-messaging/config"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/jmoiron/sqlx"
-	"github.com/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 
 	"fmt"
