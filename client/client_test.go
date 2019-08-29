@@ -249,6 +249,7 @@ func TestClient_ReadInMixnetPKI(t *testing.T) {
 	}
 
 	assert.Equal(t, len(testMixSet), len(client.Network.Mixes))
-	assert.Equal(t, testMixSet, client.Network.Mixes)
-
+	for i := range testMixSet {
+		assert.True(t, proto.Equal(&testMixSet[i], &client.Network.Mixes[i]))
+	}
 }

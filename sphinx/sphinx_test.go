@@ -442,9 +442,9 @@ func TestProcessSphinxHeader(t *testing.T) {
 		t.Error(err)
 	}
 
-	assert.Equal(t, nextHop, Hop{Id: "Node2", Address: "localhost:3332", PubKey: pub2})
-	assert.Equal(t, newCommands, c1)
-	assert.Equal(t, newHeader, Header{Alpha: sharedSecrets[1].Alpha, Beta: enc_routing2, Mac: mac2})
+	assert.True(t, proto.Equal(&nextHop, &Hop{Id: "Node2", Address: "localhost:3332", PubKey: pub2}))
+	assert.True(t, proto.Equal(&newCommands, &c1))
+	assert.True(t, proto.Equal(&newHeader, &Header{Alpha: sharedSecrets[1].Alpha, Beta: enc_routing2, Mac: mac2}))
 
 }
 
