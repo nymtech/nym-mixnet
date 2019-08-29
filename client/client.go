@@ -18,6 +18,8 @@
 package client
 
 import (
+	"bytes"
+
 	"github.com/nymtech/loopix-messaging/clientCore"
 	"github.com/nymtech/loopix-messaging/config"
 	"github.com/nymtech/loopix-messaging/helpers"
@@ -48,11 +50,7 @@ const (
 	dropRate             = 0.1
 	// the rate at which clients are querying the provider for received packets. fetchRate value is the
 	// parameter of an exponential distribution, and is the reciprocal of the expected value of the exp. distribution
-	fetchRate  = 0.01
-	assignFlag = "\xA2"
-	commFlag   = "\xc6"
-	tokenFlag  = "xa9"
-	pullFlag   = "\xff"
+	fetchRate = 0.01
 )
 
 type Client interface {
@@ -151,7 +149,7 @@ func (c *client) encodeMessage(message string, recipient config.ClientConfig) ([
 		return nil, err
 	}
 
-	packetBytes, err := config.WrapWithFlag(commFlag, sphinxPacket)
+	packetBytes, err := config.WrapWithFlag(config.CommFlag, sphinxPacket)
 	if err != nil {
 		logLocal.WithError(err).Error("Error in sending message - wrap with flag returned an error")
 		return nil, err
@@ -225,8 +223,8 @@ func (c *client) handleConnection(conn net.Conn) {
 		logLocal.WithError(err).Error("Error in unmarshal incoming packet")
 	}
 
-	switch packet.Flag {
-	case tokenFlag:
+	switch {
+	case bytes.Equal(packet.Flag, config.TokenFlag):
 		c.registerToken(packet.Data)
 		go func() {
 			err := c.controlOutQueue()
@@ -247,7 +245,7 @@ func (c *client) handleConnection(conn net.Conn) {
 			c.controlMessagingFetching()
 		}()
 
-	case commFlag:
+	case bytes.Equal(packet.Flag, config.CommFlag):
 		_, err := c.processPacket(packet.Data)
 		if err != nil {
 			logLocal.WithError(err).Error("Error in processing received packet")
@@ -286,7 +284,7 @@ func (c *client) sendRegisterMessageToProvider() error {
 		return err
 	}
 
-	pktBytes, err := config.WrapWithFlag(assignFlag, confBytes)
+	pktBytes, err := config.WrapWithFlag(config.AssigneFlag, confBytes)
 	if err != nil {
 		logLocal.WithError(err).Error("Error in register provider - wrap with flag returned an error")
 		return err
@@ -311,7 +309,7 @@ func (c *client) getMessagesFromProvider() error {
 		return err
 	}
 
-	pktBytes, err := config.WrapWithFlag(pullFlag, pullRqsBytes)
+	pktBytes, err := config.WrapWithFlag(config.PullFlag, pullRqsBytes)
 	if err != nil {
 		logLocal.WithError(err).Error("Error in register provider - marshal of provider config returned an error")
 		return err
@@ -377,7 +375,7 @@ func (c *client) createDropCoverMessage() ([]byte, error) {
 		return nil, err
 	}
 
-	packetBytes, err := config.WrapWithFlag(commFlag, sphinxPacket)
+	packetBytes, err := config.WrapWithFlag(config.CommFlag, sphinxPacket)
 	if err != nil {
 		return nil, err
 	}
@@ -403,7 +401,7 @@ func (c *client) createLoopCoverMessage() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	packetBytes, err := config.WrapWithFlag(commFlag, sphinxPacket)
+	packetBytes, err := config.WrapWithFlag(config.CommFlag, sphinxPacket)
 	if err != nil {
 		return nil, err
 	}

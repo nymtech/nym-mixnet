@@ -23,6 +23,14 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
+var (
+	// TODO: perhaps move it elsewhere?
+	AssigneFlag = []byte("\xa2")
+	CommFlag    = []byte("\xc6")
+	TokenFlag   = []byte("\xa9")
+	PullFlag    = []byte("\xff")
+)
+
 func NewMixConfig(mixId, host, port string, pubKey []byte) MixConfig {
 	MixConfig := MixConfig{Id: mixId, Host: host, Port: port, PubKey: pubKey}
 	return MixConfig
@@ -37,7 +45,7 @@ func NewClientConfig(clientId, host, port string, pubKey []byte, providerInfo Mi
 	WrapWithFlag packs the given byte information together with a specified flag into the
 	packet.
 */
-func WrapWithFlag(flag string, data []byte) ([]byte, error) {
+func WrapWithFlag(flag []byte, data []byte) ([]byte, error) {
 	m := GeneralPacket{Flag: flag, Data: data}
 	mBytes, err := proto.Marshal(&m)
 	if err != nil {
