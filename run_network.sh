@@ -59,7 +59,3 @@ function kill_port() {
     echo "$PID"
     kill -TERM $PID || kill -KILL $PID
 }
-
-
-
-
