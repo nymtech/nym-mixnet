@@ -27,9 +27,9 @@ else
     echo "Created logging directory"
 fi
 
-NUMMIXES=$1
+NUMMIXES=${1:-1} # Set $NUMMIXES to default of 1, but allow the user to set other values if desired
 
-for (( j=0; j<$NUMMIXES; j++ ));
+for (( j=0; j<$NUMMIXES; j++ ))
 do
     go run main.go -typ=mix -id="Mix$j" -host=localhost -port=$((9980+$j)) >> logs/bash.log &
     sleep 1
