@@ -27,7 +27,7 @@ else
     echo "Created logging directory"
 fi
 
-NUMMIXES=${1:-1} # Set $NUMMIXES to default of 1, but allow the user to set other values if desired
+NUMMIXES=${1:-3} # Set $NUMMIXES to default of 3, but allow the user to set other values if desired
 
 for (( j=0; j<$NUMMIXES; j++ ))
 do
