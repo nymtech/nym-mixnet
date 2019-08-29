@@ -15,18 +15,19 @@
 package main
 
 import (
-	"anonymous-messaging/client"
-	"anonymous-messaging/config"
-	"anonymous-messaging/logging"
-	"anonymous-messaging/pki"
-	"anonymous-messaging/server"
-	"anonymous-messaging/sphinx"
+	"github.com/nymtech/loopix-messaging/client"
+	"github.com/nymtech/loopix-messaging/config"
+	"github.com/nymtech/loopix-messaging/logging"
+	"github.com/nymtech/loopix-messaging/pki"
+	"github.com/nymtech/loopix-messaging/server"
+	"github.com/nymtech/loopix-messaging/sphinx"
 
 	"flag"
 	"fmt"
 
-	"anonymous-messaging/helpers"
-	"github.com/protobuf/proto"
+	"github.com/nymtech/loopix-messaging/helpers"
+
+	"github.com/golang/protobuf/proto"
 )
 
 var logLocal = logging.PackageLogger()

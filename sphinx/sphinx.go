@@ -20,14 +20,14 @@
 package sphinx
 
 import (
-	"anonymous-messaging/config"
-	"anonymous-messaging/logging"
+	"github.com/nymtech/loopix-messaging/config"
+	"github.com/nymtech/loopix-messaging/logging"
 
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/elliptic"
 
-	"github.com/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 
 	"bytes"
 	"errors"
@@ -42,8 +42,12 @@ const (
 	K            = 16
 	R            = 5
 	headerLength = 192
-	lastHopFlag  = "\xf0"
-	relayFlag    = "\xf1"
+)
+
+var (
+	// We could have been storing this as a single byte, however, protobuf does not have single-byte fields
+	LastHopFlag = []byte("\xf0")
+	RelayFlag   = []byte("\xf1")
 )
 
 // PackForwardMessage encapsulates the given message into the cryptographic Sphinx packet format.
@@ -104,9 +108,9 @@ func createHeader(curve elliptic.Curve, nodes []config.MixConfig, delays []float
 	for i, _ := range nodes {
 		var c Commands
 		if i == len(nodes)-1 {
-			c = Commands{Delay: delays[i], Flag: lastHopFlag}
+			c = Commands{Delay: delays[i], Flag: LastHopFlag}
 		} else {
-			c = Commands{Delay: delays[i], Flag: relayFlag}
+			c = Commands{Delay: delays[i], Flag: RelayFlag}
 		}
 		commands = append(commands, c)
 	}

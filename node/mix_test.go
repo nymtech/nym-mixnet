@@ -15,10 +15,10 @@
 package node
 
 import (
-	"anonymous-messaging/config"
-	sphinx "anonymous-messaging/sphinx"
+	"github.com/nymtech/loopix-messaging/config"
+	sphinx "github.com/nymtech/loopix-messaging/sphinx"
 
-	"github.com/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 
 	"crypto/elliptic"
@@ -76,7 +76,7 @@ func TestMain(m *testing.M) {
 func TestMixProcessPacket(t *testing.T) {
 	ch := make(chan []byte, 1)
 	chHop := make(chan sphinx.Hop, 1)
-	cAdr := make(chan string, 1)
+	cAdr := make(chan []byte, 1)
 	errCh := make(chan error, 1)
 
 	pubD, _, err := sphinx.GenerateKeyPair()
@@ -116,5 +116,5 @@ func TestMixProcessPacket(t *testing.T) {
 
 	assert.Equal(t, sphinx.Hop{Id: "Mix1", Address: "localhost:3330", PubKey: nodes[0].PubKey}, nextHop, "Next hop does not match")
 	assert.Equal(t, reflect.TypeOf([]byte{}), reflect.TypeOf(dePacket))
-	assert.Equal(t, "\xF1", flag, reflect.TypeOf(dePacket))
+	assert.Equal(t, []byte("\xF1"), flag, reflect.TypeOf(dePacket))
 }

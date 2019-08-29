@@ -15,13 +15,13 @@
 package server
 
 import (
-	"anonymous-messaging/config"
-	"anonymous-messaging/helpers"
-	"anonymous-messaging/networker"
-	"anonymous-messaging/node"
-	"anonymous-messaging/sphinx"
+	"github.com/nymtech/loopix-messaging/config"
+	"github.com/nymtech/loopix-messaging/helpers"
+	"github.com/nymtech/loopix-messaging/networker"
+	"github.com/nymtech/loopix-messaging/node"
+	"github.com/nymtech/loopix-messaging/sphinx"
 
-	"github.com/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 
 	"bytes"
 	"errors"
@@ -29,13 +29,6 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
-)
-
-const (
-	assigneFlag = "\xa2"
-	commFlag    = "\xc6"
-	tokenFlag   = "xa9"
-	pullFlag    = "\xff"
 )
 
 type ProviderIt interface {
@@ -99,7 +92,7 @@ func (p *ProviderServer) receivedPacket(packet []byte) error {
 
 	c := make(chan []byte)
 	cAdr := make(chan sphinx.Hop)
-	cFlag := make(chan string)
+	cFlag := make(chan []byte)
 	errCh := make(chan error)
 
 	go p.ProcessPacket(packet, c, cAdr, cFlag, errCh)
@@ -112,13 +105,13 @@ func (p *ProviderServer) receivedPacket(packet []byte) error {
 		return err
 	}
 
-	switch flag {
-	case "\xF1":
+	switch {
+	case bytes.Equal(flag, sphinx.RelayFlag):
 		err = p.forwardPacket(dePacket, nextHop.Address)
 		if err != nil {
 			return err
 		}
-	case "\xF0":
+	case bytes.Equal(flag, sphinx.LastHopFlag):
 		err = p.storeMessage(dePacket, nextHop.Id, "TMP_MESSAGE_ID")
 		if err != nil {
 			return err
@@ -131,7 +124,7 @@ func (p *ProviderServer) receivedPacket(packet []byte) error {
 }
 
 func (p *ProviderServer) forwardPacket(sphinxPacket []byte, address string) error {
-	packetBytes, err := config.WrapWithFlag(commFlag, sphinxPacket)
+	packetBytes, err := config.WrapWithFlag(config.CommFlag, sphinxPacket)
 	if err != nil {
 		return err
 	}
@@ -200,18 +193,18 @@ func (p *ProviderServer) handleConnection(conn net.Conn, errs chan<- error) {
 		errs <- err
 	}
 
-	switch packet.Flag {
-	case assigneFlag:
+	switch {
+	case bytes.Equal(packet.Flag, config.AssigneFlag):
 		err = p.handleAssignRequest(packet.Data)
 		if err != nil {
 			errs <- err
 		}
-	case commFlag:
+	case bytes.Equal(packet.Flag, config.CommFlag):
 		err = p.receivedPacket(packet.Data)
 		if err != nil {
 			errs <- err
 		}
-	case pullFlag:
+	case bytes.Equal(packet.Flag, config.PullFlag):
 		err = p.handlePullRequest(packet.Data)
 		if err != nil {
 			errs <- err
@@ -264,7 +257,7 @@ func (p *ProviderServer) handleAssignRequest(packet []byte) error {
 		return err
 	}
 
-	tokenBytes, err := config.WrapWithFlag(tokenFlag, token)
+	tokenBytes, err := config.WrapWithFlag(config.TokenFlag, token)
 	if err != nil {
 		return err
 	}
@@ -352,7 +345,7 @@ func (p *ProviderServer) fetchMessages(clientId string) (string, error) {
 
 		address := p.assignedClients[clientId].host + ":" + p.assignedClients[clientId].port
 		logLocal.Infof("Found stored message for address %s", address)
-		msgBytes, err := config.WrapWithFlag(commFlag, dat)
+		msgBytes, err := config.WrapWithFlag(config.CommFlag, dat)
 		if err != nil {
 			return "", err
 		}

@@ -15,19 +15,17 @@
 package sphinx
 
 import (
-	"anonymous-messaging/config"
-
 	"crypto/aes"
 	"crypto/elliptic"
 	"crypto/rand"
-
-	"github.com/protobuf/proto"
-	"github.com/stretchr/testify/assert"
-
 	"fmt"
 	"math/big"
 	"os"
 	"testing"
+
+	"github.com/golang/protobuf/proto"
+	"github.com/nymtech/loopix-messaging/config"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMain(m *testing.M) {
@@ -263,9 +261,9 @@ func TestEncapsulateHeader(t *testing.T) {
 
 	nodes := []config.MixConfig{m1, m2, m3}
 
-	c1 := Commands{Delay: 0.34, Flag: "0"}
-	c2 := Commands{Delay: 0.25, Flag: "1"}
-	c3 := Commands{Delay: 1.10, Flag: "1"}
+	c1 := Commands{Delay: 0.34, Flag: []byte("0")}
+	c2 := Commands{Delay: 0.25, Flag: []byte("1")}
+	c3 := Commands{Delay: 1.10, Flag: []byte("1")}
 	commands := []Commands{c1, c2, c3}
 
 	x := big.NewInt(100)
@@ -280,8 +278,13 @@ func TestEncapsulateHeader(t *testing.T) {
 		t.Error(err)
 	}
 
-	routing1 := RoutingInfo{NextHop: &Hop{"DestinationId", "DestinationAddress:9998", []byte{}}, RoutingCommands: &c3,
-		NextHopMetaData: []byte{}, Mac: []byte{}}
+	routing1 := RoutingInfo{NextHop: &Hop{Id: "DestinationId",
+		Address: "DestinationAddress:9998",
+		PubKey:  []byte{},
+	}, RoutingCommands: &c3,
+		NextHopMetaData: []byte{},
+		Mac:             []byte{},
+	}
 
 	routing1Bytes, err := proto.Marshal(&routing1)
 	if err != nil {
@@ -295,8 +298,13 @@ func TestEncapsulateHeader(t *testing.T) {
 
 	mac1 := computeMac(KDF(sharedSecrets[2].SecretHash), enc_routing1)
 
-	routing2 := RoutingInfo{NextHop: &Hop{"Node3", "localhost:3333", pub3}, RoutingCommands: &c2,
-		NextHopMetaData: enc_routing1, Mac: mac1}
+	routing2 := RoutingInfo{NextHop: &Hop{Id: "Node3",
+		Address: "localhost:3333",
+		PubKey:  pub3,
+	}, RoutingCommands: &c2,
+		NextHopMetaData: enc_routing1,
+		Mac:             mac1,
+	}
 
 	routing2Bytes, err := proto.Marshal(&routing2)
 	if err != nil {
@@ -310,8 +318,13 @@ func TestEncapsulateHeader(t *testing.T) {
 
 	mac2 := computeMac(KDF(sharedSecrets[1].SecretHash), enc_routing2)
 
-	expectedRouting := RoutingInfo{NextHop: &Hop{"Node2", "localhost:3332", pub2}, RoutingCommands: &c1,
-		NextHopMetaData: enc_routing2, Mac: mac2}
+	expectedRouting := RoutingInfo{NextHop: &Hop{Id: "Node2",
+		Address: "localhost:3332",
+		PubKey:  pub2,
+	}, RoutingCommands: &c1,
+		NextHopMetaData: enc_routing2,
+		Mac:             mac2,
+	}
 
 	expectedRoutingBytes, err := proto.Marshal(&expectedRouting)
 	if err != nil {
@@ -325,7 +338,10 @@ func TestEncapsulateHeader(t *testing.T) {
 
 	mac3 := computeMac(KDF(sharedSecrets[0].SecretHash), enc_expectedRouting)
 
-	expectedHeader := Header{sharedSecrets[0].Alpha, enc_expectedRouting, mac3}
+	expectedHeader := Header{Alpha: sharedSecrets[0].Alpha,
+		Beta: enc_expectedRouting,
+		Mac:  mac3,
+	}
 
 	assert.Equal(t, expectedHeader, actualHeader)
 }
@@ -356,8 +372,12 @@ func TestProcessSphinxHeader(t *testing.T) {
 	}
 
 	// Intermediate steps, which are needed to check whether the processing of the header was correct
-	routing1 := RoutingInfo{NextHop: &Hop{"DestinationId", "DestinationAddress", []byte{}}, RoutingCommands: &c3,
-		NextHopMetaData: []byte{}, Mac: []byte{}}
+	routing1 := RoutingInfo{NextHop: &Hop{Id: "DestinationId",
+		Address: "DestinationAddress", PubKey: []byte{},
+	}, RoutingCommands: &c3,
+		NextHopMetaData: []byte{},
+		Mac:             []byte{},
+	}
 
 	routing1Bytes, err := proto.Marshal(&routing1)
 	if err != nil {
@@ -371,8 +391,13 @@ func TestProcessSphinxHeader(t *testing.T) {
 
 	mac1 := computeMac(KDF(sharedSecrets[2].SecretHash), enc_routing1)
 
-	routing2 := RoutingInfo{NextHop: &Hop{"Node3", "localhost:3333", pub3}, RoutingCommands: &c2,
-		NextHopMetaData: enc_routing1, Mac: mac1}
+	routing2 := RoutingInfo{NextHop: &Hop{Id: "Node3",
+		Address: "localhost:3333",
+		PubKey:  pub3,
+	}, RoutingCommands: &c2,
+		NextHopMetaData: enc_routing1,
+		Mac:             mac1,
+	}
 
 	routing2Bytes, err := proto.Marshal(&routing2)
 	if err != nil {
@@ -386,8 +411,13 @@ func TestProcessSphinxHeader(t *testing.T) {
 
 	mac2 := computeMac(KDF(sharedSecrets[1].SecretHash), enc_routing2)
 
-	routing3 := RoutingInfo{NextHop: &Hop{"Node2", "localhost:3332", pub2}, RoutingCommands: &c1,
-		NextHopMetaData: enc_routing2, Mac: mac2}
+	routing3 := RoutingInfo{NextHop: &Hop{Id: "Node2",
+		Address: "localhost:3332",
+		PubKey:  pub2,
+	}, RoutingCommands: &c1,
+		NextHopMetaData: enc_routing2,
+		Mac:             mac2,
+	}
 
 	routing3Bytes, err := proto.Marshal(&routing3)
 	if err != nil {
@@ -401,7 +431,10 @@ func TestProcessSphinxHeader(t *testing.T) {
 
 	mac3 := computeMac(KDF(sharedSecrets[0].SecretHash), enc_expectedRouting)
 
-	header := Header{sharedSecrets[0].Alpha, enc_expectedRouting, mac3}
+	header := Header{Alpha: sharedSecrets[0].Alpha,
+		Beta: enc_expectedRouting,
+		Mac:  mac3,
+	}
 
 	nextHop, newCommands, newHeader, err := ProcessSphinxHeader(header, priv1)
 
@@ -409,9 +442,9 @@ func TestProcessSphinxHeader(t *testing.T) {
 		t.Error(err)
 	}
 
-	assert.Equal(t, nextHop, Hop{Id: "Node2", Address: "localhost:3332", PubKey: pub2})
-	assert.Equal(t, newCommands, c1)
-	assert.Equal(t, newHeader, Header{Alpha: sharedSecrets[1].Alpha, Beta: enc_routing2, Mac: mac2})
+	assert.True(t, proto.Equal(&nextHop, &Hop{Id: "Node2", Address: "localhost:3332", PubKey: pub2}))
+	assert.True(t, proto.Equal(&newCommands, &c1))
+	assert.True(t, proto.Equal(&newHeader, &Header{Alpha: sharedSecrets[1].Alpha, Beta: enc_routing2, Mac: mac2}))
 
 }
 

@@ -18,15 +18,18 @@
 package server
 
 import (
-	"anonymous-messaging/config"
-	"anonymous-messaging/helpers"
-	"anonymous-messaging/logging"
-	"anonymous-messaging/networker"
-	"anonymous-messaging/node"
-	"anonymous-messaging/sphinx"
+	"bytes"
 
-	"github.com/protobuf/proto"
+	"github.com/nymtech/loopix-messaging/config"
+	"github.com/nymtech/loopix-messaging/helpers"
+	"github.com/nymtech/loopix-messaging/logging"
+	"github.com/nymtech/loopix-messaging/networker"
+	"github.com/nymtech/loopix-messaging/node"
+	"github.com/nymtech/loopix-messaging/sphinx"
+
 	"net"
+
+	"github.com/golang/protobuf/proto"
 )
 
 var logLocal = logging.PackageLogger()
@@ -62,7 +65,7 @@ func (m *MixServer) receivedPacket(packet []byte) error {
 
 	c := make(chan []byte)
 	cAdr := make(chan sphinx.Hop)
-	cFlag := make(chan string)
+	cFlag := make(chan []byte)
 	errCh := make(chan error)
 
 	go m.ProcessPacket(packet, c, cAdr, cFlag, errCh)
@@ -75,7 +78,7 @@ func (m *MixServer) receivedPacket(packet []byte) error {
 		return err
 	}
 
-	if flag == "\xF1" {
+	if bytes.Equal(flag, sphinx.RelayFlag) {
 		m.forwardPacket(dePacket, nextHop.Address)
 	} else {
 		logLocal.Info("Packet has non-forward flag. Packet dropped")
@@ -84,7 +87,7 @@ func (m *MixServer) receivedPacket(packet []byte) error {
 }
 
 func (m *MixServer) forwardPacket(sphinxPacket []byte, address string) error {
-	packetBytes, err := config.WrapWithFlag(commFlag, sphinxPacket)
+	packetBytes, err := config.WrapWithFlag(config.CommFlag, sphinxPacket)
 	if err != nil {
 		return err
 	}
@@ -157,8 +160,8 @@ func (m *MixServer) handleConnection(conn net.Conn, errs chan<- error) {
 		errs <- err
 	}
 
-	switch packet.Flag {
-	case commFlag:
+	switch {
+	case bytes.Equal(packet.Flag, config.CommFlag):
 		err = m.receivedPacket(packet.Data)
 		if err != nil {
 			errs <- err

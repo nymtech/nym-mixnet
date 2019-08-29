@@ -15,7 +15,7 @@
 package helpers
 
 import (
-	"anonymous-messaging/config"
+	"github.com/nymtech/loopix-messaging/config"
 
 	"github.com/stretchr/testify/assert"
 

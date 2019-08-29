@@ -15,8 +15,8 @@
 package clientCore
 
 import (
-	"anonymous-messaging/config"
-	sphinx "anonymous-messaging/sphinx"
+	"github.com/nymtech/loopix-messaging/config"
+	sphinx "github.com/nymtech/loopix-messaging/sphinx"
 
 	"github.com/stretchr/testify/assert"
 
