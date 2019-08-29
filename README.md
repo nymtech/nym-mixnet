@@ -22,7 +22,7 @@ Before first fresh run of the system run:
 bash clean.sh
 ```
 
-This removes all log files and database
+This removes all log files and database.
 
 ## Usage
 
