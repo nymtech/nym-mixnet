@@ -1,3 +1,5 @@
 /loopix-messaging
 /pki/TESTDATABASE.DB
 /vendor/
+/logs/
+/pki/database.db
