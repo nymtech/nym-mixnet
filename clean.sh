@@ -12,7 +12,7 @@
 #// See the License for the specific language governing permissions and
 #// limitations under the License.
 
-#!/usr/bin/env bash
+#!/bin/bash
 
 # This script should be run from inside the loopix-messaging package directory
 
