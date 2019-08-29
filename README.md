@@ -9,15 +9,7 @@ Note that this is not an officially supported DeepMind product.
 
 To build and test the code you need:
 
-* Go 1.9 or later
-* [govendor](https://github.com/kardianos/govendor)
-
-Before running or testing the code run:
-
-```shell
-govendor install +local
-govendor test +local
-```
+* Go 1.11 or later
 
 To perform the unit tests run:
 
