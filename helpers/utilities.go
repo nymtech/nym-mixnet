@@ -32,6 +32,7 @@ import (
 	"time"
 )
 
+// Permute shuffles the given slice of MixConfigs into a random order.
 func Permute(slice []config.MixConfig) ([]config.MixConfig, error) {
 	if len(slice) == 0 {
 		return nil, errors.New(" cannot permute an empty list of mixes")
@@ -46,6 +47,8 @@ func Permute(slice []config.MixConfig) ([]config.MixConfig, error) {
 	return permutedData, nil
 }
 
+// RandomSample takes a slice of MixConfigs, and returns a new
+// slice of length `length` in a randomized order and
 func RandomSample(slice []config.MixConfig, length int) ([]config.MixConfig, error) {
 	if len(slice) < length {
 		return nil, errors.New(" cannot take a sample larger than the given list")
@@ -59,6 +62,7 @@ func RandomSample(slice []config.MixConfig, length int) ([]config.MixConfig, err
 	return permuted[:length], err
 }
 
+// RandomExponential picks a random exponential based on expParam and returns it.
 func RandomExponential(expParam float64) (float64, error) {
 	rand.Seed(time.Now().UTC().UnixNano())
 	if expParam <= 0.0 {
@@ -67,6 +71,7 @@ func RandomExponential(expParam float64) (float64, error) {
 	return rand.ExpFloat64() / expParam, nil
 }
 
+// ResolveTCPAddress returns an address of TCP end point given a host and port.
 func ResolveTCPAddress(host, port string) (*net.TCPAddr, error) {
 	addr, err := net.ResolveTCPAddr("tcp", host+":"+port)
 	if err != nil {
@@ -76,7 +81,6 @@ func ResolveTCPAddress(host, port string) (*net.TCPAddr, error) {
 }
 
 // TO DO: This function is useless; remove it and change the code
-
 func AddToDatabase(pkiPath string, tableName, id, typ string, config []byte) error {
 	db, err := pki.OpenDatabase(pkiPath, "sqlite3")
 	if err != nil {
@@ -91,6 +95,7 @@ func AddToDatabase(pkiPath string, tableName, id, typ string, config []byte) err
 	return nil
 }
 
+// DirExists checks whether a directory exists at the given path.
 func DirExists(path string) (bool, error) {
 	_, err := os.Stat(path)
 	if os.IsNotExist(err) {
@@ -109,6 +114,7 @@ func SHA256(arg []byte) []byte {
 	return h.Sum(nil)
 }
 
+// GetMixesPKI returns PKI data for mix nodes.
 func GetMixesPKI(pkiDir string) ([]config.MixConfig, error) {
 	var mixes []config.MixConfig
 
@@ -140,6 +146,7 @@ func GetMixesPKI(pkiDir string) ([]config.MixConfig, error) {
 	return mixes, nil
 }
 
+// GetClientPKI returns a map of the current client PKI from the PKI database
 func GetClientPKI(pkiDir string) ([]config.ClientConfig, error) {
 	var clients []config.ClientConfig
 
@@ -171,6 +178,7 @@ func GetClientPKI(pkiDir string) ([]config.ClientConfig, error) {
 	return clients, nil
 }
 
+// GetLocalIP attempts to figure out a valid IP address for this machine.
 func GetLocalIP() (string, error) {
 	ifaces, err := net.Interfaces()
 	if err != nil {
@@ -201,5 +209,5 @@ func GetLocalIP() (string, error) {
 		}
 	}
 
-	return "", errors.New("Couldn't find the valid IP. Check internet connection.")
+	return "", errors.New("Couldn't find a valid IP for your machine, check your internet connection")
 }
