@@ -25,7 +25,7 @@ import (
 	"math/big"
 )
 
-// AesCtr returns AES XOR ciphertext for the given key and plaintext
+// AesCtr returns AES XOR ciphertext in counter mode for the given key and plaintext
 func AesCtr(key, plaintext []byte) ([]byte, error) {
 
 	ciphertext := make([]byte, len(plaintext))
