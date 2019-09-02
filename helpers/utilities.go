@@ -62,7 +62,7 @@ func RandomSample(slice []config.MixConfig, length int) ([]config.MixConfig, err
 	return permuted[:length], err
 }
 
-// RandomExponential picks a random exponential based on expParam and returns it.
+// RandomExponential picks a random value from the exponential distribution using the expParam and returns it.
 func RandomExponential(expParam float64) (float64, error) {
 	rand.Seed(time.Now().UTC().UnixNano())
 	if expParam <= 0.0 {
@@ -80,7 +80,7 @@ func ResolveTCPAddress(host, port string) (*net.TCPAddr, error) {
 	return addr, nil
 }
 
-// TO DO: This function is useless; remove it and change the code
+// AddToDatabase adds a record to the PKI database into a given table.
 func AddToDatabase(pkiPath string, tableName, id, typ string, config []byte) error {
 	db, err := pki.OpenDatabase(pkiPath, "sqlite3")
 	if err != nil {
