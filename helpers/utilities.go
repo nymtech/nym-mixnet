@@ -48,6 +48,8 @@ func Permute(slice []config.MixConfig) ([]config.MixConfig, error) {
 	return permutedData, nil
 }
 
+// RandomSample takes a slice of MixConfigs, and returns a new
+// slice of length `length` in a randomized order.
 func RandomSample(slice []config.MixConfig, length int) ([]config.MixConfig, error) {
 	if len(slice) < length {
 		return nil, errors.New(" cannot take a sample larger than the given list")
@@ -82,6 +84,7 @@ func RandomExponential(expParam float64) (float64, error) {
 	return rand.ExpFloat64() / expParam, nil
 }
 
+// ResolveTCPAddress returns an address of TCP end point given a host and port.
 func ResolveTCPAddress(host, port string) (*net.TCPAddr, error) {
 	addr, err := net.ResolveTCPAddr("tcp", host+":"+port)
 	if err != nil {
@@ -90,8 +93,7 @@ func ResolveTCPAddress(host, port string) (*net.TCPAddr, error) {
 	return addr, nil
 }
 
-// TO DO: This function is useless; remove it and change the code
-
+// AddToDatabase adds a record to the PKI database into a given table.
 func AddToDatabase(pkiPath string, tableName, id, typ string, config []byte) error {
 	db, err := pki.OpenDatabase(pkiPath, "sqlite3")
 	if err != nil {
@@ -106,6 +108,7 @@ func AddToDatabase(pkiPath string, tableName, id, typ string, config []byte) err
 	return nil
 }
 
+// DirExists checks whether a directory exists at the given path.
 func DirExists(path string) (bool, error) {
 	_, err := os.Stat(path)
 	if os.IsNotExist(err) {
@@ -124,6 +127,7 @@ func SHA256(arg []byte) []byte {
 	return h.Sum(nil)
 }
 
+// GetMixesPKI returns PKI data for mix nodes.
 func GetMixesPKI(pkiDir string) ([]config.MixConfig, error) {
 	var mixes []config.MixConfig
 
@@ -155,6 +159,7 @@ func GetMixesPKI(pkiDir string) ([]config.MixConfig, error) {
 	return mixes, nil
 }
 
+// GetClientPKI returns a map of the current client PKI from the PKI database
 func GetClientPKI(pkiDir string) ([]config.ClientConfig, error) {
 	var clients []config.ClientConfig
 
@@ -186,6 +191,7 @@ func GetClientPKI(pkiDir string) ([]config.ClientConfig, error) {
 	return clients, nil
 }
 
+// GetLocalIP attempts to figure out a valid IP address for this machine.
 func GetLocalIP() (string, error) {
 	ifaces, err := net.Interfaces()
 	if err != nil {
@@ -216,5 +222,5 @@ func GetLocalIP() (string, error) {
 		}
 	}
 
-	return "", errors.New("Couldn't find the valid IP. Check internet connection.")
+	return "", errors.New("Couldn't find a valid IP for your machine, check your internet connection")
 }

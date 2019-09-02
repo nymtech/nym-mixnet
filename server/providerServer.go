@@ -31,6 +31,7 @@ import (
 	"os"
 )
 
+// ProviderIt is the interface of a given Provider mix server
 type ProviderIt interface {
 	networker.NetworkServer
 	networker.NetworkClient
@@ -38,6 +39,7 @@ type ProviderIt interface {
 	GetConfig() config.MixConfig
 }
 
+// ProviderServer is the data of a Provider mix server
 type ProviderServer struct {
 	id   string
 	host string
@@ -49,6 +51,7 @@ type ProviderServer struct {
 	config          config.MixConfig
 }
 
+// ClientRecord holds identity and network data for clients.
 type ClientRecord struct {
 	id     string
 	host   string
@@ -57,15 +60,16 @@ type ClientRecord struct {
 	token  []byte
 }
 
-// Start function creates the loggers for capturing the info and error logs
-// and starts the listening server. Function returns an error
-// signaling whether any operation was unsuccessful
+// Start creates loggers for capturing info and error logs
+// and starts the listening server. Returns an error
+// if any operation was unsuccessful.
 func (p *ProviderServer) Start() error {
 	p.run()
 
 	return nil
 }
 
+// GetConfig returns the config.MixConfig for this ProviderServer
 func (p *ProviderServer) GetConfig() config.MixConfig {
 	return p.config
 }
@@ -307,12 +311,12 @@ func (p *ProviderServer) handlePullRequest(rqsBytes []byte) error {
 // AuthenticateUser compares the authentication token received from the client with
 // the one stored by the provider. If tokens are the same, it returns true
 // and false otherwise.
-func (p *ProviderServer) authenticateUser(clientId string, clientToken []byte) bool {
+func (p *ProviderServer) authenticateUser(clientID string, clientToken []byte) bool {
 
-	if bytes.Compare(p.assignedClients[clientId].token, clientToken) == 0 {
+	if bytes.Compare(p.assignedClients[clientID].token, clientToken) == 0 {
 		return true
 	}
-	logLocal.Warningf("Non matching token: %s, %s", p.assignedClients[clientId].token, clientToken)
+	logLocal.Warningf("Non matching token: %s, %s", p.assignedClients[clientID].token, clientToken)
 	return false
 }
 
@@ -322,9 +326,9 @@ func (p *ProviderServer) authenticateUser(clientId string, clientToken []byte) b
 // are send to the client one by one. FetchMessages returns a code
 // signaling whether (NI) inbox does not exist, (EI) inbox is empty,
 // (SI) messages were send to the client; and an error.
-func (p *ProviderServer) fetchMessages(clientId string) (string, error) {
+func (p *ProviderServer) fetchMessages(clientID string) (string, error) {
 
-	path := fmt.Sprintf("./inboxes/%s", clientId)
+	path := fmt.Sprintf("./inboxes/%s", clientID)
 	exist, err := helpers.DirExists(path)
 	if err != nil {
 		return "", err
@@ -346,7 +350,7 @@ func (p *ProviderServer) fetchMessages(clientId string) (string, error) {
 			return "", err
 		}
 
-		address := p.assignedClients[clientId].host + ":" + p.assignedClients[clientId].port
+		address := p.assignedClients[clientID].host + ":" + p.assignedClients[clientID].port
 		logLocal.Infof("Found stored message for address %s", address)
 		logLocal.Infof("Messages data: %v", string(dat))
 		msgBytes, err := config.WrapWithFlag(config.CommFlag, dat)
@@ -364,9 +368,9 @@ func (p *ProviderServer) fetchMessages(clientId string) (string, error) {
 // StoreMessage saves the given message in the inbox defined by the given id.
 // If the inbox address does not exist or writing into the inbox was unsuccessful
 // the function returns an error
-func (p *ProviderServer) storeMessage(message []byte, inboxId string, messageId string) error {
-	path := fmt.Sprintf("./inboxes/%s", inboxId)
-	fileName := path + "/" + messageId + ".txt"
+func (p *ProviderServer) storeMessage(message []byte, inboxID string, messageID string) error {
+	path := fmt.Sprintf("./inboxes/%s", inboxID)
+	fileName := path + "/" + messageID + ".txt"
 
 	file, err := os.Create(fileName)
 	if err != nil {
@@ -379,7 +383,7 @@ func (p *ProviderServer) storeMessage(message []byte, inboxId string, messageId 
 		return err
 	}
 
-	logLocal.Infof("Stored message for %s", inboxId)
+	logLocal.Infof("Stored message for %s", inboxID)
 	logLocal.Infof("Stored message content: %v", string(message))
 	return nil
 }

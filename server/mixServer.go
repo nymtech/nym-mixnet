@@ -12,9 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/*
-	Package server implements the mix server.
-*/
+// Package server implements the mix server.
 package server
 
 import (
@@ -34,6 +32,7 @@ import (
 
 var logLocal = logging.PackageLogger()
 
+// MixServerIt is the interface of a mix server.
 type MixServerIt interface {
 	networker.NetworkServer
 	networker.NetworkClient
@@ -41,6 +40,7 @@ type MixServerIt interface {
 	Start() error
 }
 
+// MixServer is the data of a mix server
 type MixServer struct {
 	id       string
 	host     string
@@ -51,11 +51,13 @@ type MixServer struct {
 	config config.MixConfig
 }
 
+// Start runs a mix server
 func (m *MixServer) Start() error {
 	defer m.run()
 	return nil
 }
 
+// GetConfig returns the config of the given mix server
 func (m *MixServer) GetConfig() config.MixConfig {
 	return m.config
 }
@@ -173,6 +175,7 @@ func (m *MixServer) handleConnection(conn net.Conn, errs chan<- error) {
 	errs <- nil
 }
 
+// NewMixServer constructor
 func NewMixServer(id, host, port string, pubKey []byte, prvKey []byte, pkiPath string) (*MixServer, error) {
 	mix := node.NewMix(pubKey, prvKey)
 	mixServer := MixServer{id: id, host: host, port: port, Mix: mix, listener: nil}

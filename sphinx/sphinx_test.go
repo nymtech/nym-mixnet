@@ -248,8 +248,17 @@ func TestXorBytesFail(t *testing.T) {
 func TestEncapsulateHeader(t *testing.T) {
 
 	pub1, _, err := GenerateKeyPair()
+	if err != nil {
+		t.Error(err)
+	}
 	pub2, _, err := GenerateKeyPair()
+	if err != nil {
+		t.Error(err)
+	}
 	pub3, _, err := GenerateKeyPair()
+	if err != nil {
+		t.Error(err)
+	}
 	pubD, _, err := GenerateKeyPair()
 	if err != nil {
 		t.Error(err)
@@ -291,18 +300,18 @@ func TestEncapsulateHeader(t *testing.T) {
 		t.Error(err)
 	}
 
-	enc_routing1, err := AES_CTR(KDF(sharedSecrets[2].SecretHash), routing1Bytes)
+	encRouting1, err := AesCtr(KDF(sharedSecrets[2].SecretHash), routing1Bytes)
 	if err != nil {
 		t.Error(err)
 	}
 
-	mac1 := computeMac(KDF(sharedSecrets[2].SecretHash), enc_routing1)
+	mac1 := computeMac(KDF(sharedSecrets[2].SecretHash), encRouting1)
 
 	routing2 := RoutingInfo{NextHop: &Hop{Id: "Node3",
 		Address: "localhost:3333",
 		PubKey:  pub3,
 	}, RoutingCommands: &c2,
-		NextHopMetaData: enc_routing1,
+		NextHopMetaData: encRouting1,
 		Mac:             mac1,
 	}
 
@@ -311,18 +320,18 @@ func TestEncapsulateHeader(t *testing.T) {
 		t.Error(err)
 	}
 
-	enc_routing2, err := AES_CTR(KDF(sharedSecrets[1].SecretHash), routing2Bytes)
+	encRouting2, err := AesCtr(KDF(sharedSecrets[1].SecretHash), routing2Bytes)
 	if err != nil {
 		t.Error(err)
 	}
 
-	mac2 := computeMac(KDF(sharedSecrets[1].SecretHash), enc_routing2)
+	mac2 := computeMac(KDF(sharedSecrets[1].SecretHash), encRouting2)
 
 	expectedRouting := RoutingInfo{NextHop: &Hop{Id: "Node2",
 		Address: "localhost:3332",
 		PubKey:  pub2,
 	}, RoutingCommands: &c1,
-		NextHopMetaData: enc_routing2,
+		NextHopMetaData: encRouting2,
 		Mac:             mac2,
 	}
 
@@ -331,15 +340,15 @@ func TestEncapsulateHeader(t *testing.T) {
 		t.Error(err)
 	}
 
-	enc_expectedRouting, err := AES_CTR(KDF(sharedSecrets[0].SecretHash), expectedRoutingBytes)
+	encExpectedRouting, err := AesCtr(KDF(sharedSecrets[0].SecretHash), expectedRoutingBytes)
 	if err != nil {
 		t.Error(err)
 	}
 
-	mac3 := computeMac(KDF(sharedSecrets[0].SecretHash), enc_expectedRouting)
+	mac3 := computeMac(KDF(sharedSecrets[0].SecretHash), encExpectedRouting)
 
 	expectedHeader := Header{Alpha: sharedSecrets[0].Alpha,
-		Beta: enc_expectedRouting,
+		Beta: encExpectedRouting,
 		Mac:  mac3,
 	}
 
@@ -349,7 +358,13 @@ func TestEncapsulateHeader(t *testing.T) {
 func TestProcessSphinxHeader(t *testing.T) {
 
 	pub1, priv1, err := GenerateKeyPair()
+	if err != nil {
+		t.Error(err)
+	}
 	pub2, _, err := GenerateKeyPair()
+	if err != nil {
+		t.Error(err)
+	}
 	pub3, _, err := GenerateKeyPair()
 	if err != nil {
 		t.Error(err)
@@ -384,18 +399,18 @@ func TestProcessSphinxHeader(t *testing.T) {
 		t.Error(err)
 	}
 
-	enc_routing1, err := AES_CTR(KDF(sharedSecrets[2].SecretHash), routing1Bytes)
+	encRouting1, err := AesCtr(KDF(sharedSecrets[2].SecretHash), routing1Bytes)
 	if err != nil {
 		t.Error(err)
 	}
 
-	mac1 := computeMac(KDF(sharedSecrets[2].SecretHash), enc_routing1)
+	mac1 := computeMac(KDF(sharedSecrets[2].SecretHash), encRouting1)
 
 	routing2 := RoutingInfo{NextHop: &Hop{Id: "Node3",
 		Address: "localhost:3333",
 		PubKey:  pub3,
 	}, RoutingCommands: &c2,
-		NextHopMetaData: enc_routing1,
+		NextHopMetaData: encRouting1,
 		Mac:             mac1,
 	}
 
@@ -404,18 +419,18 @@ func TestProcessSphinxHeader(t *testing.T) {
 		t.Error(err)
 	}
 
-	enc_routing2, err := AES_CTR(KDF(sharedSecrets[1].SecretHash), routing2Bytes)
+	encRouting2, err := AesCtr(KDF(sharedSecrets[1].SecretHash), routing2Bytes)
 	if err != nil {
 		t.Error(err)
 	}
 
-	mac2 := computeMac(KDF(sharedSecrets[1].SecretHash), enc_routing2)
+	mac2 := computeMac(KDF(sharedSecrets[1].SecretHash), encRouting2)
 
 	routing3 := RoutingInfo{NextHop: &Hop{Id: "Node2",
 		Address: "localhost:3332",
 		PubKey:  pub2,
 	}, RoutingCommands: &c1,
-		NextHopMetaData: enc_routing2,
+		NextHopMetaData: encRouting2,
 		Mac:             mac2,
 	}
 
@@ -424,15 +439,15 @@ func TestProcessSphinxHeader(t *testing.T) {
 		t.Error(err)
 	}
 
-	enc_expectedRouting, err := AES_CTR(KDF(sharedSecrets[0].SecretHash), routing3Bytes)
+	encExpectedRouting, err := AesCtr(KDF(sharedSecrets[0].SecretHash), routing3Bytes)
 	if err != nil {
 		t.Error(err)
 	}
 
-	mac3 := computeMac(KDF(sharedSecrets[0].SecretHash), enc_expectedRouting)
+	mac3 := computeMac(KDF(sharedSecrets[0].SecretHash), encExpectedRouting)
 
 	header := Header{Alpha: sharedSecrets[0].Alpha,
-		Beta: enc_expectedRouting,
+		Beta: encExpectedRouting,
 		Mac:  mac3,
 	}
 
@@ -444,7 +459,7 @@ func TestProcessSphinxHeader(t *testing.T) {
 
 	assert.True(t, proto.Equal(&nextHop, &Hop{Id: "Node2", Address: "localhost:3332", PubKey: pub2}))
 	assert.True(t, proto.Equal(&newCommands, &c1))
-	assert.True(t, proto.Equal(&newHeader, &Header{Alpha: sharedSecrets[1].Alpha, Beta: enc_routing2, Mac: mac2}))
+	assert.True(t, proto.Equal(&newHeader, &Header{Alpha: sharedSecrets[1].Alpha, Beta: encRouting2, Mac: mac2}))
 
 }
 

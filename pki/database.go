@@ -21,6 +21,8 @@ package pki
 
 import (
 	"github.com/jmoiron/sqlx"
+
+	// Blank import so that go-sqlite3 is registered before package init https://golang.org/doc/effective_go.html#blank_import
 	_ "github.com/mattn/go-sqlite3"
 
 	"database/sql"

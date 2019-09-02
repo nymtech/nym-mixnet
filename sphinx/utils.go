@@ -16,6 +16,7 @@ package sphinx
 
 import "fmt"
 
+// XorBytes does an XOR bitflip operation on the supplied bytes parameters and returns the result
 func XorBytes(b1, b2 []byte) []byte {
 
 	if len(b1) != len(b2) {
@@ -23,12 +24,13 @@ func XorBytes(b1, b2 []byte) []byte {
 	}
 
 	b := make([]byte, len(b1))
-	for i, _ := range b {
+	for i := range b {
 		b[i] = b1[i] ^ b2[i]
 	}
 	return b
 }
 
+// BytesToString converts the given bytes to a string.
 func BytesToString(b []byte) string {
 	result := ""
 	for _, v := range b {

@@ -19,23 +19,21 @@ package client
 
 import (
 	"bytes"
+	"crypto/elliptic"
+	"crypto/rand"
 	"fmt"
+	"math"
+	"math/big"
+	"net"
 	"sync"
+	"time"
 
-	"github.com/nymtech/loopix-messaging/clientCore"
+	"github.com/golang/protobuf/proto"
+	"github.com/nymtech/loopix-messaging/clientcore"
 	"github.com/nymtech/loopix-messaging/config"
 	"github.com/nymtech/loopix-messaging/helpers"
 	"github.com/nymtech/loopix-messaging/logging"
 	"github.com/nymtech/loopix-messaging/networker"
-
-	"github.com/golang/protobuf/proto"
-
-	"crypto/elliptic"
-	"crypto/rand"
-	"math"
-	"math/big"
-	"net"
-	"time"
 )
 
 var (
@@ -55,6 +53,7 @@ const (
 	fetchRate = 0.01
 )
 
+// Client is the client networking interface
 type Client interface {
 	networker.NetworkClient
 	networker.NetworkServer
@@ -64,7 +63,8 @@ type Client interface {
 	ReadInNetworkFromPKI(pkiName string) error
 }
 
-type client struct {
+// TCPClient is a queuing TCP network client for the mixnet.
+type TCPClient struct {
 	id   string
 	host string
 	port string
@@ -78,7 +78,7 @@ type client struct {
 	outQueue         chan []byte
 	registrationDone chan bool
 
-	*clientCore.CryptoClient
+	*clientcore.CryptoClient
 
 	haltedCh chan struct{}
 	haltOnce sync.Once
@@ -88,7 +88,7 @@ type client struct {
 // it reads the network and users information from the PKI database
 // and starts the listening server. Function returns an error
 // signaling whenever any operation was unsuccessful.
-func (c *client) Start() error {
+func (c *TCPClient) Start() error {
 
 	c.resolveAddressAndStartListening()
 
@@ -123,25 +123,25 @@ func (c *client) Start() error {
 }
 
 // Wait waits till the client is terminated for any reason.
-func (c *client) Wait() {
+func (c *TCPClient) Wait() {
 	<-c.haltedCh
 }
 
 // TODO: create daemon to call this upon sigterm or something
 // Shutdown cleanly shuts down a given client instance.
-func (c *client) Shutdown() {
+func (c *TCPClient) Shutdown() {
 	c.haltOnce.Do(func() { c.halt() })
 }
 
 // calls any required cleanup code
-func (c *client) halt() {
+func (c *TCPClient) halt() {
 	logLocal.Info("Starting graceful shutdown")
 	// close any listeners, free resources, etc
 
 	close(c.haltedCh)
 }
 
-func (c *client) startSenderInNewRoutine() {
+func (c *TCPClient) startSenderInNewRoutine() {
 	// for now just send once for test sake
 	time.Sleep(5 * time.Second)
 	logLocal.Warn("send routine start")
@@ -161,12 +161,18 @@ func (c *client) startSenderInNewRoutine() {
 		c.SendMessage(msg, recipient)
 		i++
 		time.Sleep(5 * time.Second)
+
+		select {
+		case <-c.haltedCh:
+			logLocal.Warn("send routine end")
+			return
+		default:
+		}
 	}
-	logLocal.Warn("send routine end")
 
 }
 
-func (c *client) resolveAddressAndStartListening() error {
+func (c *TCPClient) resolveAddressAndStartListening() error {
 	addr, err := helpers.ResolveTCPAddress(c.host, c.port)
 	if err != nil {
 		return err
@@ -181,7 +187,7 @@ func (c *client) resolveAddressAndStartListening() error {
 
 // SendMessage responsible for sending a real message. Takes as input the message string
 // and the public information about the destination.
-func (c *client) SendMessage(message string, recipient config.ClientConfig) error {
+func (c *TCPClient) SendMessage(message string, recipient config.ClientConfig) error {
 	packet, err := c.encodeMessage(message, recipient)
 	if err != nil {
 		logLocal.WithError(err).Error("Error in sending message - encode message returned error")
@@ -193,7 +199,7 @@ func (c *client) SendMessage(message string, recipient config.ClientConfig) erro
 
 // encodeMessage encapsulates the given message into a sphinx packet destinated for recipient
 // and wraps with the flag pointing that it is the communication packet
-func (c *client) encodeMessage(message string, recipient config.ClientConfig) ([]byte, error) {
+func (c *TCPClient) encodeMessage(message string, recipient config.ClientConfig) ([]byte, error) {
 	sphinxPacket, err := c.EncodeMessage(message, recipient)
 	if err != nil {
 		logLocal.WithError(err).Error("Error in sending message - create sphinx packet returned an error")
@@ -211,7 +217,7 @@ func (c *client) encodeMessage(message string, recipient config.ClientConfig) ([
 // Send opens a connection with selected network address
 // and send the passed packet. If connection failed or
 // the packet could not be send, an error is returned
-func (c *client) send(packet []byte, host string, port string) error {
+func (c *TCPClient) send(packet []byte, host string, port string) error {
 
 	conn, err := net.Dial("tcp", host+":"+port)
 
@@ -226,7 +232,7 @@ func (c *client) send(packet []byte, host string, port string) error {
 }
 
 // run opens the listener to start listening on clients host and port
-func (c *client) startListenerInNewRoutine() {
+func (c *TCPClient) startListenerInNewRoutine() {
 	defer c.listener.Close()
 
 	go func() {
@@ -242,7 +248,7 @@ func (c *client) startListenerInNewRoutine() {
 // passes the incoming packets to the packet handler.
 // If the connection could not be accepted an error
 // is logged into the log files, but the function is not stopped
-func (c *client) listenForIncomingConnections() {
+func (c *TCPClient) listenForIncomingConnections() {
 	for {
 		conn, err := c.listener.Accept()
 
@@ -257,7 +263,7 @@ func (c *client) listenForIncomingConnections() {
 // HandleConnection handles the received packets; it checks the flag of the
 // packet and schedules a corresponding process function;
 // The potential errors are logged into the log files.
-func (c *client) handleConnection(conn net.Conn) {
+func (c *TCPClient) handleConnection(conn net.Conn) {
 
 	buff := make([]byte, 1024)
 	defer conn.Close()
@@ -307,7 +313,7 @@ func (c *client) handleConnection(conn net.Conn) {
 }
 
 // RegisterToken stores the authentication token received from the provider
-func (c *client) registerToken(token []byte) {
+func (c *TCPClient) registerToken(token []byte) {
 	c.token = token
 	logLocal.Infof(" Registered token %s", c.token)
 	c.registrationDone <- true
@@ -316,7 +322,7 @@ func (c *client) registerToken(token []byte) {
 // ProcessPacket processes the received sphinx packet and returns the
 // encapsulated message or error in case the processing
 // was unsuccessful.
-func (c *client) processPacket(packet []byte) ([]byte, error) {
+func (c *TCPClient) processPacket(packet []byte) ([]byte, error) {
 	logLocal.Info(" Processing packet")
 	return packet, nil
 }
@@ -324,7 +330,7 @@ func (c *client) processPacket(packet []byte) ([]byte, error) {
 // SendRegisterMessageToProvider allows the client to register with the selected provider.
 // The client sends a special assignment packet, with its public information, to the provider
 // or returns an error.
-func (c *client) sendRegisterMessageToProvider() error {
+func (c *TCPClient) sendRegisterMessageToProvider() error {
 
 	logLocal.Info("Sending request to provider to register")
 
@@ -351,7 +357,7 @@ func (c *client) sendRegisterMessageToProvider() error {
 // GetMessagesFromProvider allows to fetch messages from the inbox stored by the
 // provider. The client sends a pull packet to the provider, along with
 // the authentication token. An error is returned if occurred.
-func (c *client) getMessagesFromProvider() error {
+func (c *TCPClient) getMessagesFromProvider() error {
 	pullRqs := config.PullRequest{ClientId: c.id, Token: c.token}
 	pullRqsBytes, err := proto.Marshal(&pullRqs)
 	if err != nil {
@@ -376,7 +382,7 @@ func (c *client) getMessagesFromProvider() error {
 // controlOutQueue controls the outgoing queue of the client.
 // If a message awaits in the queue, it is sent. Otherwise a
 // drop cover message is sent instead.
-func (c *client) controlOutQueue() error {
+func (c *TCPClient) controlOutQueue() error {
 	logLocal.Info("Queue controller started")
 	for {
 		select {
@@ -391,21 +397,20 @@ func (c *client) controlOutQueue() error {
 			c.send(dummyPacket, c.Provider.Host, c.Provider.Port)
 			logLocal.Info("OutQueue empty. Dummy packet sent.")
 		}
-		err := delayBeforeContinute(desiredRateParameter)
+		err := delayBeforeContinue(desiredRateParameter)
 		if err != nil {
 			return err
 		}
 	}
-	return nil
 }
 
 // controlMessagingFetching periodically at random sends a query to the provider
 // to fetch received messages
-func (c *client) controlMessagingFetching() {
+func (c *TCPClient) controlMessagingFetching() {
 	for {
 		c.getMessagesFromProvider()
 		logLocal.Info("Sent request to provider to fetch messages")
-		err := delayBeforeContinute(fetchRate)
+		err := delayBeforeContinue(fetchRate)
 		if err != nil {
 			logLocal.Error("Error in ControlMessagingFetching - generating random exp. value failed")
 		}
@@ -414,7 +419,7 @@ func (c *client) controlMessagingFetching() {
 
 // CreateCoverMessage packs a dummy message into a Sphinx packet.
 // The dummy message is a loop message.
-func (c *client) createDropCoverMessage() ([]byte, error) {
+func (c *TCPClient) createDropCoverMessage() ([]byte, error) {
 	dummyLoad := "DummyPayloadMessage"
 	randomRecipient, err := c.getRandomRecipient(c.Network.Clients)
 	if err != nil {
@@ -434,7 +439,7 @@ func (c *client) createDropCoverMessage() ([]byte, error) {
 
 // getRandomRecipient picks a random client from the list of all available clients (stored by the client).
 // getRandomRecipient returns the selected client public configuration and an error
-func (c *client) getRandomRecipient(slice []config.ClientConfig) (config.ClientConfig, error) {
+func (c *TCPClient) getRandomRecipient(slice []config.ClientConfig) (config.ClientConfig, error) {
 	randIdx, err := rand.Int(rand.Reader, big.NewInt(int64(len(slice))))
 	if err != nil {
 		return config.ClientConfig{}, err
@@ -445,7 +450,7 @@ func (c *client) getRandomRecipient(slice []config.ClientConfig) (config.ClientC
 // createLoopCoverMessage packs a dummy loop message into
 // a sphinx packet. The loop message is destinated back to the sender
 // createLoopCoverMessage returns a byte representation of the encapsulated packet and an error
-func (c *client) createLoopCoverMessage() ([]byte, error) {
+func (c *TCPClient) createLoopCoverMessage() ([]byte, error) {
 	loopLoad := "LoopCoverMessage"
 	sphinxPacket, err := c.EncodeMessage(loopLoad, c.config)
 	if err != nil {
@@ -461,7 +466,7 @@ func (c *client) createLoopCoverMessage() ([]byte, error) {
 // runLoopCoverTrafficStream manages the stream of loop cover traffic.
 // In each stream iteration it sends a freshly created loop packet and
 // waits a random time before scheduling the next loop packet.
-func (c *client) runLoopCoverTrafficStream() error {
+func (c *TCPClient) runLoopCoverTrafficStream() error {
 	logLocal.Info("Stream of loop cover traffic started")
 	for {
 		loopPacket, err := c.createLoopCoverMessage()
@@ -470,20 +475,18 @@ func (c *client) runLoopCoverTrafficStream() error {
 		}
 		c.send(loopPacket, c.Provider.Host, c.Provider.Port)
 		logLocal.Info("Loop message sent")
-		err = delayBeforeContinute(loopRate)
+		err = delayBeforeContinue(loopRate)
 		if err != nil {
 			return err
 		}
-
 	}
-	return nil
 }
 
 // runDropCoverTrafficStream manages the stream of drop cover traffic.
 // In each stream iteration it creates a fresh drop cover message destinated
 // to a randomly selected user in the network. The drop packet is sent
 // and the next stream call is scheduled after random time.
-func (c *client) runDropCoverTrafficStream() error {
+func (c *TCPClient) runDropCoverTrafficStream() error {
 	logLocal.Info("Stream of drop cover traffic started")
 	for {
 		dropPacket, err := c.createDropCoverMessage()
@@ -492,15 +495,14 @@ func (c *client) runDropCoverTrafficStream() error {
 		}
 		c.send(dropPacket, c.Provider.Host, c.Provider.Port)
 		logLocal.Info("Drop packet sent")
-		err = delayBeforeContinute(dropRate)
+		err = delayBeforeContinue(dropRate)
 		if err != nil {
 			return err
 		}
 	}
-	return nil
 }
 
-func delayBeforeContinute(rateParam float64) error {
+func delayBeforeContinue(rateParam float64) error {
 	delaySec, err := helpers.RandomExponential(rateParam)
 	if err != nil {
 		return err
@@ -510,7 +512,7 @@ func delayBeforeContinute(rateParam float64) error {
 }
 
 // turnOnLoopCoverTraffic starts the stream of loop cover traffic
-func (c *client) turnOnLoopCoverTraffic() {
+func (c *TCPClient) turnOnLoopCoverTraffic() {
 	go func() {
 		err := c.runLoopCoverTrafficStream()
 		if err != nil {
@@ -520,7 +522,7 @@ func (c *client) turnOnLoopCoverTraffic() {
 }
 
 // turnOnDropCoverTraffic starts the stream of drop cover traffic
-func (c *client) turnOnDropCoverTraffic() {
+func (c *TCPClient) turnOnDropCoverTraffic() {
 	go func() {
 		err := c.runDropCoverTrafficStream()
 		if err != nil {
@@ -533,7 +535,7 @@ func (c *client) turnOnDropCoverTraffic() {
 // from the PKI database and stores them locally. In case
 // the connection or fetching data from the PKI went wrong,
 // an error is returned.
-func (c *client) ReadInNetworkFromPKI(pkiName string) error {
+func (c *TCPClient) ReadInNetworkFromPKI(pkiName string) error {
 	logLocal.Infof("Reading network information from the PKI: %s", pkiName)
 
 	mixes, err := helpers.GetMixesPKI(pkiName)
@@ -556,9 +558,9 @@ func (c *client) ReadInNetworkFromPKI(pkiName string) error {
 
 // The constructor function to create an new client object.
 // Function returns a new client object or an error, if occurred.
-func NewClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir string, provider config.MixConfig) (*client, error) {
-	core := clientCore.NewCryptoClient(pubKey, prvKey, elliptic.P224(), provider, clientCore.NetworkPKI{})
-	c := client{id: id,
+func NewClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir string, provider config.MixConfig) (*TCPClient, error) {
+	core := clientcore.NewCryptoClient(pubKey, prvKey, elliptic.P224(), provider, clientcore.NetworkPKI{})
+	c := TCPClient{id: id,
 		host:         host,
 		port:         port,
 		CryptoClient: core,
@@ -582,9 +584,9 @@ func NewClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir strin
 
 // NewTestClient constructs a client object, which can be used for testing. The object contains the crypto core
 // and the top-level of client, but does not involve networking and starting a listener.
-func NewTestClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir string, provider config.MixConfig) (*client, error) {
-	core := clientCore.NewCryptoClient(pubKey, prvKey, elliptic.P224(), provider, clientCore.NetworkPKI{})
-	c := client{id: id, host: host, port: port, CryptoClient: core, pkiDir: pkiDir}
+func NewTestClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir string, provider config.MixConfig) (*TCPClient, error) {
+	core := clientcore.NewCryptoClient(pubKey, prvKey, elliptic.P224(), provider, clientcore.NetworkPKI{})
+	c := TCPClient{id: id, host: host, port: port, CryptoClient: core, pkiDir: pkiDir}
 	c.config = config.ClientConfig{Id: c.id, Host: c.host, Port: c.port, PubKey: c.GetPublicKey(), Provider: &c.Provider}
 
 	return &c, nil

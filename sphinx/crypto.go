@@ -25,7 +25,8 @@ import (
 	"math/big"
 )
 
-func AES_CTR(key, plaintext []byte) ([]byte, error) {
+// AesCtr returns AES XOR ciphertext in counter mode for the given key and plaintext
+func AesCtr(key, plaintext []byte) ([]byte, error) {
 
 	ciphertext := make([]byte, len(plaintext))
 
@@ -53,12 +54,15 @@ func hash(arg []byte) []byte {
 	return h.Sum(nil)
 }
 
+// Hmac computes a hash-based message authentication code for a given key and message.
+// Returns a byte array containing the MAC checksum.
 func Hmac(key, message []byte) []byte {
 	mac := hmac.New(sha256.New, key)
 	mac.Write(message)
 	return mac.Sum(nil)
 }
 
+// GenerateKeyPair returns public and private keypair bytes for a P224 elliptic curve, or an error.
 func GenerateKeyPair() ([]byte, []byte, error) {
 	priv, x, y, err := elliptic.GenerateKey(elliptic.P224(), rand.Reader)
 
@@ -69,6 +73,7 @@ func GenerateKeyPair() ([]byte, []byte, error) {
 	return elliptic.Marshal(elliptic.P224(), x, y), priv, nil
 }
 
+// KDF returns the hash of K for a given key
 func KDF(key []byte) []byte {
 	return hash(key)[:K]
 }

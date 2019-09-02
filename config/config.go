@@ -31,20 +31,20 @@ var (
 	PullFlag    = []byte("\xff")
 )
 
-func NewMixConfig(mixId, host, port string, pubKey []byte) MixConfig {
-	MixConfig := MixConfig{Id: mixId, Host: host, Port: port, PubKey: pubKey}
+// NewMixConfig constructor
+func NewMixConfig(mixID, host, port string, pubKey []byte) MixConfig {
+	MixConfig := MixConfig{Id: mixID, Host: host, Port: port, PubKey: pubKey}
 	return MixConfig
 }
 
-func NewClientConfig(clientId, host, port string, pubKey []byte, providerInfo MixConfig) ClientConfig {
-	client := ClientConfig{Id: clientId, Host: host, Port: port, PubKey: pubKey, Provider: &providerInfo}
+// NewClientConfig constructor
+func NewClientConfig(clientID, host, port string, pubKey []byte, providerInfo MixConfig) ClientConfig {
+	client := ClientConfig{Id: clientID, Host: host, Port: port, PubKey: pubKey, Provider: &providerInfo}
 	return client
 }
 
-/*
-	WrapWithFlag packs the given byte information together with a specified flag into the
-	packet.
-*/
+// WrapWithFlag packs the given byte information together with a specified flag into the
+// packet.
 func WrapWithFlag(flag []byte, data []byte) ([]byte, error) {
 	m := GeneralPacket{Flag: flag, Data: data}
 	mBytes, err := proto.Marshal(&m)
@@ -54,6 +54,7 @@ func WrapWithFlag(flag []byte, data []byte) ([]byte, error) {
 	return mBytes, nil
 }
 
+// E2EPath holds end to end path data for an entire route, prior to Sphinx header encryption
 type E2EPath struct {
 	IngressProvider MixConfig
 	Mixes           []MixConfig
@@ -61,6 +62,7 @@ type E2EPath struct {
 	Recipient       ClientConfig
 }
 
+// Len adds 3 to the mix path. TODO: why? Check this with Ania.
 func (p *E2EPath) Len() int {
 	return 3 + len(p.Mixes)
 }
