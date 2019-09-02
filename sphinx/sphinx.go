@@ -20,6 +20,8 @@
 package sphinx
 
 import (
+	fmt "fmt"
+
 	"github.com/nymtech/loopix-messaging/config"
 	"github.com/nymtech/loopix-messaging/logging"
 
@@ -200,9 +202,16 @@ func getSharedSecrets(curve elliptic.Curve, nodes []config.MixConfig, initialVal
 	blindFactors := []big.Int{initialVal}
 	var tuples []HeaderInitials
 
-	for _, n := range nodes {
+	for i, n := range nodes {
 
 		alpha := expoGroupBase(curve, blindFactors)
+
+		// TODO: check if it's less than expected value so we could also determine here if we're using wrong curve
+		if len(n.PubKey) == 0 {
+			err := fmt.Errorf("No public key provided for node %v", i)
+			logLocal.Error(err)
+			return nil, err
+		}
 
 		s := expo(n.PubKey, blindFactors)
 		aes_s := KDF(s)
