@@ -39,6 +39,7 @@ var curve = elliptic.P224()
 var logLocal = logging.PackageLogger()
 
 const (
+	// K TODO: document padding-related Sphinx parameter
 	K            = 16
 	R            = 5
 	headerLength = 192
@@ -47,7 +48,8 @@ const (
 var (
 	// LastHopFlag could have been storing this as a single byte, however, protobuf does not have single-byte fields
 	LastHopFlag = []byte("\xf0")
-	// RelayFlag foomp
+	// RelayFlag denotes whether this message should continue further along the path of mixes. This is implementation-specific
+	// rather than being part of the Loopix protocol design.
 	RelayFlag = []byte("\xf1")
 )
 
