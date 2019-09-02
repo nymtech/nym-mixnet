@@ -112,7 +112,10 @@ func (p *ProviderServer) receivedPacket(packet []byte) error {
 			return err
 		}
 	case bytes.Equal(flag, sphinx.LastHopFlag):
-		err = p.storeMessage(dePacket, nextHop.Id, "TMP_MESSAGE_ID")
+		tmp_msg_id := fmt.Sprintf("TMP_MESSAGE_%v", helpers.RandomString(8))
+		// err = p.storeMessage(dePacket, nextHop.Id, "TMP_MESSAGE_ID")
+		err = p.storeMessage(dePacket, nextHop.Id, tmp_msg_id)
+
 		if err != nil {
 			return err
 		}
@@ -345,6 +348,7 @@ func (p *ProviderServer) fetchMessages(clientId string) (string, error) {
 
 		address := p.assignedClients[clientId].host + ":" + p.assignedClients[clientId].port
 		logLocal.Infof("Found stored message for address %s", address)
+		logLocal.Infof("Messages data: %v", string(dat))
 		msgBytes, err := config.WrapWithFlag(config.CommFlag, dat)
 		if err != nil {
 			return "", err
@@ -376,6 +380,7 @@ func (p *ProviderServer) storeMessage(message []byte, inboxId string, messageId 
 	}
 
 	logLocal.Infof("Stored message for %s", inboxId)
+	logLocal.Infof("Stored message content: %v", string(message))
 	return nil
 }
 
