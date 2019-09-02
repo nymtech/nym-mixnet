@@ -55,7 +55,7 @@ func hash(arg []byte) []byte {
 }
 
 // Hmac computes a hash-based message authentication code for a given key and message.
-// Returns a byte array containg the MAC checksum
+// Returns a byte array containing the MAC checksum.
 func Hmac(key, message []byte) []byte {
 	mac := hmac.New(sha256.New, key)
 	mac.Write(message)
