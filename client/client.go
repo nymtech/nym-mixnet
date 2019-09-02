@@ -79,12 +79,10 @@ type TCPClient struct {
 	registrationDone chan bool
 
 	*clientcore.CryptoClient
-
 	haltedCh chan struct{}
 	haltOnce sync.Once
 }
 
-// Start function creates the loggers for capturing the info and error logs;
 // it reads the network and users information from the PKI database
 // and starts the listening server. Function returns an error
 // signaling whenever any operation was unsuccessful.
