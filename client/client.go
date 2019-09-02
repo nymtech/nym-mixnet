@@ -143,29 +143,27 @@ func (c *client) halt() {
 
 func (c *client) startSenderInNewRoutine() {
 	// for now just send once for test sake
-	go func() {
+	time.Sleep(5 * time.Second)
+	logLocal.Warn("send routine start")
+	i := 0
+	for {
+		msg := fmt.Sprintf("foo%v", i)
+		recipient := c.config // just send to ourself, change it to other client once better PKI is figured out
+		// randomRecipient, err := c.getRandomRecipient(c.Network.Clients)
+
+		logLocal.Infof("sending %v to %v", msg, recipient.Id)
+
+		// if err != nil {
+		// 	logLocal.Warn(err)
+		// 	break
+		// }
+
+		c.SendMessage(msg, recipient)
+		i++
 		time.Sleep(5 * time.Second)
-		logLocal.Warn("send routine start")
-		i := 0
-		for {
-			msg := fmt.Sprintf("foo%v", i)
-			recipient := c.config // just send to ourself, change it to other client once better PKI is figured out
-			// randomRecipient, err := c.getRandomRecipient(c.Network.Clients)
+	}
+	logLocal.Warn("send routine end")
 
-			logLocal.Infof("sending %v to %v", msg, recipient.Id)
-
-			// if err != nil {
-			// 	logLocal.Warn(err)
-			// 	break
-			// }
-
-			c.SendMessage(msg, recipient)
-			i++
-			time.Sleep(5 * time.Second)
-		}
-		logLocal.Warn("send routine end")
-
-	}()
 }
 
 func (c *client) resolveAddressAndStartListening() error {
