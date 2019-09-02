@@ -20,6 +20,8 @@
 package clientCore
 
 import (
+	"fmt"
+
 	"github.com/nymtech/loopix-messaging/config"
 	"github.com/nymtech/loopix-messaging/helpers"
 	"github.com/nymtech/loopix-messaging/logging"
@@ -94,6 +96,11 @@ func (c *CryptoClient) buildPath(recipient config.ClientConfig) (config.E2EPath,
 	mixSeq, err := c.getRandomMixSequence(c.Network.Mixes, pathLength)
 	if err != nil {
 		logLocal.WithError(err).Error("Error in buildPath - generating random mix path failed")
+		return config.E2EPath{}, err
+	}
+	if recipient.Provider == nil || len(recipient.Provider.PubKey) == 0 {
+		err := fmt.Errorf("Error in buildPath - could not create path to the recipient, the EgressProvider has invalid configuration")
+		logLocal.Error(err)
 		return config.E2EPath{}, err
 	}
 	path := config.E2EPath{IngressProvider: c.Provider, Mixes: mixSeq, EgressProvider: *recipient.Provider, Recipient: recipient}
