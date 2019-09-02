@@ -20,6 +20,7 @@ package client
 import (
 	"bytes"
 	"fmt"
+	"sync"
 
 	"github.com/nymtech/loopix-messaging/clientCore"
 	"github.com/nymtech/loopix-messaging/config"
@@ -78,6 +79,9 @@ type client struct {
 	registrationDone chan bool
 
 	*clientCore.CryptoClient
+
+	haltedCh chan struct{}
+	haltOnce sync.Once
 }
 
 // Start function creates the loggers for capturing the info and error logs;
@@ -115,9 +119,26 @@ func (c *client) Start() error {
 	go c.startListenerInNewRoutine()
 	go c.startSenderInNewRoutine()
 
-	select {}
-
 	return nil
+}
+
+// Wait waits till the client is terminated for any reason.
+func (c *client) Wait() {
+	<-c.haltedCh
+}
+
+// TODO: create daemon to call this upon sigterm or something
+// Shutdown cleanly shuts down a given client instance.
+func (c *client) Shutdown() {
+	c.haltOnce.Do(func() { c.halt() })
+}
+
+// calls any required cleanup code
+func (c *client) halt() {
+	logLocal.Info("Starting graceful shutdown")
+	// close any listeners, free resources, etc
+
+	close(c.haltedCh)
 }
 
 func (c *client) startSenderInNewRoutine() {
@@ -128,7 +149,7 @@ func (c *client) startSenderInNewRoutine() {
 		i := 0
 		for {
 			msg := fmt.Sprintf("foo%v", i)
-			recipient := c.config // just send to ourself
+			recipient := c.config // just send to ourself, change it to other client once better PKI is figured out
 			// randomRecipient, err := c.getRandomRecipient(c.Network.Clients)
 
 			logLocal.Infof("sending %v to %v", msg, recipient.Id)
@@ -139,10 +160,6 @@ func (c *client) startSenderInNewRoutine() {
 			// }
 
 			c.SendMessage(msg, recipient)
-			if i == 10 {
-				// for now just send 10
-				break
-			}
 			i++
 			time.Sleep(5 * time.Second)
 		}
@@ -213,14 +230,13 @@ func (c *client) send(packet []byte, host string, port string) error {
 // run opens the listener to start listening on clients host and port
 func (c *client) startListenerInNewRoutine() {
 	defer c.listener.Close()
-	finish := make(chan bool)
 
 	go func() {
 		logLocal.Infof("Listening on address %s", c.host+":"+c.port)
 		c.listenForIncomingConnections()
 	}()
 
-	<-finish
+	c.Wait()
 }
 
 // ListenForIncomingConnections responsible for running the listening process of the server;
@@ -544,7 +560,13 @@ func (c *client) ReadInNetworkFromPKI(pkiName string) error {
 // Function returns a new client object or an error, if occurred.
 func NewClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir string, provider config.MixConfig) (*client, error) {
 	core := clientCore.NewCryptoClient(pubKey, prvKey, elliptic.P224(), provider, clientCore.NetworkPKI{})
-	c := client{id: id, host: host, port: port, CryptoClient: core, pkiDir: pkiDir}
+	c := client{id: id,
+		host:         host,
+		port:         port,
+		CryptoClient: core,
+		pkiDir:       pkiDir,
+		haltedCh:     make(chan struct{}),
+	}
 	c.config = config.ClientConfig{Id: c.id, Host: c.host, Port: c.port, PubKey: c.GetPublicKey(), Provider: &c.Provider}
 
 	configBytes, err := proto.Marshal(&c.config)

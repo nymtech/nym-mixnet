@@ -136,6 +136,8 @@ func main() {
 
 	switch *typ {
 	case "client":
+		// DEPERCATED
+		logLocal.Warn("Client startup using this entry point is deprecated. Please use daemon/client/client.go instead")
 		db, err := pki.OpenDatabase(PKI_DIR, "sqlite3")
 
 		if err != nil {
