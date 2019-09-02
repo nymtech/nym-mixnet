@@ -48,7 +48,7 @@ func Permute(slice []config.MixConfig) ([]config.MixConfig, error) {
 }
 
 // RandomSample takes a slice of MixConfigs, and returns a new
-// slice of length `length` in a randomized order and
+// slice of length `length` in a randomized order.
 func RandomSample(slice []config.MixConfig, length int) ([]config.MixConfig, error) {
 	if len(slice) < length {
 		return nil, errors.New(" cannot take a sample larger than the given list")
