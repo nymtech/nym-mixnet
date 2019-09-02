@@ -19,6 +19,7 @@ package client
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/nymtech/loopix-messaging/clientCore"
 	"github.com/nymtech/loopix-messaging/config"
@@ -106,13 +107,48 @@ func (c *client) Start() error {
 				if err != nil {
 					logLocal.WithError(err).Error("Error during registration to provider", err)
 				}
-				time.Sleep(60 * time.Second)
+				time.Sleep(5 * time.Second)
 			}
 		}
 	}()
 
-	c.startListenerInNewRoutine()
+	go c.startListenerInNewRoutine()
+	go c.startSenderInNewRoutine()
+
+	select {}
+
 	return nil
+}
+
+func (c *client) startSenderInNewRoutine() {
+	// for now just send once for test sake
+	go func() {
+		time.Sleep(5 * time.Second)
+		logLocal.Warn("send routine start")
+		i := 0
+		for {
+			msg := fmt.Sprintf("foo%v", i)
+			recipient := c.config // just send to ourself
+			// randomRecipient, err := c.getRandomRecipient(c.Network.Clients)
+
+			logLocal.Infof("sending %v to %v", msg, recipient.Id)
+
+			// if err != nil {
+			// 	logLocal.Warn(err)
+			// 	break
+			// }
+
+			c.SendMessage(msg, recipient)
+			if i == 10 {
+				// for now just send 10
+				break
+			}
+			i++
+			time.Sleep(5 * time.Second)
+		}
+		logLocal.Warn("send routine end")
+
+	}()
 }
 
 func (c *client) resolveAddressAndStartListening() error {
@@ -250,7 +286,7 @@ func (c *client) handleConnection(conn net.Conn) {
 		if err != nil {
 			logLocal.WithError(err).Error("Error in processing received packet")
 		}
-		logLocal.Info("Received new message")
+		logLocal.Infof("Received new message: %v", string(packet.Data))
 	default:
 		logLocal.Info("Packet flag not recognised. Packet dropped.")
 	}
