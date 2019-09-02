@@ -40,7 +40,7 @@ type NetworkPKI struct {
 	Clients []config.ClientConfig
 }
 
-// MixClient does sphinx packet construction.
+// MixClient does sphinx packet encoding and decoding.
 type MixClient interface {
 	EncodeIntoSphinxPacket(message string, recipient config.ClientConfig) ([]byte, error)
 	DecodeSphinxPacket(packet sphinx.SphinxPacket) (sphinx.SphinxPacket, error)
