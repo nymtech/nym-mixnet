@@ -30,12 +30,12 @@ import (
 var mixes []config.MixConfig
 var testDir string
 
-// ById implements the sort interface and sorts based on the id of the nodes
-type ById []config.MixConfig
+// ByID implements the sort interface and sorts based on the id of the nodes
+type ByID []config.MixConfig
 
-func (v ById) Len() int           { return len(v) }
-func (v ById) Swap(i, j int)      { v[i], v[j] = v[j], v[i] }
-func (v ById) Less(i, j int) bool { return v[i].Id < v[j].Id }
+func (v ByID) Len() int           { return len(v) }
+func (v ByID) Swap(i, j int)      { v[i], v[j] = v[j], v[i] }
+func (v ByID) Less(i, j int) bool { return v[i].Id < v[j].Id }
 
 func Setup() error {
 	for i := 0; i < 10; i++ {
@@ -104,8 +104,8 @@ func TestPermute_Pass(t *testing.T) {
 		t.Fatal(err)
 	}
 	assert.Equal(t, len(mixes), len(permuted), " Permute should return a permutation of a given slice, hence the lengths should be equal")
-	sort.Sort(ById(mixes))
-	sort.Sort(ById(permuted))
+	sort.Sort(ByID(mixes))
+	sort.Sort(ByID(permuted))
 	assert.True(t, reflect.DeepEqual(mixes, permuted))
 
 }

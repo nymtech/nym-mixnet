@@ -188,10 +188,10 @@ func TestProviderServer_FetchMessages_NoInbox(t *testing.T) {
 
 func TestProviderServer_StoreMessage(t *testing.T) {
 
-	inboxId := "ClientInbox"
-	fileId := "12345"
-	inboxDir := "./inboxes/" + inboxId
-	filePath := inboxDir + "/" + fileId + ".txt"
+	inboxID := "ClientInbox"
+	fileID := "12345"
+	inboxDir := "./inboxes/" + inboxID
+	filePath := inboxDir + "/" + fileID + ".txt"
 
 	err := os.MkdirAll(inboxDir, 0755)
 	if err != nil {
@@ -199,7 +199,7 @@ func TestProviderServer_StoreMessage(t *testing.T) {
 	}
 
 	message := []byte("Hello world message")
-	providerServer.storeMessage(message, inboxId, fileId)
+	providerServer.storeMessage(message, inboxID, fileID)
 
 	_, err = os.Stat(filePath)
 	if err != nil {

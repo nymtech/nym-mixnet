@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package clientCore
+package clientcore
 
 import (
 	"github.com/nymtech/loopix-messaging/config"

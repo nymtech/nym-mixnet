@@ -13,11 +13,11 @@
 // limitations under the License.
 
 /*
-	Package clientCore implements all the necessary functions for the mix client, i.e., the core of the client
+	Package clientcore implements all the necessary functions for the mix client, i.e., the core of the client
 	which allows to process the received cryptographic packets.
 */
 
-package clientCore
+package clientcore
 
 import (
 	"github.com/nymtech/loopix-messaging/config"
@@ -33,17 +33,21 @@ import (
 
 var logLocal = logging.PackageLogger()
 
+// NetworkPKI holds PKI data about tne current network topology.
+// This allows public-key encryption to happen.
 type NetworkPKI struct {
 	Mixes   []config.MixConfig
 	Clients []config.ClientConfig
 }
 
+// MixClient does sphinx packet encoding and decoding.
 type MixClient interface {
 	EncodeIntoSphinxPacket(message string, recipient config.ClientConfig) ([]byte, error)
 	DecodeSphinxPacket(packet sphinx.SphinxPacket) (sphinx.SphinxPacket, error)
 	GetPublicKey() []byte
 }
 
+// CryptoClient contains a public/private keypair and an elliptic curve for a given provider and network.
 type CryptoClient struct {
 	pubKey   []byte
 	prvKey   []byte
@@ -109,14 +113,13 @@ func (c *CryptoClient) getRandomMixSequence(mixes []config.MixConfig, length int
 	}
 	if length > len(mixes) {
 		return mixes, nil
-	} else {
-		randomSeq, err := helpers.RandomSample(mixes, length)
-		if err != nil {
-			logLocal.WithError(err).Error("Error in getRandomMixSequence - sampling procedure failed")
-			return nil, err
-		}
-		return randomSeq, nil
 	}
+	randomSeq, err := helpers.RandomSample(mixes, length)
+	if err != nil {
+		logLocal.WithError(err).Error("Error in getRandomMixSequence - sampling procedure failed")
+		return nil, err
+	}
+	return randomSeq, nil
 }
 
 // generateDelaySequence generates a given length sequence of float64 values. Values are generated
@@ -154,10 +157,12 @@ func (c *CryptoClient) DecodeMessage(packet sphinx.SphinxPacket) (sphinx.SphinxP
 	return packet, nil
 }
 
+// GetPublicKey returns the public key for this CryptoClient
 func (c *CryptoClient) GetPublicKey() []byte {
 	return c.pubKey
 }
 
+// NewCryptoClient constructor function
 func NewCryptoClient(pubKey, privKey []byte, curve elliptic.Curve, provider config.MixConfig, network NetworkPKI) *CryptoClient {
 	return &CryptoClient{pubKey: pubKey, prvKey: privKey, curve: curve, Provider: provider, Network: network}
 }
