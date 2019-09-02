@@ -347,7 +347,6 @@ func (c *TCPClient) controlOutQueue() error {
 		if err != nil {
 			return err
 		}
-		return nil // TODO: check this still works as expected. It used to be one line down.
 	}
 }
 
@@ -426,7 +425,6 @@ func (c *TCPClient) runLoopCoverTrafficStream() error {
 		if err != nil {
 			return err
 		}
-		return nil // TODO: check this still works.
 	}
 }
 
@@ -447,7 +445,6 @@ func (c *TCPClient) runDropCoverTrafficStream() error {
 		if err != nil {
 			return err
 		}
-		return nil // TODO: check this still works
 	}
 }
 
