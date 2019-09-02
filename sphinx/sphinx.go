@@ -41,7 +41,6 @@ var logLocal = logging.PackageLogger()
 const (
 	// K TODO: document padding-related Sphinx parameter
 	K            = 16
-	R            = 5
 	headerLength = 192
 )
 
