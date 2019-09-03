@@ -15,6 +15,8 @@
 package server
 
 import (
+	"path/filepath"
+
 	"github.com/nymtech/loopix-messaging/config"
 	"github.com/nymtech/loopix-messaging/helpers"
 	"github.com/nymtech/loopix-messaging/networker"
@@ -345,7 +347,8 @@ func (p *ProviderServer) fetchMessages(clientID string) (string, error) {
 	}
 
 	for _, f := range files {
-		dat, err := ioutil.ReadFile(path + "/" + f.Name())
+		fullPath := filepath.Join(path, f.Name())
+		dat, err := ioutil.ReadFile(fullPath)
 		if err != nil {
 			return "", err
 		}
@@ -361,6 +364,10 @@ func (p *ProviderServer) fetchMessages(clientID string) (string, error) {
 		if err != nil {
 			return "", err
 		}
+		if err := os.Remove(fullPath); err != nil {
+			logLocal.Errorf("Failed to remove %v: %v", f, err)
+		}
+		logLocal.Infof("Removed %v", fullPath)
 	}
 	return "SI", nil
 }
