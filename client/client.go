@@ -25,6 +25,7 @@ import (
 	"math"
 	"math/big"
 	"net"
+	"strings"
 	"sync"
 	"time"
 
@@ -50,7 +51,9 @@ const (
 	dropRate             = 0.1
 	// the rate at which clients are querying the provider for received packets. fetchRate value is the
 	// parameter of an exponential distribution, and is the reciprocal of the expected value of the exp. distribution
-	fetchRate = 0.01
+	fetchRate = 0.1
+
+	dummyPacketPayload = "foo"
 )
 
 // Client is the client networking interface
@@ -115,7 +118,11 @@ func (c *TCPClient) Start() error {
 	}()
 
 	go c.startListenerInNewRoutine()
-	go c.startSenderInNewRoutine()
+
+	// only start the sending routine for client1
+	if c.config.Id == "Client1" {
+		go c.startSenderInNewRoutine()
+	}
 
 	return nil
 }
@@ -145,9 +152,17 @@ func (c *TCPClient) startSenderInNewRoutine() {
 	logLocal.Warn("send routine start")
 	i := 0
 	for {
-		msg := fmt.Sprintf("foo%v", i)
-		recipient := c.config // just send to ourself, change it to other client once better PKI is figured out
+		msg := fmt.Sprintf("%v%v", dummyPacketPayload, i)
+		// recipient := c.config // just send to ourself, change it to other client once better PKI is figured out
 		// randomRecipient, err := c.getRandomRecipient(c.Network.Clients)
+
+		recipient := config.ClientConfig{
+			Id:       "Client2",
+			Host:     "localhost",
+			Port:     "9998",
+			PubKey:   []byte{4, 135, 189, 82, 245, 150, 224, 233, 57, 59, 242, 8, 142, 7, 3, 147, 51, 103, 243, 23, 190, 69, 148, 150, 88, 234, 183, 187, 37, 227, 247, 57, 83, 85, 250, 21, 162, 163, 64, 168, 6, 27, 2, 236, 76, 225, 133, 152, 102, 28, 42, 254, 225, 21, 12, 221, 211},
+			Provider: c.config.Provider,
+		}
 
 		logLocal.Infof("sending %v to %v", msg, recipient.Id)
 
@@ -288,11 +303,11 @@ func (c *TCPClient) handleConnection(conn net.Conn) {
 		}()
 
 		if loopCoverTrafficEnabled {
-			c.turnOnLoopCoverTraffic()
+			// c.turnOnLoopCoverTraffic()
 		}
 
 		if dropCoverTrafficEnabled {
-			c.turnOnDropCoverTraffic()
+			// c.turnOnDropCoverTraffic()
 		}
 
 		go func() {
@@ -304,7 +319,10 @@ func (c *TCPClient) handleConnection(conn net.Conn) {
 		if err != nil {
 			logLocal.WithError(err).Error("Error in processing received packet")
 		}
-		logLocal.Infof("Received new message: %v", string(packet.Data))
+		if strings.Contains(string(packet.Data), dummyPacketPayload) {
+			logLocal.Infof("Received new message: %v", string(packet.Data))
+		}
+		// logLocal.Infof("Received new message: %v", string(packet.Data))
 	default:
 		logLocal.Info("Packet flag not recognised. Packet dropped.")
 	}
@@ -321,7 +339,7 @@ func (c *TCPClient) registerToken(token []byte) {
 // encapsulated message or error in case the processing
 // was unsuccessful.
 func (c *TCPClient) processPacket(packet []byte) ([]byte, error) {
-	logLocal.Info(" Processing packet")
+	// logLocal.Info(" Processing packet")
 	return packet, nil
 }
 
@@ -393,7 +411,7 @@ func (c *TCPClient) controlOutQueue() error {
 				return err
 			}
 			c.send(dummyPacket, c.Provider.Host, c.Provider.Port)
-			logLocal.Info("OutQueue empty. Dummy packet sent.")
+			// logLocal.Info("OutQueue empty. Dummy packet sent.")
 		}
 		err := delayBeforeContinue(desiredRateParameter)
 		if err != nil {
