@@ -32,7 +32,8 @@ import (
 	"time"
 )
 
-// Permute shuffles the given slice of MixConfigs into a random order.
+// TODO: move rand.Seed into an init() function
+
 func Permute(slice []config.MixConfig) ([]config.MixConfig, error) {
 	if len(slice) == 0 {
 		return nil, errors.New(" cannot permute an empty list of mixes")
@@ -62,7 +63,19 @@ func RandomSample(slice []config.MixConfig, length int) ([]config.MixConfig, err
 	return permuted[:length], err
 }
 
-// RandomExponential picks a random value from the exponential distribution using the expParam and returns it.
+// a very dummy implementation of getting "random" string of given length
+// could be improved in number of ways but for the test sake it's good enough
+func RandomString(length int) string {
+	rand.Seed(time.Now().UnixNano())
+
+	letterRunes := []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789")
+	b := make([]rune, length)
+	for i := range b {
+		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+	}
+	return string(b)
+}
+
 func RandomExponential(expParam float64) (float64, error) {
 	rand.Seed(time.Now().UTC().UnixNano())
 	if expParam <= 0.0 {

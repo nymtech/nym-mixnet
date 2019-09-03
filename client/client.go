@@ -19,21 +19,21 @@ package client
 
 import (
 	"bytes"
+	"crypto/elliptic"
+	"crypto/rand"
+	"fmt"
+	"math"
+	"math/big"
+	"net"
+	"sync"
+	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/nymtech/loopix-messaging/clientcore"
 	"github.com/nymtech/loopix-messaging/config"
 	"github.com/nymtech/loopix-messaging/helpers"
 	"github.com/nymtech/loopix-messaging/logging"
 	"github.com/nymtech/loopix-messaging/networker"
-
-	"github.com/golang/protobuf/proto"
-
-	"crypto/elliptic"
-	"crypto/rand"
-	"math"
-	"math/big"
-	"net"
-	"time"
 )
 
 var (
@@ -79,9 +79,10 @@ type TCPClient struct {
 	registrationDone chan bool
 
 	*clientcore.CryptoClient
+	haltedCh chan struct{}
+	haltOnce sync.Once
 }
 
-// Start function creates the loggers for capturing the info and error logs;
 // it reads the network and users information from the PKI database
 // and starts the listening server. Function returns an error
 // signaling whenever any operation was unsuccessful.
@@ -108,13 +109,65 @@ func (c *TCPClient) Start() error {
 				if err != nil {
 					logLocal.WithError(err).Error("Error during registration to provider", err)
 				}
-				time.Sleep(60 * time.Second)
+				time.Sleep(5 * time.Second)
 			}
 		}
 	}()
 
-	c.startListenerInNewRoutine()
+	go c.startListenerInNewRoutine()
+	go c.startSenderInNewRoutine()
+
 	return nil
+}
+
+// Wait waits till the client is terminated for any reason.
+func (c *TCPClient) Wait() {
+	<-c.haltedCh
+}
+
+// TODO: create daemon to call this upon sigterm or something
+// Shutdown cleanly shuts down a given client instance.
+func (c *TCPClient) Shutdown() {
+	c.haltOnce.Do(func() { c.halt() })
+}
+
+// calls any required cleanup code
+func (c *TCPClient) halt() {
+	logLocal.Info("Starting graceful shutdown")
+	// close any listeners, free resources, etc
+
+	close(c.haltedCh)
+}
+
+func (c *TCPClient) startSenderInNewRoutine() {
+	// for now just send once for test sake
+	time.Sleep(5 * time.Second)
+	logLocal.Warn("send routine start")
+	i := 0
+	for {
+		msg := fmt.Sprintf("foo%v", i)
+		recipient := c.config // just send to ourself, change it to other client once better PKI is figured out
+		// randomRecipient, err := c.getRandomRecipient(c.Network.Clients)
+
+		logLocal.Infof("sending %v to %v", msg, recipient.Id)
+
+		// if err != nil {
+		// 	logLocal.Warn(err)
+		// 	break
+		// }
+
+		c.SendMessage(msg, recipient)
+		i++
+		time.Sleep(5 * time.Second)
+
+		select {
+		case <-c.haltedCh:
+			logLocal.Warn("send routine end")
+			return
+		default:
+		}
+	}
+
 }
 
 func (c *TCPClient) resolveAddressAndStartListening() error {
@@ -179,14 +232,13 @@ func (c *TCPClient) send(packet []byte, host string, port string) error {
 // run opens the listener to start listening on clients host and port
 func (c *TCPClient) startListenerInNewRoutine() {
 	defer c.listener.Close()
-	finish := make(chan bool)
 
 	go func() {
 		logLocal.Infof("Listening on address %s", c.host+":"+c.port)
 		c.listenForIncomingConnections()
 	}()
 
-	<-finish
+	c.Wait()
 }
 
 // ListenForIncomingConnections responsible for running the listening process of the server;
@@ -252,7 +304,7 @@ func (c *TCPClient) handleConnection(conn net.Conn) {
 		if err != nil {
 			logLocal.WithError(err).Error("Error in processing received packet")
 		}
-		logLocal.Info("Received new message")
+		logLocal.Infof("Received new message: %v", string(packet.Data))
 	default:
 		logLocal.Info("Packet flag not recognised. Packet dropped.")
 	}
@@ -502,10 +554,17 @@ func (c *TCPClient) ReadInNetworkFromPKI(pkiName string) error {
 	return nil
 }
 
-// NewClient returns a new TCPClient object or an error, if one occurred.
+// The constructor function to create an new client object.
+// Function returns a new client object or an error, if occurred.
 func NewClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir string, provider config.MixConfig) (*TCPClient, error) {
 	core := clientcore.NewCryptoClient(pubKey, prvKey, elliptic.P224(), provider, clientcore.NetworkPKI{})
-	c := TCPClient{id: id, host: host, port: port, CryptoClient: core, pkiDir: pkiDir}
+	c := TCPClient{id: id,
+		host:         host,
+		port:         port,
+		CryptoClient: core,
+		pkiDir:       pkiDir,
+		haltedCh:     make(chan struct{}),
+	}
 	c.config = config.ClientConfig{Id: c.id, Host: c.host, Port: c.port, PubKey: c.GetPublicKey(), Provider: &c.Provider}
 
 	configBytes, err := proto.Marshal(&c.config)
