@@ -30,8 +30,9 @@ import (
 )
 
 var providerPubs config.MixConfig
-var testPacket sphinx.SphinxPacket
 var testMixSet []config.MixConfig
+
+//nolint: unused
 var testClientSet []config.ClientConfig
 
 const (
@@ -60,7 +61,9 @@ func setupTestDatabase() (*sqlx.DB, error) {
 }
 
 func SetupTestMixesInDatabase(t *testing.T) error {
-	clean()
+	if err := clean(); err != nil {
+		t.Fatal(err)
+	}
 
 	db, err := setupTestDatabase()
 	if err != nil {
@@ -91,8 +94,11 @@ func SetupTestMixesInDatabase(t *testing.T) error {
 	return nil
 }
 
+//nolint: unused
 func SetupTestClientsInDatabase(t *testing.T) {
-	clean()
+	if err := clean(); err != nil {
+		t.Fatal(err)
+	}
 
 	db, err := setupTestDatabase()
 	if err != nil {
@@ -153,10 +159,17 @@ func clean() error {
 
 func TestMain(m *testing.M) {
 
-	defer clean()
+	defer func() {
+		if err := clean(); err != nil {
+			os.Exit(-1)
+		}
+	}()
 
 	code := m.Run()
-	clean()
+	if err := clean(); err != nil {
+		os.Exit(-1)
+	}
+
 	os.Exit(code)
 
 }
@@ -239,8 +252,12 @@ func TestClient_ProcessPacket(t *testing.T) {
 }
 
 func TestClient_ReadInMixnetPKI(t *testing.T) {
-	clean()
-	SetupTestMixesInDatabase(t)
+	if err := clean(); err != nil {
+		t.Fatal(err)
+	}
+	if err := SetupTestMixesInDatabase(t); err != nil {
+		t.Fatal(err)
+	}
 
 	client := SetupTestClient(t)
 	err := client.ReadInNetworkFromPKI("testDatabase.db")

@@ -71,53 +71,11 @@ func pkiPreSetting(pkiDir string) error {
 //	}
 //}
 
-// ReadInClientsPKI reads in the public information about users
-// from the PKI database and stores them locally. In case
-// the connection or fetching data from the PKI went wrong,
-// an error is returned.
-func ReadInClientsPKI(pkiName string) error {
-	logLocal.Info(fmt.Sprintf(" Reading network users information from the PKI: %s", pkiName))
-	var users []config.ClientConfig
-
-	db, err := pki.OpenDatabase(pkiName, "sqlite3")
-
-	if err != nil {
-		return err
-	}
-
-	records, err := pki.QueryDatabase(db, "Pki", "Client")
-
-	if err != nil {
-		logLocal.WithError(err).Error("Error during Querying the Clients PKI")
-		return err
-	}
-
-	for records.Next() {
-		result := make(map[string]interface{})
-		err := records.MapScan(result)
-
-		if err != nil {
-			logLocal.WithError(err).Error("Error in scanning table PKI record")
-			return err
-		}
-
-		var pubs config.ClientConfig
-		err = proto.Unmarshal(result["Config"].([]byte), &pubs)
-		if err != nil {
-			logLocal.WithError(err).Error(" Error during unmarshal function for client config")
-			return err
-		}
-		users = append(users, pubs)
-	}
-	logLocal.Info(" Information about other users uploaded")
-	return nil
-}
-
 func main() {
 
 	typ := flag.String("typ", "", "A type of entity we want to run")
 	id := flag.String("id", "", "Id of the entity we want to run")
-	host := flag.String("host", "", "The host on which the entity is running")
+	// host := flag.String("host", "", "The host on which the entity is running")
 	port := flag.String("port", "", "The port on which the entity is running")
 	providerId := flag.String("provider", "", "The port on which the entity is running")
 	flag.Parse()
@@ -132,7 +90,7 @@ func main() {
 		panic(err)
 	}
 
-	host = &ip
+	host := &ip
 
 	switch *typ {
 	case "client":
@@ -152,7 +110,9 @@ func main() {
 			fmt.Println(err)
 		}
 		var providerInfo config.MixConfig
-		err = proto.Unmarshal(results, &providerInfo)
+		if err := proto.Unmarshal(results, &providerInfo); err != nil {
+			panic(err)
+		}
 
 		pubC, privC, err := sphinx.GenerateKeyPair()
 		if err != nil {

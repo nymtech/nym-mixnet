@@ -49,17 +49,21 @@ func AesCtr(key, plaintext []byte) ([]byte, error) {
 func hash(arg []byte) []byte {
 
 	h := sha256.New()
-	h.Write(arg)
+	if _, err := h.Write(arg); err != nil {
+		return nil
+	}
 
 	return h.Sum(nil)
 }
 
 // Hmac computes a hash-based message authentication code for a given key and message.
 // Returns a byte array containing the MAC checksum.
-func Hmac(key, message []byte) []byte {
+func Hmac(key, message []byte) ([]byte, error) {
 	mac := hmac.New(sha256.New, key)
-	mac.Write(message)
-	return mac.Sum(nil)
+	if _, err := mac.Write(message); err != nil {
+		return nil, err
+	}
+	return mac.Sum(nil), nil
 }
 
 // GenerateKeyPair returns public and private keypair bytes for a P224 elliptic curve, or an error.
@@ -116,6 +120,6 @@ func expoGroupBase(curve elliptic.Curve, exp []big.Int) []byte {
 
 }
 
-func computeMac(key, data []byte) []byte {
+func computeMac(key, data []byte) ([]byte, error) {
 	return Hmac(key, data)
 }

@@ -15,6 +15,8 @@
 package server
 
 import (
+	"path/filepath"
+
 	"github.com/nymtech/loopix-messaging/config"
 	"github.com/nymtech/loopix-messaging/helpers"
 	"github.com/nymtech/loopix-messaging/networker"
@@ -155,7 +157,9 @@ func (p *ProviderServer) send(packet []byte, address string) error {
 	}
 	defer conn.Close()
 
-	conn.Write(packet)
+	if _, err := conn.Write(packet); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -234,7 +238,10 @@ func (p *ProviderServer) registerNewClient(clientBytes []byte) ([]byte, string, 
 		return nil, "", err
 	}
 
-	token := helpers.SHA256([]byte("TMP_Token" + clientConf.Id))
+	token, err := helpers.SHA256([]byte("TMP_Token" + clientConf.Id))
+	if err != nil {
+		return nil, "", err
+	}
 	record := ClientRecord{id: clientConf.Id, host: clientConf.Host, port: clientConf.Port, pubKey: clientConf.PubKey, token: token}
 	p.assignedClients[clientConf.Id] = record
 	address := clientConf.Host + ":" + clientConf.Port
@@ -244,7 +251,7 @@ func (p *ProviderServer) registerNewClient(clientBytes []byte) ([]byte, string, 
 	if err != nil {
 		return nil, "", err
 	}
-	if exists == false {
+	if !exists {
 		if err := os.MkdirAll(path, 0775); err != nil {
 			return nil, "", err
 		}
@@ -288,7 +295,7 @@ func (p *ProviderServer) handlePullRequest(rqsBytes []byte) error {
 
 	logLocal.Infof("Processing pull request: %s %s", request.ClientId, string(request.Token))
 
-	if p.authenticateUser(request.ClientId, request.Token) == true {
+	if p.authenticateUser(request.ClientId, request.Token) {
 		signal, err := p.fetchMessages(request.ClientId)
 		if err != nil {
 			return err
@@ -313,7 +320,7 @@ func (p *ProviderServer) handlePullRequest(rqsBytes []byte) error {
 // and false otherwise.
 func (p *ProviderServer) authenticateUser(clientID string, clientToken []byte) bool {
 
-	if bytes.Compare(p.assignedClients[clientID].token, clientToken) == 0 {
+	if bytes.Equal(p.assignedClients[clientID].token, clientToken) {
 		return true
 	}
 	logLocal.Warningf("Non matching token: %s, %s", p.assignedClients[clientID].token, clientToken)
@@ -333,7 +340,7 @@ func (p *ProviderServer) fetchMessages(clientID string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if exist == false {
+	if !exist {
 		return "NI", nil
 	}
 	files, err := ioutil.ReadDir(path)
@@ -345,7 +352,8 @@ func (p *ProviderServer) fetchMessages(clientID string) (string, error) {
 	}
 
 	for _, f := range files {
-		dat, err := ioutil.ReadFile(path + "/" + f.Name())
+		fullPath := filepath.Join(path, f.Name())
+		dat, err := ioutil.ReadFile(fullPath)
 		if err != nil {
 			return "", err
 		}
@@ -361,6 +369,10 @@ func (p *ProviderServer) fetchMessages(clientID string) (string, error) {
 		if err != nil {
 			return "", err
 		}
+		if err := os.Remove(fullPath); err != nil {
+			logLocal.Errorf("Failed to remove %v: %v", f, err)
+		}
+		logLocal.Infof("Removed %v", fullPath)
 	}
 	return "SI", nil
 }

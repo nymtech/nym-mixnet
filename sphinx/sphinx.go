@@ -146,7 +146,10 @@ func encapsulateHeader(asb []HeaderInitials, nodes []config.MixConfig, commands 
 		return Header{}, err
 	}
 
-	mac := computeMac(KDF(asb[len(asb)-1].SecretHash), encFinalHop)
+	mac, err := computeMac(KDF(asb[len(asb)-1].SecretHash), encFinalHop)
+	if err != nil {
+		return Header{}, err
+	}
 
 	routingCommands := [][]byte{encFinalHop}
 
@@ -168,7 +171,10 @@ func encapsulateHeader(asb []HeaderInitials, nodes []config.MixConfig, commands 
 		}
 
 		routingCommands = append(routingCommands, encRouting)
-		mac = computeMac(KDF(asb[i].SecretHash), encRouting)
+		mac, err = computeMac(KDF(asb[i].SecretHash), encRouting)
+		if err != nil {
+			return Header{}, err
+		}
 
 	}
 	return Header{Alpha: asb[0].Alpha, Beta: encRouting, Mac: mac}, nil
@@ -353,9 +359,12 @@ func ProcessSphinxHeader(packet Header, privKey []byte) (Hop, Commands, Header, 
 	aesS := KDF(sharedSecret)
 	encKey := KDF(aesS)
 
-	recomputedMac := computeMac(KDF(aesS), beta)
+	recomputedMac, err := computeMac(KDF(aesS), beta)
+	if err != nil {
+		return Hop{}, Commands{}, Header{}, err
+	}
 
-	if bytes.Compare(recomputedMac, mac) != 0 {
+	if !bytes.Equal(recomputedMac, mac) {
 		return Hop{}, Commands{}, Header{}, errors.New("packet processing error: MACs are not matching")
 	}
 

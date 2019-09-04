@@ -81,7 +81,9 @@ func (m *MixServer) receivedPacket(packet []byte) error {
 	}
 
 	if bytes.Equal(flag, sphinx.RelayFlag) {
-		m.forwardPacket(dePacket, nextHop.Address)
+		if err := m.forwardPacket(dePacket, nextHop.Address); err != nil {
+			return err
+		}
 	} else {
 		logLocal.Info("Packet has non-forward flag. Packet dropped")
 	}
