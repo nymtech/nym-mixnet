@@ -7,9 +7,10 @@ env:
 - GO111MODULE=on
 
 script: 
-  - go test -v ./... -race -coverprofile=coverage.out -covermode=atomic
+  - go test -v ./... -race -coverprofile=cover.out.tmp -covermode=atomic
 
 after_success:
+  - cat cover.out.tmp | grep -v ".pb.go" > cover.out
   - bash <(curl https://codecov.io/bash)
 
 git:
