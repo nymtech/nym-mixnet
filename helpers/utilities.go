@@ -121,12 +121,12 @@ func DirExists(path string) (bool, error) {
 }
 
 // SHA256 computes the hash value of a given argument using SHA256 algorithm.
-func SHA256(arg []byte) []byte {
+func SHA256(arg []byte) ([]byte, error) {
 	h := sha256.New()
 	if _, err := h.Write([]byte(arg)); err != nil {
-		return nil
+		return nil, err
 	}
-	return h.Sum(nil)
+	return h.Sum(nil), nil
 }
 
 // GetMixesPKI returns PKI data for mix nodes.

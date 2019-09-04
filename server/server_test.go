@@ -36,10 +36,6 @@ import (
 var mixServer *MixServer
 var providerServer *ProviderServer
 
-const (
-// testDatabase = "testDatabase.db"
-)
-
 func createTestProvider() (*ProviderServer, error) {
 	pub, priv, err := sphinx.GenerateKeyPair()
 	if err != nil {
@@ -259,7 +255,9 @@ func TestProviderServer_RegisterNewClient(t *testing.T) {
 		t.Fatal(err)
 	}
 	assert.Equal(t, "localhost:9998", addr, "Returned address should be the same as registered client address")
-	assert.Equal(t, helpers.SHA256([]byte("TMP_Token"+"NewClient")), token, "Returned token should be equal to the hash of clients id")
+	shaRes, err := helpers.SHA256([]byte("TMP_Token" + "NewClient"))
+	assert.Nil(t, err)
+	assert.Equal(t, shaRes, token, "Returned token should be equal to the hash of clients id")
 
 	path := fmt.Sprintf("./inboxes/%s", "NewClient")
 	exists, err := helpers.DirExists(path)

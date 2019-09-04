@@ -318,7 +318,8 @@ func TestEncapsulateHeader(t *testing.T) {
 		t.Error(err)
 	}
 
-	mac1 := computeMac(KDF(sharedSecrets[2].SecretHash), encRouting1)
+	mac1, err := computeMac(KDF(sharedSecrets[2].SecretHash), encRouting1)
+	assert.Nil(t, err)
 
 	routing2 := RoutingInfo{NextHop: &Hop{Id: "Node3",
 		Address: "localhost:3333",
@@ -338,7 +339,8 @@ func TestEncapsulateHeader(t *testing.T) {
 		t.Error(err)
 	}
 
-	mac2 := computeMac(KDF(sharedSecrets[1].SecretHash), encRouting2)
+	mac2, err := computeMac(KDF(sharedSecrets[1].SecretHash), encRouting2)
+	assert.Nil(t, err)
 
 	expectedRouting := RoutingInfo{NextHop: &Hop{Id: "Node2",
 		Address: "localhost:3332",
@@ -358,7 +360,8 @@ func TestEncapsulateHeader(t *testing.T) {
 		t.Error(err)
 	}
 
-	mac3 := computeMac(KDF(sharedSecrets[0].SecretHash), encExpectedRouting)
+	mac3, err := computeMac(KDF(sharedSecrets[0].SecretHash), encExpectedRouting)
+	assert.Nil(t, err)
 
 	expectedHeader := Header{Alpha: sharedSecrets[0].Alpha,
 		Beta: encExpectedRouting,
@@ -417,7 +420,8 @@ func TestProcessSphinxHeader(t *testing.T) {
 		t.Error(err)
 	}
 
-	mac1 := computeMac(KDF(sharedSecrets[2].SecretHash), encRouting1)
+	mac1, err := computeMac(KDF(sharedSecrets[2].SecretHash), encRouting1)
+	assert.Nil(t, err)
 
 	routing2 := RoutingInfo{NextHop: &Hop{Id: "Node3",
 		Address: "localhost:3333",
@@ -437,7 +441,8 @@ func TestProcessSphinxHeader(t *testing.T) {
 		t.Error(err)
 	}
 
-	mac2 := computeMac(KDF(sharedSecrets[1].SecretHash), encRouting2)
+	mac2, err := computeMac(KDF(sharedSecrets[1].SecretHash), encRouting2)
+	assert.Nil(t, err)
 
 	routing3 := RoutingInfo{NextHop: &Hop{Id: "Node2",
 		Address: "localhost:3332",
@@ -457,7 +462,8 @@ func TestProcessSphinxHeader(t *testing.T) {
 		t.Error(err)
 	}
 
-	mac3 := computeMac(KDF(sharedSecrets[0].SecretHash), encExpectedRouting)
+	mac3, err := computeMac(KDF(sharedSecrets[0].SecretHash), encExpectedRouting)
+	assert.Nil(t, err)
 
 	header := Header{Alpha: sharedSecrets[0].Alpha,
 		Beta: encExpectedRouting,

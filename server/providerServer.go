@@ -238,7 +238,10 @@ func (p *ProviderServer) registerNewClient(clientBytes []byte) ([]byte, string, 
 		return nil, "", err
 	}
 
-	token := helpers.SHA256([]byte("TMP_Token" + clientConf.Id))
+	token, err := helpers.SHA256([]byte("TMP_Token" + clientConf.Id))
+	if err != nil {
+		return nil, "", err
+	}
 	record := ClientRecord{id: clientConf.Id, host: clientConf.Host, port: clientConf.Port, pubKey: clientConf.PubKey, token: token}
 	p.assignedClients[clientConf.Id] = record
 	address := clientConf.Host + ":" + clientConf.Port

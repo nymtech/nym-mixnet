@@ -30,8 +30,6 @@ import (
 )
 
 var providerPubs config.MixConfig
-
-// var testPacket sphinx.SphinxPacket
 var testMixSet []config.MixConfig
 
 //nolint: unused
