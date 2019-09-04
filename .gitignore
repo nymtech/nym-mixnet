@@ -6,3 +6,4 @@
 /vendor/
 .vscode
 /cmd/loopix-client/loopix-client
+/daemon/client/client
