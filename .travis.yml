@@ -1,0 +1,23 @@
+language: go
+
+go: 
+  - "1.12"
+
+env:
+- GO111MODULE=on
+
+script: 
+  - go test -v ./... -race -coverprofile=cover.out.tmp -covermode=atomic
+
+after_success:
+  - cat cover.out.tmp | grep -v ".pb.go" > cover.out
+  - bash <(curl https://codecov.io/bash)
+
+git:
+  depth: 1
+
+notifications:
+  email: 
+    recipients:
+      - dave@nymtech.net
+      - andrew@nymtech.net
