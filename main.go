@@ -75,7 +75,7 @@ func main() {
 
 	typ := flag.String("typ", "", "A type of entity we want to run")
 	id := flag.String("id", "", "Id of the entity we want to run")
-	// host := flag.String("host", "", "The host on which the entity is running")
+	host := flag.String("host", "", "The host on which the entity is running")
 	port := flag.String("port", "", "The port on which the entity is running")
 	providerId := flag.String("provider", "", "The port on which the entity is running")
 	flag.Parse()
@@ -90,7 +90,9 @@ func main() {
 		panic(err)
 	}
 
-	host := &ip
+	// even though we're just overwriting the passed value of host, the startup script(s) still rely on its existence
+	// and hence can't, for time being, be removed
+	host = &ip
 
 	switch *typ {
 	case "client":
