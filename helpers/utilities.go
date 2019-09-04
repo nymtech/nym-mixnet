@@ -123,7 +123,9 @@ func DirExists(path string) (bool, error) {
 // SHA256 computes the hash value of a given argument using SHA256 algorithm.
 func SHA256(arg []byte) []byte {
 	h := sha256.New()
-	h.Write([]byte(arg))
+	if _, err := h.Write([]byte(arg)); err != nil {
+		return nil
+	}
 	return h.Sum(nil)
 }
 

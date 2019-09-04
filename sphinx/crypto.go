@@ -49,7 +49,9 @@ func AesCtr(key, plaintext []byte) ([]byte, error) {
 func hash(arg []byte) []byte {
 
 	h := sha256.New()
-	h.Write(arg)
+	if _, err := h.Write(arg); err != nil {
+		return nil
+	}
 
 	return h.Sum(nil)
 }
@@ -58,7 +60,9 @@ func hash(arg []byte) []byte {
 // Returns a byte array containing the MAC checksum.
 func Hmac(key, message []byte) []byte {
 	mac := hmac.New(sha256.New, key)
-	mac.Write(message)
+	if _, err := mac.Write(message); err != nil {
+		return nil
+	}
 	return mac.Sum(nil)
 }
 

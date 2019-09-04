@@ -21,11 +21,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/gogo/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 	"github.com/nymtech/loopix-messaging/client"
 	"github.com/nymtech/loopix-messaging/config"
+	"github.com/nymtech/loopix-messaging/daemon"
 	"github.com/nymtech/loopix-messaging/pki"
-	"github.com/nymtech/nym/daemon"
 )
 
 const (
@@ -59,7 +59,9 @@ func main() {
 				fmt.Println(err)
 			}
 			var providerInfo config.MixConfig
-			err = proto.Unmarshal(results, &providerInfo)
+			if err := proto.Unmarshal(results, &providerInfo); err != nil {
+				panic(err)
+			}
 
 			// pubC, privC, err := sphinx.GenerateKeyPair()
 			// if err != nil {

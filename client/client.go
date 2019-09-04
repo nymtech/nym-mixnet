@@ -91,7 +91,9 @@ type TCPClient struct {
 // signaling whenever any operation was unsuccessful.
 func (c *TCPClient) Start() error {
 
-	c.resolveAddressAndStartListening()
+	if err := c.resolveAddressAndStartListening(); err != nil {
+		return err
+	}
 
 	c.outQueue = make(chan []byte)
 	c.registrationDone = make(chan bool)
@@ -171,6 +173,7 @@ func (c *TCPClient) startSenderInNewRoutine() {
 		// 	break
 		// }
 
+		//nolint: errcheck
 		c.SendMessage(msg, recipient)
 		i++
 		time.Sleep(5 * time.Second)
@@ -303,11 +306,11 @@ func (c *TCPClient) handleConnection(conn net.Conn) {
 		}()
 
 		if loopCoverTrafficEnabled {
-			// c.turnOnLoopCoverTraffic()
+			c.turnOnLoopCoverTraffic()
 		}
 
 		if dropCoverTrafficEnabled {
-			// c.turnOnDropCoverTraffic()
+			c.turnOnDropCoverTraffic()
 		}
 
 		go func() {
@@ -322,7 +325,7 @@ func (c *TCPClient) handleConnection(conn net.Conn) {
 		if strings.Contains(string(packet.Data), dummyPacketPayload) {
 			logLocal.Infof("Received new message: %v", string(packet.Data))
 		}
-		// logLocal.Infof("Received new message: %v", string(packet.Data))
+		logLocal.Infof("Received new message: %v", string(packet.Data))
 	default:
 		logLocal.Info("Packet flag not recognised. Packet dropped.")
 	}
@@ -403,14 +406,18 @@ func (c *TCPClient) controlOutQueue() error {
 	for {
 		select {
 		case realPacket := <-c.outQueue:
-			c.send(realPacket, c.Provider.Host, c.Provider.Port)
+			if err := c.send(realPacket, c.Provider.Host, c.Provider.Port); err != nil {
+				logLocal.WithError(err).Errorf("Could not send real packet: %v", err)
+			}
 			logLocal.Info("Real packet was sent")
 		default:
 			dummyPacket, err := c.createDropCoverMessage()
 			if err != nil {
 				return err
 			}
-			c.send(dummyPacket, c.Provider.Host, c.Provider.Port)
+			if err := c.send(dummyPacket, c.Provider.Host, c.Provider.Port); err != nil {
+				logLocal.WithError(err).Errorf("Could not send dummy packet: %v", err)
+			}
 			// logLocal.Info("OutQueue empty. Dummy packet sent.")
 		}
 		err := delayBeforeContinue(desiredRateParameter)
@@ -424,7 +431,10 @@ func (c *TCPClient) controlOutQueue() error {
 // to fetch received messages
 func (c *TCPClient) controlMessagingFetching() {
 	for {
-		c.getMessagesFromProvider()
+		if err := c.getMessagesFromProvider(); err != nil {
+			logLocal.WithError(err).Errorf("Could not get message from provider: %v", err)
+			continue
+		}
 		logLocal.Info("Sent request to provider to fetch messages")
 		err := delayBeforeContinue(fetchRate)
 		if err != nil {
@@ -489,7 +499,10 @@ func (c *TCPClient) runLoopCoverTrafficStream() error {
 		if err != nil {
 			return err
 		}
-		c.send(loopPacket, c.Provider.Host, c.Provider.Port)
+		if err := c.send(loopPacket, c.Provider.Host, c.Provider.Port); err != nil {
+			logLocal.WithError(err).Errorf("Could not send loop cover traffic message")
+			return err
+		}
 		logLocal.Info("Loop message sent")
 		err = delayBeforeContinue(loopRate)
 		if err != nil {
@@ -509,7 +522,10 @@ func (c *TCPClient) runDropCoverTrafficStream() error {
 		if err != nil {
 			return err
 		}
-		c.send(dropPacket, c.Provider.Host, c.Provider.Port)
+		if err := c.send(dropPacket, c.Provider.Host, c.Provider.Port); err != nil {
+			logLocal.WithError(err).Errorf("Could not send loop drop cover traffic message")
+			return err
+		}
 		logLocal.Info("Drop packet sent")
 		err = delayBeforeContinue(dropRate)
 		if err != nil {

@@ -355,7 +355,7 @@ func ProcessSphinxHeader(packet Header, privKey []byte) (Hop, Commands, Header, 
 
 	recomputedMac := computeMac(KDF(aesS), beta)
 
-	if bytes.Compare(recomputedMac, mac) != 0 {
+	if !bytes.Equal(recomputedMac, mac) {
 		return Hop{}, Commands{}, Header{}, errors.New("packet processing error: MACs are not matching")
 	}
 

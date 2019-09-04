@@ -37,7 +37,7 @@ var mixServer *MixServer
 var providerServer *ProviderServer
 
 const (
-	testDatabase = "testDatabase.db"
+// testDatabase = "testDatabase.db"
 )
 
 func createTestProvider() (*ProviderServer, error) {
@@ -129,9 +129,13 @@ func createInbox(id string, t *testing.T) {
 	}
 	if exists {
 		os.RemoveAll(path)
-		os.MkdirAll(path, 0755)
+		if err := os.MkdirAll(path, 0755); err != nil {
+			t.Fatal(err)
+		}
 	} else {
-		os.MkdirAll(path, 0755)
+		if err := os.MkdirAll(path, 0755); err != nil {
+			t.Fatal(err)
+		}
 	}
 }
 
@@ -151,6 +155,9 @@ func createTestMessage(id string, t *testing.T) {
 
 func TestProviderServer_FetchMessages_FullInbox(t *testing.T) {
 	clientListener, err := createFakeClientListener("localhost", "9999")
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer clientListener.Close()
 
 	providerServer.assignedClients["FakeClient"] = ClientRecord{"FakeClient",
@@ -199,7 +206,9 @@ func TestProviderServer_StoreMessage(t *testing.T) {
 	}
 
 	message := []byte("Hello world message")
-	providerServer.storeMessage(message, inboxID, fileID)
+	if err := providerServer.storeMessage(message, inboxID, fileID); err != nil {
+		t.Fatal(err)
+	}
 
 	_, err = os.Stat(filePath)
 	if err != nil {
@@ -262,6 +271,9 @@ func TestProviderServer_RegisterNewClient(t *testing.T) {
 
 func TestProviderServer_HandleAssignRequest(t *testing.T) {
 	clientListener, err := createFakeClientListener("localhost", "9999")
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer clientListener.Close()
 
 	newClient := config.ClientConfig{Id: "ClientXYZ", Host: "localhost", Port: "9999", PubKey: nil}
@@ -301,6 +313,7 @@ func TestProviderServer_HandleConnection(t *testing.T) {
 	serverConn, _ := net.Pipe()
 	errs := make(chan error, 1)
 	// serverConn.Write([]byte("test"))
+	// TODO: fix linter SA2002 error
 	go func() {
 		providerServer.handleConnection(serverConn, errs)
 		err := <-errs

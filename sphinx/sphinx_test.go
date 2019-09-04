@@ -141,7 +141,13 @@ func TestComputeBlindingFactor(t *testing.T) {
 func TestGetSharedSecrets(t *testing.T) {
 
 	pub1, _, err := GenerateKeyPair()
+	if err != nil {
+		t.Error(err)
+	}
 	pub2, _, err := GenerateKeyPair()
+	if err != nil {
+		t.Error(err)
+	}
 	pub3, _, err := GenerateKeyPair()
 	if err != nil {
 		t.Error(err)
@@ -202,7 +208,8 @@ func TestGetSharedSecrets(t *testing.T) {
 	}
 
 	expected = append(expected, HeaderInitials{Alpha: alpha2, Secret: s2, Blinder: b2.Bytes(), SecretHash: aesS2})
-	blindFactors = append(blindFactors, *b2)
+	// this assignment was ineffectual
+	// blindFactors = append(blindFactors, *b2)
 
 	assert.Equal(t, expected, result)
 }
@@ -216,7 +223,13 @@ func TestComputeFillers(t *testing.T) {
 	tuples := []HeaderInitials{h1, h2, h3}
 
 	pub1, _, err := GenerateKeyPair()
+	if err != nil {
+		t.Error(err)
+	}
 	pub2, _, err := GenerateKeyPair()
+	if err != nil {
+		t.Error(err)
+	}
 	pub3, _, err := GenerateKeyPair()
 	if err != nil {
 		t.Error(err)
@@ -468,7 +481,13 @@ func TestProcessSphinxPayload(t *testing.T) {
 	message := "Plaintext message"
 
 	pub1, priv1, err := GenerateKeyPair()
+	if err != nil {
+		t.Error(err)
+	}
 	pub2, priv2, err := GenerateKeyPair()
+	if err != nil {
+		t.Error(err)
+	}
 	pub3, priv3, err := GenerateKeyPair()
 	if err != nil {
 		t.Error(err)
@@ -491,9 +510,7 @@ func TestProcessSphinxPayload(t *testing.T) {
 		t.Error(err)
 	}
 
-	var decMsg []byte
-
-	decMsg = encMsg
+	decMsg := encMsg
 	privs := [][]byte{priv1, priv2, priv3}
 	for i, v := range privs {
 		decMsg, err = ProcessSphinxPayload(asb[i].Alpha, decMsg, v)

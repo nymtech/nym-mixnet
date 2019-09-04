@@ -29,7 +29,7 @@ const (
 	testDatabase = "./TESTDATABASE.DB"
 )
 
-var dbDir string
+// var dbDir string
 var db *sqlx.DB
 
 func Setup() (*sqlx.DB, error) {

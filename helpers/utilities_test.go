@@ -78,7 +78,7 @@ func TestMain(m *testing.M) {
 
 func TestDirExists_Pass(t *testing.T) {
 
-	err := os.Mkdir(testDir, 755)
+	err := os.Mkdir(testDir, 0755)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -30,7 +30,8 @@ import (
 )
 
 var client *CryptoClient
-var path config.E2EPath
+
+// var path config.E2EPath
 var mixes []config.MixConfig
 
 func Setup() error {
