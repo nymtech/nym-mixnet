@@ -9,10 +9,8 @@ env:
 script: 
   - go test -v ./... -race -coverprofile=coverage.out -covermode=atomic
 
-  # - go test ./... -timeout=60m -run nothing -bench=. -cpu=1,2,4 -benchtime=2s
-
 after_success:
-  - bash <(curl -s https://codecov.io/bash)
+  - bash <(curl https://codecov.io/bash)
 
 git:
   depth: 1
