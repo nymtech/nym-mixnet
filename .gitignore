@@ -5,3 +5,4 @@
 /pki/database.db
 /vendor/
 .vscode
+/cmd/loopix-client/loopix-client
