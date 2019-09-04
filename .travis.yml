@@ -17,4 +17,7 @@ git:
   depth: 1
 
 notifications:
-  email: false
+  email: 
+    recipients:
+      - dave@nymtech.net
+      - andrew@nymtech.net
