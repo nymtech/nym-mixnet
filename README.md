@@ -9,7 +9,7 @@ Ania Piotrowska's PhD research. It implements a
 
 To build and test the code you need:
 
-* Go 1.11 or later
+* Go 1.12 or later
 
 To perform the unit tests run:
 
