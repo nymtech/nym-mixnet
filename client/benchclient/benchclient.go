@@ -82,7 +82,7 @@ func (bc *BenchClient) createSummaryDoc() error {
 		fmt.Fprintf(f, "%v\t%v\n", msg.timestamp, msg.content)
 	}
 
-	fmt.Printf("Earliest timestamp: %v\nLatest timestamp: %v\n", earliestMessageTimestamp, latestMessageTimestamp)
+	fmt.Printf("Earliest timestamp: %v\nLatest timestamp: %v\ntimedelta: %v\n", earliestMessageTimestamp, latestMessageTimestamp, latestMessageTimestamp.Sub(earliestMessageTimestamp))
 
 	return nil
 }
