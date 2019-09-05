@@ -8,7 +8,6 @@ import (
 	"github.com/nymtech/loopix-messaging/client"
 	"github.com/nymtech/loopix-messaging/config"
 	"github.com/nymtech/loopix-messaging/pki"
-
 	"github.com/tav/golly/optparse"
 )
 
