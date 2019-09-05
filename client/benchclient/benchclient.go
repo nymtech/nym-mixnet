@@ -104,7 +104,7 @@ func NewBenchClient(nc *client.NetClient, numberMessages int, interval time.Dura
 		NetClient:    nc,
 		sentMessages: make([]timestampedMessage, numberMessages),
 		recipient: config.ClientConfig{
-			Id:       "Client2",
+			Id:       "BenchmarkClientRecipient",
 			Host:     "localhost",
 			Port:     "9998",
 			PubKey:   []byte{4, 135, 189, 82, 245, 150, 224, 233, 57, 59, 242, 8, 142, 7, 3, 147, 51, 103, 243, 23, 190, 69, 148, 150, 88, 234, 183, 187, 37, 227, 247, 57, 83, 85, 250, 21, 162, 163, 64, 168, 6, 27, 2, 236, 76, 225, 133, 152, 102, 28, 42, 254, 225, 21, 12, 221, 211},
