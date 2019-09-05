@@ -21,6 +21,8 @@ notifications:
     recipients:
       - dave@nymtech.net
       - andrew@nymtech.net
+    on_success: change  # always|never|change
+    on_failure: always
   webhooks:
       urls:
           - "https://scalar.vector.im/api/neb/services/hooks/dHJhdmlzLWNpLyU0MGZ1dHVyZWNoaW1wJTNBbWF0cml4Lm9yZy8lMjFwUEVlaHVoZFlxTGVqU1VGSVIlM0FtYXRyaXgub3Jn"

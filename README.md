@@ -1,14 +1,15 @@
 # Anonymous messaging using mix networks
 
-This is an experimental implementation of an anonymous messaging system based on
-Ania Piotrowska's PhD research. It's a simple implementation of the [Loopix](https://arxiv.org/abs/1703.00536)
-paper. Foomp.
+This is an implementation of an private communications system based on
+Ania Piotrowska's PhD research. It implements a 
+[Loopix](https://arxiv.org/abs/1703.00536) mixnet as well as the 
+[Sphinx](https://cypherpunks.ca/~iang/pubs/Sphinx_Oakland09.pdf) packet format.
 
 ## Setup
 
 To build and test the code you need:
 
-* Go 1.11 or later
+* Go 1.12 or later
 
 To perform the unit tests run:
 
@@ -32,7 +33,8 @@ To run the network, i.e., mixnodes and providers run
 bash run_network.sh
 ```
 
-This spins up 3 mixnodes and 1 provider. To change the number of mixnodes to 5, do:
+This spins up 3 mixnodes and 1 provider. To change the number of mixnodes to 5, 
+do:
 
 ```shell
 bash run_network.sh 5
