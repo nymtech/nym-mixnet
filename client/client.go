@@ -25,7 +25,6 @@ import (
 	"math"
 	"math/big"
 	"net"
-	"strings"
 	"sync"
 	"time"
 
@@ -54,9 +53,7 @@ const (
 	dropRate = 0.1
 	// the rate at which clients are querying the provider for received packets. fetchRate value is the
 	// parameter of an exponential distribution, and is the reciprocal of the expected value of the exp. distribution
-	fetchRate = 0.1
-
-	dummyPacketPayload = "foo"
+	fetchRate = 0.01
 )
 
 // Client is the client networking interface
@@ -139,7 +136,6 @@ func DisableLogging() {
 // and starts the listening server. Function returns an error
 // signaling whenever any operation was unsuccessful.
 func (c *NetClient) Start() error {
-
 	if err := c.resolveAddressAndStartListening(); err != nil {
 		return err
 	}
@@ -169,12 +165,6 @@ func (c *NetClient) Start() error {
 	}()
 
 	go c.startListenerInNewRoutine()
-
-	// only start the sending routine for client1
-	// if c.config.Id == "Client1" {
-	// 	go c.startSenderInNewRoutine()
-	// }
-
 	return nil
 }
 
@@ -196,46 +186,6 @@ func (c *NetClient) halt() {
 
 	close(c.haltedCh)
 }
-
-// func (c *NetClient) startSenderInNewRoutine() {
-// 	// for now just send once for test sake
-// 	time.Sleep(5 * time.Second)
-// 	logLocal.Warn("send routine start")
-// 	i := 0
-// 	for {
-// 		msg := fmt.Sprintf("%v%v", dummyPacketPayload, i)
-// 		// recipient := c.config // just send to ourself, change it to other client once better PKI is figured out
-// 		// randomRecipient, err := c.getRandomRecipient(c.Network.Clients)
-
-// 		recipient := config.ClientConfig{
-// 			Id:       "Client2",
-// 			Host:     "localhost",
-// 			Port:     "9998",
-// 			PubKey:   []byte{4, 135, 189, 82, 245, 150, 224, 233, 57, 59, 242, 8, 142, 7, 3, 147, 51, 103, 243, 23, 190, 69, 148, 150, 88, 234, 183, 187, 37, 227, 247, 57, 83, 85, 250, 21, 162, 163, 64, 168, 6, 27, 2, 236, 76, 225, 133, 152, 102, 28, 42, 254, 225, 21, 12, 221, 211},
-// 			Provider: c.config.Provider,
-// 		}
-
-// 		logLocal.Infof("sending %v to %v", msg, recipient.Id)
-
-// 		// if err != nil {
-// 		// 	logLocal.Warn(err)
-// 		// 	break
-// 		// }
-
-// 		//nolint: errcheck
-// 		c.SendMessage(msg, recipient)
-// 		i++
-// 		time.Sleep(5 * time.Second)
-
-// 		select {
-// 		case <-c.haltedCh:
-// 			logLocal.Warn("send routine end")
-// 			return
-// 		default:
-// 		}
-// 	}
-
-// }
 
 func (c *NetClient) resolveAddressAndStartListening() error {
 	addr, err := helpers.ResolveTCPAddress(c.host, c.port)
@@ -372,9 +322,6 @@ func (c *NetClient) handleConnection(conn net.Conn) {
 		_, err := c.processPacket(packet.Data)
 		if err != nil {
 			logLocal.WithError(err).Error("Error in processing received packet")
-		}
-		if strings.Contains(string(packet.Data), dummyPacketPayload) {
-			logLocal.Infof("Received new message: %v", string(packet.Data))
 		}
 		logLocal.Infof("Received new message: %v", string(packet.Data))
 	default:
