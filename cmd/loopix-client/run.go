@@ -17,8 +17,8 @@ const (
 	PkiDir            = "pki/database.db"
 	defaultHost       = "localhost"
 	defaultID         = "Client1"
-	defaultPort       = "6666"
-	defaultProviderID = "666"
+	defaultPort       = "9999"
+	defaultProviderID = "Provider"
 )
 
 func cmdRun(args []string, usage string) {
