@@ -18,6 +18,7 @@ const (
 	defaultBenchmarkClientHost = "localhost"
 	defaultBenchmarkClientID   = "BenchmarkClient"
 	defaultBenchmarkClientPort = "10000"
+	// this will be our ingress provider so it needs to be a 'fully functiona' one
 	defaultBenchmarkProviderID = "Provider"
 )
 
