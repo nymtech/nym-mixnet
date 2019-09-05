@@ -62,7 +62,7 @@ func Hmac(key, message []byte) ([]byte, error) {
 	mac := hmac.New(sha256.New, key)
 	if _, err := mac.Write(message); err != nil {
 		return nil, err
-	} foo
+	}
 	return mac.Sum(nil), nil
 }
 
