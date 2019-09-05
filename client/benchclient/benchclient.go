@@ -68,9 +68,22 @@ func (bc *BenchClient) createSummaryDoc() error {
 		return err
 	}
 	fmt.Fprintf(f, "Timestamp\tContent\n")
+	var earliestMessageTimestamp time.Time = bc.sentMessages[0].timestamp
+	var latestMessageTimestamp time.Time = bc.sentMessages[0].timestamp
+
 	for _, msg := range bc.sentMessages {
+		if msg.timestamp.Before(earliestMessageTimestamp) {
+			earliestMessageTimestamp = msg.timestamp
+		}
+		if msg.timestamp.After(latestMessageTimestamp) {
+			latestMessageTimestamp = msg.timestamp
+		}
+
 		fmt.Fprintf(f, "%v\t%v\n", msg.timestamp, msg.content)
 	}
+
+	fmt.Printf("Earliest timestamp: %v\nLatest timestamp: %v\ntimedelta: %v\n", earliestMessageTimestamp, latestMessageTimestamp, latestMessageTimestamp.Sub(earliestMessageTimestamp))
+
 	return nil
 }
 
