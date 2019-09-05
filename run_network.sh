@@ -31,12 +31,12 @@ NUMMIXES=${1:-3} # Set $NUMMIXES to default of 3, but allow the user to set othe
 
 for (( j=0; j<$NUMMIXES; j++ ))
 do
-    go run main.go -typ=mix -id="Mix$j" -host=localhost -port=$((9980+$j)) >> logs/bash.log &
+    go run main.go -typ=mix -id="Mix$j" -port=$((9980+$j)) >> logs/bash.log &
     sleep 1
 done
 
 sleep 1
-go run main.go -typ=provider -id=Provider -host=localhost -port=9997 >> logs/bash.log
+go run main.go -typ=provider -id=Provider -port=9997 >> logs/bash.log
 
 # read -p "Press CTRL-C to stop."
 
