@@ -9,3 +9,4 @@
 /daemon/client/client
 /cmd/loopix-mixnode/loopix-mixnode
 /cmd/loopix-provider/loopix-provider
+build
