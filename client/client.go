@@ -86,6 +86,10 @@ type NetClient struct {
 	haltOnce sync.Once
 }
 
+func (c *NetClient) OutQueue() chan<- []byte {
+	return c.outQueue
+}
+
 func ToggleRateCompliantCoverMessages(b bool) {
 	if !b {
 		logLocal.Warn("Rate compliant cover messages are disabled")

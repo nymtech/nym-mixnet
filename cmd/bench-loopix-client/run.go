@@ -27,6 +27,7 @@ func cmdRun(args []string, usage string) {
 	port := opts.Flags("--port").Label("PORT").String("Port on which loopix-client listens", defaultBenchmarkClientPort)
 	numMessages := opts.Flags("--num").Label("NUMMESSAGES").Int("Number of benchmark messages to send", 0)
 	interval := opts.Flags("--interval").Label("INTERVAL").Duration("Minimum interval between messages to be sent", 0)
+	preGenerate := opts.Flags("--pregenerate").Label("PREGENERATE").Bool("Whether to pregenerate single packet to send it over and over again")
 
 	params := opts.Parse(args)
 	if len(params) != 0 {
@@ -58,7 +59,7 @@ func cmdRun(args []string, usage string) {
 		panic(err)
 	}
 
-	benchClient, err := benchclient.NewBenchClient(client, *numMessages, *interval)
+	benchClient, err := benchclient.NewBenchClient(client, *numMessages, *interval, *preGenerate)
 	if err != nil {
 		panic(err)
 	}
