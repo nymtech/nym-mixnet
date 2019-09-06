@@ -57,21 +57,6 @@ func pkiPreSetting(pkiDir string) error {
 	return nil
 }
 
-//func FakeAdding(c *client.Client) {
-//	logLocal.Info("Adding simulated traffic of a client")
-//	for {
-//		sphinxPacket, err := c.EncodeMessage("hello world", c.Config)
-//		if err != nil {
-//		}
-//		packet, err := config.WrapWithFlag("\xc6", sphinxPacket)
-//		if err != nil {
-//			logLocal.Info("Something went wrong")
-//		}
-//		c.OutQueue <- packet
-//		time.Sleep(10 * time.Second)
-//	}
-//}
-
 func main() {
 
 	typ := flag.String("typ", "", "A type of entity we want to run")
