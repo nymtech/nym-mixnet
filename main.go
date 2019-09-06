@@ -33,7 +33,8 @@ import (
 var logLocal = logging.PackageLogger()
 
 const (
-	PKI_DIR = "pki/database.db"
+	// PkiDb points at the public key infrastructure database
+	PkiDb = "pki/database.db"
 )
 
 func pkiPreSetting(pkiDir string) error {
@@ -77,10 +78,10 @@ func main() {
 	id := flag.String("id", "", "Id of the entity we want to run")
 	host := flag.String("host", "", "The host on which the entity is running")
 	port := flag.String("port", "", "The port on which the entity is running")
-	providerId := flag.String("provider", "", "The port on which the entity is running")
+	providerID := flag.String("provider", "", "The port on which the entity is running")
 	flag.Parse()
 
-	err := pkiPreSetting(PKI_DIR)
+	err := pkiPreSetting(PkiDb)
 	if err != nil {
 		panic(err)
 	}
@@ -98,13 +99,13 @@ func main() {
 	case "client":
 		// DEPERCATED
 		logLocal.Warn("Client startup using this entry point is deprecated. Please use daemon/client/client.go instead")
-		db, err := pki.OpenDatabase(PKI_DIR, "sqlite3")
+		db, err := pki.OpenDatabase(PkiDb, "sqlite3")
 
 		if err != nil {
 			panic(err)
 		}
 
-		row := db.QueryRow("SELECT Config FROM Pki WHERE Id = ? AND Typ = ?", providerId, "Provider")
+		row := db.QueryRow("SELECT Config FROM Pki WHERE Id = ? AND Typ = ?", providerID, "Provider")
 
 		var results []byte
 		err = row.Scan(&results)
@@ -121,7 +122,7 @@ func main() {
 			panic(err)
 		}
 
-		client, err := client.NewClient(*id, *host, *port, pubC, privC, PKI_DIR, providerInfo)
+		client, err := client.NewClient(*id, *host, *port, pubC, privC, PkiDb, providerInfo)
 		if err != nil {
 			panic(err)
 		}
@@ -137,7 +138,7 @@ func main() {
 			panic(err)
 		}
 
-		mixServer, err := server.NewMixServer(*id, *host, *port, pubM, privM, PKI_DIR)
+		mixServer, err := server.NewMixServer(*id, *host, *port, pubM, privM, PkiDb)
 		if err != nil {
 			panic(err)
 		}
@@ -152,7 +153,7 @@ func main() {
 			panic(err)
 		}
 
-		providerServer, err := server.NewProviderServer(*id, *host, *port, pubP, privP, PKI_DIR)
+		providerServer, err := server.NewProviderServer(*id, *host, *port, pubP, privP, PkiDb)
 		if err != nil {
 			panic(err)
 		}
