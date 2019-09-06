@@ -88,7 +88,7 @@ func TestMain(m *testing.M) {
 func TestCreateTable(t *testing.T) {
 
 	params := map[string]string{"Id": "TEXT", "Typ": "TEXT", "Config": "BLOB"}
-	err := CreateTable(db, "TestTable", params)
+	err := createTable(db, "TestTable", params)
 	if err != nil {
 		t.Error(err)
 	}
@@ -102,10 +102,10 @@ func TestCreateTable(t *testing.T) {
 }
 
 func TestCreateTable_SQLInjection(t *testing.T) {
-	err := CreateTable(db, "TestTable;", nil)
+	err := createTable(db, "TestTable;", nil)
 	assert.EqualError(t, errors.New("detected possible SQL injection"), err.Error())
 
-	err = CreateTable(db, "TestTable'", nil)
+	err = createTable(db, "TestTable'", nil)
 	assert.EqualError(t, errors.New("detected possible SQL injection"), err.Error())
 }
 

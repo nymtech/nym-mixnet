@@ -15,7 +15,6 @@
 #!/bin/bash
 
 echo "Press CTRL-C to stop."
-rm -rf "$PWD/pki/database.db"
 
 logDir="$PWD/logs"
 
@@ -27,31 +26,27 @@ else
     echo "Created logging directory"
 fi
 
-NUMMIXES=${1:-3} # Set $NUMMIXES to default of 3, but allow the user to set other values if desired
+$PWD/build/loopix-client run --id Client1 --port 9996 --provider Provider >> logs/bash.log ;
 
-for (( j=0; j<$NUMMIXES; j++ ))
-do
-    go run main.go -typ=mix -id="Mix$j" -port=$((9980+$j)) >> logs/bash.log &
-    sleep 1
-done
-
-sleep 1
-go run main.go -typ=provider -id=Provider -port=9997 >> logs/bash.log
-
-# read -p "Press CTRL-C to stop."
-
-# In case the loop is not working, we can use the following command
-#go run main.go -typ=mix -id=Mix1 -host=localhost -port=9998 > logs/bash.log &
+#NUMCLIENTS=$1
+#
+#for (( j=0; j<NUMCLIENTS; j++ ));
+#do
+#    go run main.go -typ=mix -id=Client1 -host=localhost -port=$((9990+$j)) -provider=Provider > logs/bash.log &
+#    sleep 1
+#done
+#
+#sleep 1
 
 
-# trap call ctrl_c()
 trap ctrl_c SIGINT SIGTERM SIGTSTP
 function ctrl_c() {
         echo "** Trapped SIGINT, SIGTERM and SIGTSTP"
-        for (( j=0; j<$NUMMIXES; j++ ));
-        do
-            kill_port $((9980+$j))
-        done
+        kill_port 9996
+#        for (( j=0; j<NUMCLIENTS; j++ ));
+#        do
+#            kill_port $((9980+$j))
+#        done
 }
 
 function kill_port() {
