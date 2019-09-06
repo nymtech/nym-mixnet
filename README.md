@@ -20,7 +20,7 @@ go test ./...
 Before first fresh run of the system run:
 
 ```shell
-bash clean.sh
+./scripts/clean.sh
 ```
 
 This removes all log files and database.
@@ -30,18 +30,18 @@ This removes all log files and database.
 To run the network, i.e., mixnodes and providers run
 
 ```shell
-bash run_network.sh
+./scripts/run_network.sh
 ```
 
 This spins up 3 mixnodes and 1 provider. To change the number of mixnodes to 5, 
 do:
 
 ```shell
-bash run_network.sh 5
+./scripts/run_network.sh 5
 ```
 
 To simulate the clients run
 
 ```shell
-bash run_clients.sh
+./scripts/run_clients.sh
 ```
