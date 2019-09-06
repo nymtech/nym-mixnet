@@ -26,7 +26,6 @@ else
     echo "Created logging directory"
 fi
 
-# go run main.go -typ=client -id=Client1 -port=9996 -provider=Provider >> logs/bash.log ;
 $PWD/build/loopix-client run --id Client1 --port 9996 --provider Provider >> logs/bash.log ;
 
 #NUMCLIENTS=$1
