@@ -506,12 +506,12 @@ func TestProcessSphinxPayload(t *testing.T) {
 	nodes := []config.MixConfig{m1, m2, m3}
 
 	x := big.NewInt(100)
-	asb, err := getSharedSecrets(curve, nodes, *x)
+	headerInitials, err := getSharedSecrets(curve, nodes, *x)
 	if err != nil {
 		t.Error(err)
 	}
 
-	encMsg, err := encapsulateContent(asb, message)
+	encMsg, err := encapsulateContent(headerInitials, message)
 	if err != nil {
 		t.Error(err)
 	}
@@ -519,7 +519,7 @@ func TestProcessSphinxPayload(t *testing.T) {
 	decMsg := encMsg
 	privs := [][]byte{priv1, priv2, priv3}
 	for i, v := range privs {
-		decMsg, err = ProcessSphinxPayload(asb[i].Alpha, decMsg, v)
+		decMsg, err = ProcessSphinxPayload(headerInitials[i].Alpha, decMsg, v)
 		if err != nil {
 			t.Error(err)
 		}
