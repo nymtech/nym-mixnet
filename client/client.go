@@ -90,7 +90,7 @@ func (c *NetClient) OutQueue() chan<- []byte {
 	return c.outQueue
 }
 
-func ToggleRateCompliantCoverMessages(b bool) {
+func ToggleRateCompliantCoverTraffic(b bool) {
 	if !b {
 		logLocal.Warn("Rate compliant cover messages are disabled")
 	} else {
