@@ -67,13 +67,13 @@ func PackForwardMessage(curve elliptic.Curve, path config.E2EPath, delays []floa
 	nodes = append(nodes, path.EgressProvider)
 	dest := path.Recipient
 
-	asb, header, err := createHeader(curve, nodes, delays, dest)
+	headerInitials, header, err := createHeader(curve, nodes, delays, dest)
 	if err != nil {
 		logLocal.WithError(err).Error("Error in PackForwardMessage - createHeader failed")
 		return SphinxPacket{}, err
 	}
 
-	payload, err := encapsulateContent(asb, message)
+	payload, err := encapsulateContent(headerInitials, message)
 	if err != nil {
 		logLocal.WithError(err).Error("Error in PackForwardMessage - encapsulateContent failed")
 		return SphinxPacket{}, err
@@ -97,13 +97,13 @@ func createHeader(curve elliptic.Curve, nodes []config.MixConfig, delays []float
 		return nil, Header{}, err
 	}
 
-	asb, err := getSharedSecrets(curve, nodes, x)
+	headerInitials, err := getSharedSecrets(curve, nodes, x)
 	if err != nil {
 		logLocal.WithError(err).Error("Error in createHeader - getSharedSecrets failed")
 		return nil, Header{}, err
 	}
 
-	if len(asb) != len(nodes) {
+	if len(headerInitials) != len(nodes) {
 		logLocal.WithError(err).Error("Error in createHeader - wrong number of shared secrets failed")
 		return nil, Header{}, errors.New(" the number of shared secrets should be the same as the number of traversed nodes")
 	}
@@ -119,12 +119,12 @@ func createHeader(curve elliptic.Curve, nodes []config.MixConfig, delays []float
 		commands = append(commands, c)
 	}
 
-	header, err := encapsulateHeader(asb, nodes, commands, dest)
+	header, err := encapsulateHeader(headerInitials, nodes, commands, dest)
 	if err != nil {
 		logLocal.WithError(err).Error("Error in createHeader - encapsulateHeader failed")
 		return nil, Header{}, err
 	}
-	return asb, header, nil
+	return headerInitials, header, nil
 
 }
 
@@ -132,7 +132,7 @@ func createHeader(curve elliptic.Curve, nodes []config.MixConfig, delays []float
 // sequence of nodes the packet should traverse before reaching the destination, and message authentication codes,
 // given the pre-computed shared keys which are used for encryption.
 // encapsulateHeader returns the Header, or an error if any internal cryptographic of parsing operation failed.
-func encapsulateHeader(asb []HeaderInitials, nodes []config.MixConfig, commands []Commands, destination config.ClientConfig) (Header, error) {
+func encapsulateHeader(headerInitials []HeaderInitials, nodes []config.MixConfig, commands []Commands, destination config.ClientConfig) (Header, error) {
 	finalHop := RoutingInfo{NextHop: &Hop{Id: destination.Id, Address: destination.Host + ":" + destination.Port, PubKey: []byte{}}, RoutingCommands: &commands[len(commands)-1], NextHopMetaData: []byte{}, Mac: []byte{}}
 
 	finalHopBytes, err := proto.Marshal(&finalHop)
@@ -140,13 +140,13 @@ func encapsulateHeader(asb []HeaderInitials, nodes []config.MixConfig, commands 
 		return Header{}, err
 	}
 
-	encFinalHop, err := AesCtr(KDF(asb[len(asb)-1].SecretHash), finalHopBytes)
+	encFinalHop, err := AesCtr(KDF(headerInitials[len(headerInitials)-1].SecretHash), finalHopBytes)
 	if err != nil {
 		logLocal.WithError(err).Error("Error in encapsulateHeader - AES_CTR encryption failed")
 		return Header{}, err
 	}
 
-	mac, err := computeMac(KDF(asb[len(asb)-1].SecretHash), encFinalHop)
+	mac, err := computeMac(KDF(headerInitials[len(headerInitials)-1].SecretHash), encFinalHop)
 	if err != nil {
 		return Header{}, err
 	}
@@ -158,7 +158,7 @@ func encapsulateHeader(asb []HeaderInitials, nodes []config.MixConfig, commands 
 		nextNode := nodes[i+1]
 		routing := RoutingInfo{NextHop: &Hop{Id: nextNode.Id, Address: nextNode.Host + ":" + nextNode.Port, PubKey: nodes[i+1].PubKey}, RoutingCommands: &commands[i], NextHopMetaData: routingCommands[len(routingCommands)-1], Mac: mac}
 
-		encKey := KDF(asb[i].SecretHash)
+		encKey := KDF(headerInitials[i].SecretHash)
 		routingBytes, err := proto.Marshal(&routing)
 
 		if err != nil {
@@ -171,13 +171,13 @@ func encapsulateHeader(asb []HeaderInitials, nodes []config.MixConfig, commands 
 		}
 
 		routingCommands = append(routingCommands, encRouting)
-		mac, err = computeMac(KDF(asb[i].SecretHash), encRouting)
+		mac, err = computeMac(KDF(headerInitials[i].SecretHash), encRouting)
 		if err != nil {
 			return Header{}, err
 		}
 
 	}
-	return Header{Alpha: asb[0].Alpha, Beta: encRouting, Mac: mac}, nil
+	return Header{Alpha: headerInitials[0].Alpha, Beta: encRouting, Mac: mac}, nil
 
 }
 
@@ -185,13 +185,13 @@ func encapsulateHeader(asb []HeaderInitials, nodes []config.MixConfig, commands 
 // and the AES_CTR encryption.
 // encapsulateContent returns the encrypted payload in byte representation. If the AES_CTR
 // encryption failed encapsulateContent returns an error.
-func encapsulateContent(asb []HeaderInitials, message string) ([]byte, error) {
+func encapsulateContent(headerInitials []HeaderInitials, message string) ([]byte, error) {
 
 	enc := []byte(message)
 	// err := error(nil)
 	var err error
-	for i := len(asb) - 1; i >= 0; i-- {
-		sharedKey := KDF(asb[i].SecretHash)
+	for i := len(headerInitials) - 1; i >= 0; i-- {
+		sharedKey := KDF(headerInitials[i].SecretHash)
 		enc, err = AesCtr(sharedKey, enc)
 		if err != nil {
 			logLocal.WithError(err).Error("Error in encapsulateContent - AES_CTR encryption failed")
@@ -222,17 +222,17 @@ func getSharedSecrets(curve elliptic.Curve, nodes []config.MixConfig, initialVal
 			return nil, err
 		}
 
-		s := expo(n.PubKey, blindFactors)
-		aesS := KDF(s)
+		secret := expo(n.PubKey, blindFactors)
+		aesSecret := KDF(secret)
 
-		blinder, err := computeBlindingFactor(curve, aesS)
+		blinder, err := computeBlindingFactor(curve, aesSecret)
 		if err != nil {
 			logLocal.WithError(err).Error("Error in getSharedSecrets - computeBlindingFactor failed")
 			return nil, err
 		}
 
 		blindFactors = append(blindFactors, *blinder)
-		tuples = append(tuples, HeaderInitials{Alpha: alpha, Secret: s, Blinder: blinder.Bytes(), SecretHash: aesS})
+		tuples = append(tuples, HeaderInitials{Alpha: alpha, Secret: secret, Blinder: blinder.Bytes(), SecretHash: aesSecret})
 	}
 	return tuples, nil
 
@@ -356,10 +356,10 @@ func ProcessSphinxHeader(packet Header, privKey []byte) (Hop, Commands, Header, 
 	sharedSecretX, sharedSecretY := curve.Params().ScalarMult(alphaX, alphaY, privKey)
 	sharedSecret := elliptic.Marshal(curve, sharedSecretX, sharedSecretY)
 
-	aesS := KDF(sharedSecret)
-	encKey := KDF(aesS)
+	aesSecret := KDF(sharedSecret)
+	encKey := KDF(aesSecret)
 
-	recomputedMac, err := computeMac(KDF(aesS), beta)
+	recomputedMac, err := computeMac(KDF(aesSecret), beta)
 	if err != nil {
 		return Hop{}, Commands{}, Header{}, err
 	}
@@ -368,7 +368,7 @@ func ProcessSphinxHeader(packet Header, privKey []byte) (Hop, Commands, Header, 
 		return Hop{}, Commands{}, Header{}, errors.New("packet processing error: MACs are not matching")
 	}
 
-	blinder, err := computeBlindingFactor(curve, aesS)
+	blinder, err := computeBlindingFactor(curve, aesSecret)
 	if err != nil {
 		logLocal.WithError(err).Error("Error in ProcessSphinxHeader - computeBlindingFactor failed")
 		return Hop{}, Commands{}, Header{}, err
@@ -414,8 +414,8 @@ func ProcessSphinxPayload(alpha []byte, payload []byte, privKey []byte) ([]byte,
 	sharedSecretX, sharedSecretY := curve.Params().ScalarMult(alphaX, alphaY, privKey)
 	sharedSecret := elliptic.Marshal(curve, sharedSecretX, sharedSecretY)
 
-	aesS := KDF(sharedSecret)
-	decKey := KDF(aesS)
+	aesSecret := KDF(sharedSecret)
+	decKey := KDF(aesSecret)
 
 	decPayload, err := AesCtr(decKey, payload)
 	if err != nil {
