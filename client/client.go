@@ -86,11 +86,15 @@ type NetClient struct {
 	haltOnce sync.Once
 }
 
+// OutQueue returns a reference to the client's outQueue. It's a queue
+// which holds outgoing packets while their order is randomised.
 func (c *NetClient) OutQueue() chan<- []byte {
 	return c.outQueue
 }
 
-func ToggleRateCompliantCoverMessages(b bool) {
+// ToggleRateCompliantCoverTraffic enables or disables rate compliant cover
+// traffic.
+func ToggleRateCompliantCoverTraffic(b bool) {
 	if !b {
 		logLocal.Warn("Rate compliant cover messages are disabled")
 	} else {
@@ -99,6 +103,7 @@ func ToggleRateCompliantCoverMessages(b bool) {
 	rateCompliantCoverMessagesEnabled = b
 }
 
+// ToggleLoopCoverTraffic enables or disables loop cover traffic.
 func ToggleLoopCoverTraffic(b bool) {
 	if !b {
 		logLocal.Warn("Loop cover traffic is disabled")
@@ -108,6 +113,7 @@ func ToggleLoopCoverTraffic(b bool) {
 	loopCoverTrafficEnabled = b
 }
 
+// ToggleDropCoverTraffic enables or disables cover traffic.
 func ToggleDropCoverTraffic(b bool) {
 	if !b {
 		logLocal.Warn("Drop cover traffic is disabled")
@@ -117,6 +123,7 @@ func ToggleDropCoverTraffic(b bool) {
 	dropCoverTrafficEnabled = b
 }
 
+// ToggleControlMessageFetching enables or disables control message fetching.
 func ToggleControlMessageFetching(b bool) {
 	if !b {
 		logLocal.Warn("Control message fetching is disabled")
@@ -126,18 +133,20 @@ func ToggleControlMessageFetching(b bool) {
 	controlMessageFetchingEnabled = b
 }
 
+// UpdateDesiredRateParameter sets the desired rate parameter.
 func UpdateDesiredRateParameter(r float64) {
 	logLocal.Infof("Updating desired rate parameter to %v", r)
 	desiredRateParameter = r
 }
 
+// DisableLogging disables logging.
 func DisableLogging() {
 	logLocal.Warn("Disabling logging")
 	logLocal.Logger.Out = ioutil.Discard
 }
 
-// it reads the network and users information from the PKI database
-// and starts the listening server. Function returns an error
+// Start reads the network and users information from the PKI database
+// and starts the listening server. Returns an error
 // signaling whenever any operation was unsuccessful.
 func (c *NetClient) Start() error {
 	if err := c.resolveAddressAndStartListening(); err != nil {
@@ -177,8 +186,8 @@ func (c *NetClient) Wait() {
 	<-c.haltedCh
 }
 
-// TODO: create daemon to call this upon sigterm or something
 // Shutdown cleanly shuts down a given client instance.
+// TODO: create daemon to call this upon sigterm or something
 func (c *NetClient) Shutdown() {
 	c.haltOnce.Do(func() { c.halt() })
 }
@@ -592,8 +601,8 @@ func (c *NetClient) ReadInNetworkFromPKI(pkiName string) error {
 	return nil
 }
 
-// The constructor function to create an new client object.
-// Function returns a new client object or an error, if occurred.
+// NewClient constructor function to create an new client object.
+// Returns a new client object or an error, if occurred.
 func NewClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir string, provider config.MixConfig) (*NetClient, error) {
 	core := clientcore.NewCryptoClient(pubKey, prvKey, elliptic.P224(), provider, clientcore.NetworkPKI{})
 	c := NetClient{id: id,
