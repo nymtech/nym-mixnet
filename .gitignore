@@ -9,4 +9,10 @@
 /cmd/loopix-mixnode/loopix-mixnode
 /cmd/loopix-provider/loopix-provider
 /cmd/bench-loopix-client/bench-loopix-client
-
+/benchClientSummary
+/benchProviderSummary
+/build/bench_loopix_client
+/build/bench_loopix_provider
+/build/loopix_client
+/build/loopix_mixnode
+/build/loopix_provider
