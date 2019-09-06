@@ -19,10 +19,10 @@
 logDir="$PWD/logs"
 pkiDb="$PWD/pki/database.db"
 
-if [ -d $pkiDb ]
+if [ -f $pkiDb ]
 then
     echo "Removing the pki database: " $pkiDb
-    rm -f $pkiDb
+    rm $pkiDb
     echo "Removed existing PKI files."
 else
     echo "Nothing to remove. The PKI directory does not exist."
