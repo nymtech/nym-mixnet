@@ -38,26 +38,40 @@ type timestampedMessage struct {
 type BenchClient struct {
 	*client.NetClient
 
-	recipient      config.ClientConfig
-	numberMessages int
-	interval       time.Duration
-	sentMessages   []timestampedMessage
+	recipient          config.ClientConfig
+	numberMessages     int
+	interval           time.Duration
+	sentMessages       []timestampedMessage
+	pregen             bool
+	pregeneratedPacket []byte
 }
 
 func (bc *BenchClient) sendMessages(n int, interval time.Duration) {
 	fmt.Printf("Going to try sending %v messages every %v\n", n, interval)
-	for i := 0; i < n; i++ {
-		msg := fmt.Sprintf("%v%v", payloadPrefix, i)
-		if err := bc.SendMessage(msg, bc.recipient); err != nil {
-			// if there was error while sending message, we need to panic as otherwise the result might be biased
-			panic(err)
+	if bc.pregen {
+		fmt.Println("Going to be sending the pre-generated packet")
+		for i := 0; i < n; i++ {
+			bc.OutQueue() <- bc.pregeneratedPacket
+			bc.sentMessages[i] = timestampedMessage{
+				content:   payloadPrefix,
+				timestamp: time.Now(),
+			}
+			time.Sleep(interval)
 		}
-		bc.sentMessages[i] = timestampedMessage{
-			content:   msg,
-			timestamp: time.Now(),
-		}
+	} else {
+		for i := 0; i < n; i++ {
+			msg := fmt.Sprintf("%v%v", payloadPrefix, i)
+			if err := bc.SendMessage(msg, bc.recipient); err != nil {
+				// if there was error while sending message, we need to panic as otherwise the result might be biased
+				panic(err)
+			}
+			bc.sentMessages[i] = timestampedMessage{
+				content:   msg,
+				timestamp: time.Now(),
+			}
 
-		time.Sleep(interval)
+			time.Sleep(interval)
+		}
 	}
 }
 
@@ -103,6 +117,12 @@ func (bc *BenchClient) RunBench() error {
 	if err := bc.NetClient.Start(); err != nil {
 		return err
 	}
+	if bc.pregen {
+		if err := bc.pregeneratePacket(payloadPrefix, bc.recipient); err != nil {
+			return err
+		}
+	}
+
 	bc.sendMessages(bc.numberMessages, bc.interval)
 
 	if err := bc.createSummaryDoc(); err != nil {
@@ -111,9 +131,23 @@ func (bc *BenchClient) RunBench() error {
 	return nil
 }
 
-func NewBenchClient(nc *client.NetClient, numberMessages int, interval time.Duration) (*BenchClient, error) {
+func (bc *BenchClient) pregeneratePacket(message string, recipient config.ClientConfig) error {
+	sphinxPacket, err := bc.EncodeMessage(message, recipient)
+	if err != nil {
+		return err
+	}
 
-	return &BenchClient{
+	packetBytes, err := config.WrapWithFlag(config.CommFlag, sphinxPacket)
+	if err != nil {
+		return err
+	}
+
+	bc.pregeneratedPacket = packetBytes
+	return nil
+}
+
+func NewBenchClient(nc *client.NetClient, numberMessages int, interval time.Duration, pregen bool) (*BenchClient, error) {
+	bc := &BenchClient{
 		NetClient:    nc,
 		sentMessages: make([]timestampedMessage, numberMessages),
 		recipient: config.ClientConfig{
@@ -128,7 +162,10 @@ func NewBenchClient(nc *client.NetClient, numberMessages int, interval time.Dura
 				PubKey: []byte{4, 212, 28, 250, 98, 86, 155, 24, 162, 117, 236, 179, 218, 173, 182, 40, 1, 18, 244, 31, 0, 246, 217, 108, 240, 152, 78, 215, 51, 70, 232, 202, 47, 45, 222, 165, 241, 132, 198, 137, 95, 126, 108, 47, 153, 49, 156, 105, 202, 153, 8, 249, 231, 84, 76, 241, 178},
 			},
 		},
-		numberMessages: numberMessages,
-		interval:       interval,
-	}, nil
+		numberMessages:     numberMessages,
+		interval:           interval,
+		pregen:             pregen,
+		pregeneratedPacket: nil,
+	}
+	return bc, nil
 }
