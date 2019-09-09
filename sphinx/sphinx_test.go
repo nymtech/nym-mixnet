@@ -430,16 +430,16 @@ func TestProcessSphinxPayload(t *testing.T) {
 
 	x, err := RandomElement()
 	assert.Nil(t, err)
-	asb, err := getSharedSecrets(nodes, x)
+	headerInitials, err := getSharedSecrets(nodes, x)
 	assert.Nil(t, err)
 
-	encMsg, err := encapsulateContent(asb, message)
+	encMsg, err := encapsulateContent(headerInitials, message)
 	assert.Nil(t, err)
 
 	decMsg := encMsg
 	privs := []*PrivateKey{priv1, priv2, priv3}
 	for i, v := range privs {
-		decMsg, err = ProcessSphinxPayload(asb[i].Alpha, decMsg, v)
+		decMsg, err = ProcessSphinxPayload(headerInitials[i].Alpha, decMsg, v)
 		if err != nil {
 			t.Error(err)
 		}

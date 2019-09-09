@@ -31,6 +31,27 @@ import (
 	"strings"
 )
 
+// EnsurePkiDb sets up the PKI database if it doesn't exist yet.
+func EnsurePkiDb(pkiDir string) error {
+	db, err := OpenDatabase(pkiDir, "sqlite3")
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	params := make(map[string]string)
+	params["Id"] = "TEXT"
+	params["Typ"] = "TEXT"
+	params["Config"] = "BLOB"
+
+	err = createTable(db, "Pki", params)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // OpenDatabase opens a connection with a specified database.
 // OpenDatabase returns the database object and an error.
 func OpenDatabase(dataSourceName, dbDriver string) (*sqlx.DB, error) {
@@ -45,10 +66,10 @@ func OpenDatabase(dataSourceName, dbDriver string) (*sqlx.DB, error) {
 	return db, err
 }
 
-// CreateTable creates a new table defined by a given name and specified
-// column fields. CreateTable returns an error if a table could not be
+// createTable creates a new table defined by a given name and specified
+// column fields. createTable returns an error if a table could not be
 // correctly created or when an SQL injection attacks was detected.
-func CreateTable(db *sqlx.DB, tableName string, params map[string]string) error {
+func createTable(db *sqlx.DB, tableName string, params map[string]string) error {
 	paramsAndTypes := make([]string, 0, len(params))
 
 	for key := range params {

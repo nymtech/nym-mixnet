@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	// PkiDir is the location of the database file, relative to the project root. TODO: move this to homedir.
-	PkiDir            = "pki/database.db"
+	// PkiDb is the location of the database file, relative to the project root. TODO: move this to homedir.
+	PkiDb             = "pki/database.db"
 	defaultHost       = "localhost"
 	defaultID         = "Client1"
 	defaultPort       = "9999"
@@ -34,7 +34,7 @@ func cmdRun(args []string, usage string) {
 		os.Exit(1)
 	}
 
-	db, err := pki.OpenDatabase(PkiDir, "sqlite3")
+	db, err := pki.OpenDatabase(PkiDb, "sqlite3")
 	if err != nil {
 		panic(err)
 	}
@@ -71,7 +71,7 @@ func cmdRun(args []string, usage string) {
 		os.Exit(-1)
 	}
 
-	client, err := client.NewClient(*id, *host, *port, privC, pubC, PkiDir, providerInfo)
+	client, err := client.NewClient(*id, *host, *port, privC, pubC, PkiDb, providerInfo)
 	if err != nil {
 		panic(err)
 	}

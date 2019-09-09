@@ -110,7 +110,7 @@ func (bc *BenchClient) RunBench() error {
 	client.ToggleControlMessageFetching(false)
 	client.ToggleDropCoverTraffic(false)
 	client.ToggleLoopCoverTraffic(false)
-	client.ToggleRateCompliantCoverMessages(false)
+	client.ToggleRateCompliantCoverTraffic(false)
 	client.UpdateDesiredRateParameter(10000000.0)
 	// to reduce effect of writing to stdout
 	client.DisableLogging()

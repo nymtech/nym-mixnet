@@ -16,3 +16,8 @@
 /build/loopix_client
 /build/loopix_mixnode
 /build/loopix_provider
+/build/bench-loopix-client
+/build/bench-loopix-provider
+/build/loopix-client
+/build/loopix-mixnode
+/build/loopix-provider

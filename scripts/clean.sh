@@ -17,12 +17,12 @@
 # This script should be run from inside the loopix-messaging package directory
 
 logDir="$PWD/logs"
-pkiDir="$PWD/pki/database.db"
+pkiDb="$PWD/pki/database.db"
 
-if [ -d $pkiDir ]
+if [ -f $pkiDb ]
 then
-    echo "Removing the following directory: " $pkiDir
-    rm -f $pkiDir
+    echo "Removing the pki database: " $pkiDb
+    rm $pkiDb
     echo "Removed existing PKI files."
 else
     echo "Nothing to remove. The PKI directory does not exist."

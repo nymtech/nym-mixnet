@@ -63,13 +63,13 @@ func PackForwardMessage(path config.E2EPath, delays []float64, message string) (
 	nodes = append(nodes, path.EgressProvider)
 	dest := path.Recipient
 
-	asb, header, err := createHeader(nodes, delays, dest)
+	headerInitials, header, err := createHeader(nodes, delays, dest)
 	if err != nil {
 		logLocal.WithError(err).Error("Error in PackForwardMessage - createHeader failed")
 		return SphinxPacket{}, err
 	}
 
-	payload, err := encapsulateContent(asb, message)
+	payload, err := encapsulateContent(headerInitials, message)
 	if err != nil {
 		logLocal.WithError(err).Error("Error in PackForwardMessage - encapsulateContent failed")
 		return SphinxPacket{}, err
@@ -91,13 +91,13 @@ func createHeader(nodes []config.MixConfig, delays []float64, dest config.Client
 		return nil, Header{}, err
 	}
 
-	asb, err := getSharedSecrets(nodes, x)
+	headerInitials, err := getSharedSecrets(nodes, x)
 	if err != nil {
 		logLocal.WithError(err).Error("Error in createHeader - getSharedSecrets failed")
 		return nil, Header{}, err
 	}
 
-	if len(asb) != len(nodes) {
+	if len(headerInitials) != len(nodes) {
 		logLocal.WithError(err).Error("Error in createHeader - wrong number of shared secrets failed")
 		return nil, Header{}, errors.New(" the number of shared secrets should be the same as the number of traversed nodes")
 	}
@@ -113,12 +113,12 @@ func createHeader(nodes []config.MixConfig, delays []float64, dest config.Client
 		commands = append(commands, c)
 	}
 
-	header, err := encapsulateHeader(asb, nodes, commands, dest)
+	header, err := encapsulateHeader(headerInitials, nodes, commands, dest)
 	if err != nil {
 		logLocal.WithError(err).Error("Error in createHeader - encapsulateHeader failed")
 		return nil, Header{}, err
 	}
-	return asb, header, nil
+	return headerInitials, header, nil
 
 }
 
@@ -126,7 +126,7 @@ func createHeader(nodes []config.MixConfig, delays []float64, dest config.Client
 // sequence of nodes the packet should traverse before reaching the destination, and message authentication codes,
 // given the pre-computed shared keys which are used for encryption.
 // encapsulateHeader returns the Header, or an error if any internal cryptographic of parsing operation failed.
-func encapsulateHeader(asb []HeaderInitials, nodes []config.MixConfig, commands []Commands, destination config.ClientConfig) (Header, error) {
+func encapsulateHeader(headerInitials []HeaderInitials, nodes []config.MixConfig, commands []Commands, destination config.ClientConfig) (Header, error) {
 	finalHop := RoutingInfo{NextHop: &Hop{Id: destination.Id, Address: destination.Host + ":" + destination.Port, PubKey: []byte{}}, RoutingCommands: &commands[len(commands)-1], NextHopMetaData: []byte{}, Mac: []byte{}}
 
 	finalHopBytes, err := proto.Marshal(&finalHop)
@@ -134,7 +134,7 @@ func encapsulateHeader(asb []HeaderInitials, nodes []config.MixConfig, commands 
 		return Header{}, err
 	}
 
-	kdfRes, err := KDF(asb[len(asb)-1].SecretHash)
+	kdfRes, err := KDF(headerInitials[len(headerInitials)-1].SecretHash)
 	if err != nil {
 		return Header{}, err
 	}
@@ -157,7 +157,7 @@ func encapsulateHeader(asb []HeaderInitials, nodes []config.MixConfig, commands 
 		nextNode := nodes[i+1]
 		routing := RoutingInfo{NextHop: &Hop{Id: nextNode.Id, Address: nextNode.Host + ":" + nextNode.Port, PubKey: nodes[i+1].PubKey}, RoutingCommands: &commands[i], NextHopMetaData: routingCommands[len(routingCommands)-1], Mac: mac}
 
-		encKey, err := KDF(asb[i].SecretHash)
+		encKey, err := KDF(headerInitials[i].SecretHash)
 		if err != nil {
 			return Header{}, err
 		}
@@ -173,7 +173,7 @@ func encapsulateHeader(asb []HeaderInitials, nodes []config.MixConfig, commands 
 		}
 
 		routingCommands = append(routingCommands, encRouting)
-		kdfResL, err := KDF(asb[i].SecretHash)
+		kdfResL, err := KDF(headerInitials[i].SecretHash)
 		if err != nil {
 			return Header{}, nil
 		}
@@ -183,7 +183,7 @@ func encapsulateHeader(asb []HeaderInitials, nodes []config.MixConfig, commands 
 		}
 
 	}
-	return Header{Alpha: asb[0].Alpha, Beta: encRouting, Mac: mac}, nil
+	return Header{Alpha: headerInitials[0].Alpha, Beta: encRouting, Mac: mac}, nil
 
 }
 
@@ -191,12 +191,12 @@ func encapsulateHeader(asb []HeaderInitials, nodes []config.MixConfig, commands 
 // and the AES_CTR encryption.
 // encapsulateContent returns the encrypted payload in byte representation. If the AES_CTR
 // encryption failed encapsulateContent returns an error.
-func encapsulateContent(asb []HeaderInitials, message string) ([]byte, error) {
+func encapsulateContent(headerInitials []HeaderInitials, message string) ([]byte, error) {
 
 	enc := []byte(message)
 
-	for i := len(asb) - 1; i >= 0; i-- {
-		sharedKey, err := KDF(asb[i].SecretHash)
+	for i := len(headerInitials) - 1; i >= 0; i-- {
+		sharedKey, err := KDF(headerInitials[i].SecretHash)
 		if err != nil {
 			return nil, err
 		}
