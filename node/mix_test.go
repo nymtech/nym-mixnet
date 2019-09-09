@@ -15,32 +15,30 @@
 package node
 
 import (
-	"github.com/nymtech/loopix-messaging/config"
-	sphinx "github.com/nymtech/loopix-messaging/sphinx"
-
-	"github.com/golang/protobuf/proto"
-	"github.com/stretchr/testify/assert"
-
-	"crypto/elliptic"
 	"os"
 	"reflect"
 	"testing"
+
+	"github.com/golang/protobuf/proto"
+	"github.com/nymtech/loopix-messaging/config"
+	"github.com/nymtech/loopix-messaging/sphinx"
+	"github.com/stretchr/testify/assert"
 )
 
 var nodes []config.MixConfig
 
 func createProviderWorker() (*Mix, error) {
-	pubP, privP, err := sphinx.GenerateKeyPair()
+	privP, pubP, err := sphinx.GenerateKeyPair()
 	if err != nil {
 		return nil, err
 	}
-	providerWorker := NewMix(pubP, privP)
+	providerWorker := NewMix(privP, pubP)
 	return providerWorker, nil
 }
 
-func createTestPacket(curve elliptic.Curve, mixes []config.MixConfig, provider config.MixConfig, recipient config.ClientConfig) (*sphinx.SphinxPacket, error) {
+func createTestPacket(mixes []config.MixConfig, provider config.MixConfig, recipient config.ClientConfig) (*sphinx.SphinxPacket, error) {
 	path := config.E2EPath{IngressProvider: provider, Mixes: mixes, EgressProvider: provider, Recipient: recipient}
-	testPacket, err := sphinx.PackForwardMessage(curve, path, []float64{1.4, 2.5, 2.3, 3.2, 7.4}, "Test Message")
+	testPacket, err := sphinx.PackForwardMessage(path, []float64{1.4, 2.5, 2.3, 3.2, 7.4}, "Test Message")
 	if err != nil {
 		return nil, err
 	}
@@ -48,21 +46,24 @@ func createTestPacket(curve elliptic.Curve, mixes []config.MixConfig, provider c
 }
 
 func createTestMixes() ([]config.MixConfig, error) {
-	pub1, _, err := sphinx.GenerateKeyPair()
+	_, pub1, err := sphinx.GenerateKeyPair()
 	if err != nil {
 		return nil, err
 	}
-	pub2, _, err := sphinx.GenerateKeyPair()
+
+	_, pub2, err := sphinx.GenerateKeyPair()
 	if err != nil {
 		return nil, err
 	}
-	pub3, _, err := sphinx.GenerateKeyPair()
+
+	_, pub3, err := sphinx.GenerateKeyPair()
 	if err != nil {
 		return nil, err
 	}
-	m1 := config.MixConfig{Id: "Mix1", Host: "localhost", Port: "3330", PubKey: pub1}
-	m2 := config.MixConfig{Id: "Mix2", Host: "localhost", Port: "3331", PubKey: pub2}
-	m3 := config.MixConfig{Id: "Mix2", Host: "localhost", Port: "3332", PubKey: pub3}
+
+	m1 := config.MixConfig{Id: "Mix1", Host: "localhost", Port: "3330", PubKey: pub1.Bytes()}
+	m2 := config.MixConfig{Id: "Mix2", Host: "localhost", Port: "3331", PubKey: pub2.Bytes()}
+	m3 := config.MixConfig{Id: "Mix2", Host: "localhost", Port: "3332", PubKey: pub3.Bytes()}
 	nodes = []config.MixConfig{m1, m2, m3}
 
 	return nodes, nil
@@ -88,14 +89,14 @@ func TestMixProcessPacket(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	provider := config.MixConfig{Id: "Provider", Host: "localhost", Port: "3333", PubKey: providerWorker.pubKey}
-	dest := config.ClientConfig{Id: "Destination", Host: "localhost", Port: "3334", PubKey: pubD, Provider: &provider}
+	provider := config.MixConfig{Id: "Provider", Host: "localhost", Port: "3333", PubKey: providerWorker.pubKey.Bytes()}
+	dest := config.ClientConfig{Id: "Destination", Host: "localhost", Port: "3334", PubKey: pubD.Bytes(), Provider: &provider}
 	mixes, err := createTestMixes()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	testPacket, err := createTestPacket(elliptic.P224(), mixes, provider, dest)
+	testPacket, err := createTestPacket(mixes, provider, dest)
 	if err != nil {
 		t.Fatal(err)
 	}

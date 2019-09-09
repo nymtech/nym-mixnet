@@ -20,7 +20,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"crypto/elliptic"
 	"errors"
 	"fmt"
 	"os"
@@ -36,33 +35,33 @@ var mixes []config.MixConfig
 
 func Setup() error {
 	for i := 0; i < 10; i++ {
-		pub, _, err := sphinx.GenerateKeyPair()
+		_, pub, err := sphinx.GenerateKeyPair()
 		if err != nil {
 			return err
 		}
-		mixes = append(mixes, config.NewMixConfig(fmt.Sprintf("Mix%d", i), "localhost", strconv.Itoa(3330+i), pub))
+		mixes = append(mixes, config.NewMixConfig(fmt.Sprintf("Mix%d", i), "localhost", strconv.Itoa(3330+i), pub.Bytes()))
 	}
 
 	// Create a mixClient
-	pubC, privC, err := sphinx.GenerateKeyPair()
+	privC, pubC, err := sphinx.GenerateKeyPair()
 	if err != nil {
 		return err
 	}
-	client = NewCryptoClient(pubC, privC, elliptic.P224(), config.MixConfig{}, NetworkPKI{})
+	client = NewCryptoClient(privC, pubC, config.MixConfig{}, NetworkPKI{})
 
 	//Client a pair of mix configs, a single provider and a recipient
-	pub1, _, err := sphinx.GenerateKeyPair()
+	_, pub1, err := sphinx.GenerateKeyPair()
 	if err != nil {
 		return err
 	}
 
-	pub2, _, err := sphinx.GenerateKeyPair()
+	_, pub2, err := sphinx.GenerateKeyPair()
 	if err != nil {
 		return err
 	}
 
-	m1 := config.MixConfig{Id: "Mix1", Host: "localhost", Port: "3330", PubKey: pub1}
-	m2 := config.MixConfig{Id: "Mix2", Host: "localhost", Port: "3331", PubKey: pub2}
+	m1 := config.MixConfig{Id: "Mix1", Host: "localhost", Port: "3330", PubKey: pub1.Bytes()}
+	m2 := config.MixConfig{Id: "Mix2", Host: "localhost", Port: "3331", PubKey: pub2.Bytes()}
 
 	client.Network = NetworkPKI{}
 	client.Network.Mixes = []config.MixConfig{m1, m2}
@@ -82,17 +81,17 @@ func TestMain(m *testing.M) {
 
 func TestCryptoClient_EncodeMessage(t *testing.T) {
 
-	pubP, _, err := sphinx.GenerateKeyPair()
+	_, pubP, err := sphinx.GenerateKeyPair()
 	if err != nil {
 		t.Fatal(err)
 	}
-	provider := config.MixConfig{Id: "Provider", Host: "localhost", Port: "3331", PubKey: pubP}
+	provider := config.MixConfig{Id: "Provider", Host: "localhost", Port: "3331", PubKey: pubP.Bytes()}
 
-	pubD, _, err := sphinx.GenerateKeyPair()
+	_, pubD, err := sphinx.GenerateKeyPair()
 	if err != nil {
 		t.Fatal(err)
 	}
-	recipient := config.ClientConfig{Id: "Recipient", Host: "localhost", Port: "9999", PubKey: pubD, Provider: &provider}
+	recipient := config.ClientConfig{Id: "Recipient", Host: "localhost", Port: "9999", PubKey: pubD.Bytes(), Provider: &provider}
 	client.Provider = provider
 
 	encoded, err := client.EncodeMessage("Hello world", recipient)

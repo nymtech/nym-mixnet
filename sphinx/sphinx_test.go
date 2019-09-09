@@ -16,198 +16,154 @@ package sphinx
 
 import (
 	"crypto/aes"
-	"crypto/elliptic"
-	"crypto/rand"
 	"fmt"
-	"math/big"
 	"os"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/nymtech/loopix-messaging/config"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/crypto/curve25519"
 )
 
 func TestMain(m *testing.M) {
-	curve = elliptic.P224()
 
 	os.Exit(m.Run())
 }
 
 func TestExpoSingleValue(t *testing.T) {
-	_, x, y, err := elliptic.GenerateKey(curve, rand.Reader)
+	randomPoint1, err := RandomElement()
+	assert.Nil(t, err)
 
-	if err != nil {
-		t.Error(err)
-	}
+	randomPoint2, err := RandomElement()
+	assert.Nil(t, err)
 
-	randomPoint := elliptic.Marshal(curve, x, y)
-	nBig := *big.NewInt(2)
-	exp := []big.Int{nBig}
+	exp := []*FieldElement{randomPoint2}
+	res := expo(randomPoint1, exp)
+	expectedRes := new(FieldElement)
+	curve25519.ScalarMult(&expectedRes.bytes, &randomPoint2.bytes, &randomPoint1.bytes)
 
-	result := expo(randomPoint, exp)
-	expectedX, expectedY := curve.ScalarMult(x, y, nBig.Bytes())
-	assert.Equal(t, elliptic.Marshal(curve, expectedX, expectedY), result)
-
+	assert.True(t, CompareElements(res, expectedRes))
 }
 
 func TestExpoMultipleValue(t *testing.T) {
-	_, x, y, err := elliptic.GenerateKey(curve, rand.Reader)
-
-	if err != nil {
-		t.Error(err)
-	}
-	randomPoint := elliptic.Marshal(curve, x, y)
-
-	var exp []big.Int
-	for i := 1; i <= 5; i++ {
-		exp = append(exp, *big.NewInt(int64(i)))
-	}
-
-	result := expo(randomPoint, exp)
-	expectedX, expectedY := curve.ScalarMult(x, y, big.NewInt(120).Bytes())
-	assert.Equal(t, elliptic.Marshal(curve, expectedX, expectedY), result)
+	// TODO: figure out a way to test it without having the FeMul function
 }
 
 func TestExpoBaseSingleValue(t *testing.T) {
-	nBig := *big.NewInt(2)
-	exp := []big.Int{nBig}
+	randomPoint, err := RandomElement()
+	assert.Nil(t, err)
 
-	result := expoGroupBase(curve, exp)
-	expectedX, expectedY := curve.ScalarBaseMult(nBig.Bytes())
+	exp := []*FieldElement{randomPoint}
 
-	assert.Equal(t, elliptic.Marshal(curve, expectedX, expectedY), result)
+	result := expoGroupBase(exp)
+	expectedRes := new(FieldElement)
+	curve25519.ScalarBaseMult(expectedRes.el(), randomPoint.el())
+
+	assert.Equal(t, result, expectedRes)
 }
 
 func TestExpoBaseMultipleValue(t *testing.T) {
-	var exp []big.Int
-	for i := 1; i <= 3; i++ {
-		exp = append(exp, *big.NewInt(int64(i)))
-	}
-	result := expoGroupBase(curve, exp)
-	expectedX, expectedY := curve.ScalarBaseMult(big.NewInt(6).Bytes())
-	assert.Equal(t, elliptic.Marshal(curve, expectedX, expectedY), result)
-
+	// TODO: figure out a way to test it without having the FeMul function
 }
 
 func TestHash(t *testing.T) {
-	_, x, y, err := elliptic.GenerateKey(curve, rand.Reader)
+	randomPoint, err := RandomElement()
+	assert.Nil(t, err)
 
-	if err != nil {
-		t.Error(err)
-	}
-
-	randomPoint := elliptic.Marshal(curve, x, y)
-	hVal := hash(randomPoint)
-
+	hVal, err := hash(randomPoint.Bytes())
+	assert.Nil(t, err)
 	assert.Equal(t, 32, len(hVal))
-
-}
-
-func TestBytesToBigNum(t *testing.T) {
-	bytes := big.NewInt(100).Bytes()
-	result := *bytesToBigNum(curve, bytes)
-	assert.Equal(t, *big.NewInt(100), result)
 }
 
 func TestGetAESKey(t *testing.T) {
-	_, x, y, err := elliptic.GenerateKey(curve, rand.Reader)
+	randomPoint, err := RandomElement()
+	assert.Nil(t, err)
 
-	if err != nil {
-		t.Error(err)
-	}
-
-	randomPoint := elliptic.Marshal(curve, x, y)
-	aesKey := KDF(randomPoint)
+	aesKey, err := KDF(randomPoint.Bytes())
+	assert.Nil(t, err)
 	assert.Equal(t, aes.BlockSize, len(aesKey))
 
 }
 
 func TestComputeBlindingFactor(t *testing.T) {
-	generator := elliptic.Marshal(curve, curve.Params().Gx, curve.Params().Gy)
+	// TODO: FIXME: currently I cannot test whether what we produce is actually the expected value
+	// as I don't have any reference output for any input on this curve
 
-	key := hash(generator)
-	b, err := computeBlindingFactor(curve, key)
-	if err != nil {
-		t.Error(err)
-	}
+	// basePoint is the x coordinate of the generator of the curve.
+	// So it's as good point as any for the computation
+	basePoint := [32]byte{9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 
-	expected := new(big.Int)
-	expected.SetString("252286146058081748716688845275111486959", 10)
+	key, err := hash(basePoint[:])
+	assert.Nil(t, err)
+	b, err := computeBlindingFactor(key)
+	assert.Nil(t, err)
 
-	assert.Equal(t, expected, b)
+	// I'M NOT SURE OF THAT EXPECTED VALUE
+	expected := [32]byte{0xd, 0xe6, 0xd2, 0x55, 0xc7, 0xde, 0x9a, 0x67, 0x16, 0x92, 0x2f, 0x5d, 0xe9, 0xee, 0x69, 0x44, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0}
+
+	assert.Equal(t, expected, b.bytes)
 }
 
 func TestGetSharedSecrets(t *testing.T) {
+	_, pub1, err := GenerateKeyPair()
+	assert.Nil(t, err)
 
-	pub1, _, err := GenerateKeyPair()
-	if err != nil {
-		t.Error(err)
-	}
-	pub2, _, err := GenerateKeyPair()
-	if err != nil {
-		t.Error(err)
-	}
-	pub3, _, err := GenerateKeyPair()
-	if err != nil {
-		t.Error(err)
-	}
+	_, pub2, err := GenerateKeyPair()
+	assert.Nil(t, err)
 
-	pubs := [][]byte{pub1, pub2, pub3}
+	_, pub3, err := GenerateKeyPair()
+	assert.Nil(t, err)
 
-	m1 := config.MixConfig{Id: "", Host: "", Port: "", PubKey: pub1}
-	m2 := config.MixConfig{Id: "", Host: "", Port: "", PubKey: pub2}
-	m3 := config.MixConfig{Id: "", Host: "", Port: "", PubKey: pub3}
+	pubs := []*PublicKey{pub1, pub2, pub3}
+
+	m1 := config.MixConfig{Id: "", Host: "", Port: "", PubKey: pub1.Bytes()}
+	m2 := config.MixConfig{Id: "", Host: "", Port: "", PubKey: pub2.Bytes()}
+	m3 := config.MixConfig{Id: "", Host: "", Port: "", PubKey: pub3.Bytes()}
 
 	nodes := []config.MixConfig{m1, m2, m3}
 
-	x := big.NewInt(100)
+	x, err := RandomElement()
+	assert.Nil(t, err)
 
-	result, err := getSharedSecrets(curve, nodes, *x)
-	if err != nil {
-		t.Error(err)
-	}
+	result, err := getSharedSecrets(nodes, x)
+	assert.Nil(t, err)
 
 	var expected []HeaderInitials
-	blindFactors := []big.Int{*x}
+	blindFactors := []*FieldElement{x}
 
 	v := x
-	alpha0X, alpha0Y := curve.Params().ScalarMult(curve.Params().Gx, curve.Params().Gy, v.Bytes())
-	alpha0 := elliptic.Marshal(curve, alpha0X, alpha0Y)
-	s0 := expo(pubs[0], blindFactors)
-	aesS0 := KDF(s0)
-	b0, err := computeBlindingFactor(curve, aesS0)
-	if err != nil {
-		t.Error(err)
-	}
+	alpha0 := new(FieldElement)
+	curve25519.ScalarBaseMult(alpha0.el(), v.el()) // alpha0 = g^x
+	s0 := expo(pubs[0].ToFieldElement(), blindFactors)
+	aesS0, err := KDF(s0.Bytes())
+	assert.Nil(t, err)
+	b0, err := computeBlindingFactor(aesS0)
+	assert.Nil(t, err)
 
-	expected = append(expected, HeaderInitials{Alpha: alpha0, Secret: s0, Blinder: b0.Bytes(), SecretHash: aesS0})
-	blindFactors = append(blindFactors, *b0)
+	expected = append(expected, HeaderInitials{Alpha: alpha0.Bytes(), Secret: s0.Bytes(), Blinder: b0.Bytes(), SecretHash: aesS0})
+	blindFactors = append(blindFactors, b0)
 
-	v = big.NewInt(0).Mul(v, b0)
-	alpha1X, alpha1Y := curve.Params().ScalarMult(curve.Params().Gx, curve.Params().Gy, v.Bytes())
-	alpha1 := elliptic.Marshal(curve, alpha1X, alpha1Y)
-	s1 := expo(pubs[1], blindFactors)
-	aesS1 := KDF(s1)
-	b1, err := computeBlindingFactor(curve, aesS1)
-	if err != nil {
-		t.Error(err)
-	}
+	alpha1 := new(FieldElement)
+	curve25519.ScalarMult(alpha1.el(), b0.el(), alpha0.el()) // alpha1 = g^(x * b0)
+	s1 := expo(pubs[1].ToFieldElement(), blindFactors)
+	aesS1, err := KDF(s1.Bytes())
+	assert.Nil(t, err)
+	b1, err := computeBlindingFactor(aesS1)
+	assert.Nil(t, err)
 
-	expected = append(expected, HeaderInitials{Alpha: alpha1, Secret: s1, Blinder: b1.Bytes(), SecretHash: aesS1})
-	blindFactors = append(blindFactors, *b1)
+	expected = append(expected, HeaderInitials{Alpha: alpha1.Bytes(), Secret: s1.Bytes(), Blinder: b1.Bytes(), SecretHash: aesS1})
+	blindFactors = append(blindFactors, b1)
 
-	v = big.NewInt(0).Mul(v, b1)
-	alpha2X, alpha2Y := curve.Params().ScalarMult(curve.Params().Gx, curve.Params().Gy, v.Bytes())
-	alpha2 := elliptic.Marshal(curve, alpha2X, alpha2Y)
-	s2 := expo(pubs[2], blindFactors)
-	aesS2 := KDF(s2)
-	b2, err := computeBlindingFactor(curve, aesS2)
-	if err != nil {
-		t.Error(err)
-	}
+	alpha2 := new(FieldElement)
+	curve25519.ScalarMult(alpha2.el(), b1.el(), alpha1.el()) // alpha2 = g^(x * b0 * b1)
+	s2 := expo(pubs[2].ToFieldElement(), blindFactors)
+	aesS2, err := KDF(s2.Bytes())
+	assert.Nil(t, err)
+	b2, err := computeBlindingFactor(aesS2)
+	assert.Nil(t, err)
 
-	expected = append(expected, HeaderInitials{Alpha: alpha2, Secret: s2, Blinder: b2.Bytes(), SecretHash: aesS2})
+	expected = append(expected, HeaderInitials{Alpha: alpha2.Bytes(), Secret: s2.Bytes(), Blinder: b2.Bytes(), SecretHash: aesS2})
 	// this assignment was ineffectual
 	// blindFactors = append(blindFactors, *b2)
 
@@ -215,34 +171,28 @@ func TestGetSharedSecrets(t *testing.T) {
 }
 
 func TestComputeFillers(t *testing.T) {
+	basePoint := [32]byte{9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 
-	g := elliptic.Marshal(curve, curve.Params().Gx, curve.Params().Gy)
-	h1 := HeaderInitials{Alpha: []byte{}, Secret: g, Blinder: []byte{}, SecretHash: []byte("1111111111111111")}
-	h2 := HeaderInitials{Alpha: []byte{}, Secret: g, Blinder: []byte{}, SecretHash: []byte("1111111111111111")}
-	h3 := HeaderInitials{Alpha: []byte{}, Secret: g, Blinder: []byte{}, SecretHash: []byte("1111111111111111")}
+	h1 := HeaderInitials{Alpha: []byte{}, Secret: basePoint[:], Blinder: []byte{}, SecretHash: []byte("1111111111111111")}
+	h2 := HeaderInitials{Alpha: []byte{}, Secret: basePoint[:], Blinder: []byte{}, SecretHash: []byte("1111111111111111")}
+	h3 := HeaderInitials{Alpha: []byte{}, Secret: basePoint[:], Blinder: []byte{}, SecretHash: []byte("1111111111111111")}
 	tuples := []HeaderInitials{h1, h2, h3}
 
-	pub1, _, err := GenerateKeyPair()
-	if err != nil {
-		t.Error(err)
-	}
-	pub2, _, err := GenerateKeyPair()
-	if err != nil {
-		t.Error(err)
-	}
-	pub3, _, err := GenerateKeyPair()
-	if err != nil {
-		t.Error(err)
-	}
+	_, pub1, err := GenerateKeyPair()
+	assert.Nil(t, err)
 
-	m1 := config.MixConfig{Id: "", Host: "", Port: "", PubKey: pub1}
-	m2 := config.MixConfig{Id: "", Host: "", Port: "", PubKey: pub2}
-	m3 := config.MixConfig{Id: "", Host: "", Port: "", PubKey: pub3}
+	_, pub2, err := GenerateKeyPair()
+	assert.Nil(t, err)
+
+	_, pub3, err := GenerateKeyPair()
+	assert.Nil(t, err)
+
+	m1 := config.MixConfig{Id: "", Host: "", Port: "", PubKey: pub1.Bytes()}
+	m2 := config.MixConfig{Id: "", Host: "", Port: "", PubKey: pub2.Bytes()}
+	m3 := config.MixConfig{Id: "", Host: "", Port: "", PubKey: pub3.Bytes()}
 
 	fillers, err := computeFillers([]config.MixConfig{m1, m2, m3}, tuples)
-	if err != nil {
-		t.Error(err)
-	}
+	assert.Nil(t, err)
 
 	fmt.Println("FILLER: ", fillers)
 
@@ -259,27 +209,21 @@ func TestXorBytesFail(t *testing.T) {
 }
 
 func TestEncapsulateHeader(t *testing.T) {
+	_, pub1, err := GenerateKeyPair()
+	assert.Nil(t, err)
 
-	pub1, _, err := GenerateKeyPair()
-	if err != nil {
-		t.Error(err)
-	}
-	pub2, _, err := GenerateKeyPair()
-	if err != nil {
-		t.Error(err)
-	}
-	pub3, _, err := GenerateKeyPair()
-	if err != nil {
-		t.Error(err)
-	}
-	pubD, _, err := GenerateKeyPair()
-	if err != nil {
-		t.Error(err)
-	}
+	_, pub2, err := GenerateKeyPair()
+	assert.Nil(t, err)
 
-	m1 := config.NewMixConfig("Node1", "localhost", "3331", pub1)
-	m2 := config.NewMixConfig("Node2", "localhost", "3332", pub2)
-	m3 := config.NewMixConfig("Node3", "localhost", "3333", pub3)
+	_, pub3, err := GenerateKeyPair()
+	assert.Nil(t, err)
+
+	_, pubD, err := GenerateKeyPair()
+	assert.Nil(t, err)
+
+	m1 := config.NewMixConfig("Node1", "localhost", "3331", pub1.Bytes())
+	m2 := config.NewMixConfig("Node2", "localhost", "3332", pub2.Bytes())
+	m3 := config.NewMixConfig("Node3", "localhost", "3333", pub3.Bytes())
 
 	nodes := []config.MixConfig{m1, m2, m3}
 
@@ -288,17 +232,15 @@ func TestEncapsulateHeader(t *testing.T) {
 	c3 := Commands{Delay: 1.10, Flag: []byte("1")}
 	commands := []Commands{c1, c2, c3}
 
-	x := big.NewInt(100)
-	sharedSecrets, err := getSharedSecrets(curve, nodes, *x)
-	if err != nil {
-		t.Error(err)
-	}
+	x, err := RandomElement()
+	assert.Nil(t, err)
+	sharedSecrets, err := getSharedSecrets(nodes, x)
+	assert.Nil(t, err)
 
 	actualHeader, err := encapsulateHeader(sharedSecrets, nodes, commands,
-		config.ClientConfig{Id: "DestinationId", Host: "DestinationAddress", Port: "9998", PubKey: pubD})
-	if err != nil {
-		t.Error(err)
-	}
+		config.ClientConfig{Id: "DestinationId", Host: "DestinationAddress", Port: "9998", PubKey: pubD.Bytes()})
+
+	assert.Nil(t, err)
 
 	routing1 := RoutingInfo{NextHop: &Hop{Id: "DestinationId",
 		Address: "DestinationAddress:9998",
@@ -309,58 +251,54 @@ func TestEncapsulateHeader(t *testing.T) {
 	}
 
 	routing1Bytes, err := proto.Marshal(&routing1)
-	if err != nil {
-		t.Error(err)
-	}
+	assert.Nil(t, err)
 
-	encRouting1, err := AesCtr(KDF(sharedSecrets[2].SecretHash), routing1Bytes)
-	if err != nil {
-		t.Error(err)
-	}
+	kdfRes, err := KDF(sharedSecrets[2].SecretHash)
+	assert.Nil(t, err)
+	encRouting1, err := AesCtr(kdfRes, routing1Bytes)
+	assert.Nil(t, err)
 
-	mac1, err := computeMac(KDF(sharedSecrets[2].SecretHash), encRouting1)
+	mac1, err := computeMac(kdfRes, encRouting1)
 	assert.Nil(t, err)
 
 	routing2 := RoutingInfo{NextHop: &Hop{Id: "Node3",
 		Address: "localhost:3333",
-		PubKey:  pub3,
+		PubKey:  pub3.Bytes(),
 	}, RoutingCommands: &c2,
 		NextHopMetaData: encRouting1,
 		Mac:             mac1,
 	}
 
 	routing2Bytes, err := proto.Marshal(&routing2)
-	if err != nil {
-		t.Error(err)
-	}
+	assert.Nil(t, err)
 
-	encRouting2, err := AesCtr(KDF(sharedSecrets[1].SecretHash), routing2Bytes)
-	if err != nil {
-		t.Error(err)
-	}
+	kdfRes, err = KDF(sharedSecrets[1].SecretHash)
+	assert.Nil(t, err)
 
-	mac2, err := computeMac(KDF(sharedSecrets[1].SecretHash), encRouting2)
+	encRouting2, err := AesCtr(kdfRes, routing2Bytes)
+	assert.Nil(t, err)
+
+	mac2, err := computeMac(kdfRes, encRouting2)
 	assert.Nil(t, err)
 
 	expectedRouting := RoutingInfo{NextHop: &Hop{Id: "Node2",
 		Address: "localhost:3332",
-		PubKey:  pub2,
+		PubKey:  pub2.Bytes(),
 	}, RoutingCommands: &c1,
 		NextHopMetaData: encRouting2,
 		Mac:             mac2,
 	}
 
 	expectedRoutingBytes, err := proto.Marshal(&expectedRouting)
-	if err != nil {
-		t.Error(err)
-	}
+	assert.Nil(t, err)
 
-	encExpectedRouting, err := AesCtr(KDF(sharedSecrets[0].SecretHash), expectedRoutingBytes)
-	if err != nil {
-		t.Error(err)
-	}
+	kdfRes, err = KDF(sharedSecrets[0].SecretHash)
+	assert.Nil(t, err)
 
-	mac3, err := computeMac(KDF(sharedSecrets[0].SecretHash), encExpectedRouting)
+	encExpectedRouting, err := AesCtr(kdfRes, expectedRoutingBytes)
+	assert.Nil(t, err)
+
+	mac3, err := computeMac(kdfRes, encExpectedRouting)
 	assert.Nil(t, err)
 
 	expectedHeader := Header{Alpha: sharedSecrets[0].Alpha,
@@ -372,35 +310,29 @@ func TestEncapsulateHeader(t *testing.T) {
 }
 
 func TestProcessSphinxHeader(t *testing.T) {
+	priv1, pub1, err := GenerateKeyPair()
+	assert.Nil(t, err)
 
-	pub1, priv1, err := GenerateKeyPair()
-	if err != nil {
-		t.Error(err)
-	}
-	pub2, _, err := GenerateKeyPair()
-	if err != nil {
-		t.Error(err)
-	}
-	pub3, _, err := GenerateKeyPair()
-	if err != nil {
-		t.Error(err)
-	}
+	_, pub2, err := GenerateKeyPair()
+	assert.Nil(t, err)
+
+	_, pub3, err := GenerateKeyPair()
+	assert.Nil(t, err)
 
 	c1 := Commands{Delay: 0.34}
 	c2 := Commands{Delay: 0.25}
 	c3 := Commands{Delay: 1.10}
 
-	m1 := config.NewMixConfig("Node1", "localhost", "3331", pub1)
-	m2 := config.NewMixConfig("Node2", "localhost", "3332", pub2)
-	m3 := config.NewMixConfig("Node3", "localhost", "3333", pub3)
+	m1 := config.NewMixConfig("Node1", "localhost", "3331", pub1.Bytes())
+	m2 := config.NewMixConfig("Node2", "localhost", "3332", pub2.Bytes())
+	m3 := config.NewMixConfig("Node3", "localhost", "3333", pub3.Bytes())
 
 	nodes := []config.MixConfig{m1, m2, m3}
 
-	x := big.NewInt(100)
-	sharedSecrets, err := getSharedSecrets(curve, nodes, *x)
-	if err != nil {
-		t.Error(err)
-	}
+	x, err := RandomElement()
+	assert.Nil(t, err)
+	sharedSecrets, err := getSharedSecrets(nodes, x)
+	assert.Nil(t, err)
 
 	// Intermediate steps, which are needed to check whether the processing of the header was correct
 	routing1 := RoutingInfo{NextHop: &Hop{Id: "DestinationId",
@@ -411,58 +343,55 @@ func TestProcessSphinxHeader(t *testing.T) {
 	}
 
 	routing1Bytes, err := proto.Marshal(&routing1)
-	if err != nil {
-		t.Error(err)
-	}
+	assert.Nil(t, err)
 
-	encRouting1, err := AesCtr(KDF(sharedSecrets[2].SecretHash), routing1Bytes)
-	if err != nil {
-		t.Error(err)
-	}
+	kdfRes, err := KDF(sharedSecrets[2].SecretHash)
+	assert.Nil(t, err)
 
-	mac1, err := computeMac(KDF(sharedSecrets[2].SecretHash), encRouting1)
+	encRouting1, err := AesCtr(kdfRes, routing1Bytes)
+	assert.Nil(t, err)
+
+	mac1, err := computeMac(kdfRes, encRouting1)
 	assert.Nil(t, err)
 
 	routing2 := RoutingInfo{NextHop: &Hop{Id: "Node3",
 		Address: "localhost:3333",
-		PubKey:  pub3,
+		PubKey:  pub3.Bytes(),
 	}, RoutingCommands: &c2,
 		NextHopMetaData: encRouting1,
 		Mac:             mac1,
 	}
 
 	routing2Bytes, err := proto.Marshal(&routing2)
-	if err != nil {
-		t.Error(err)
-	}
+	assert.Nil(t, err)
 
-	encRouting2, err := AesCtr(KDF(sharedSecrets[1].SecretHash), routing2Bytes)
-	if err != nil {
-		t.Error(err)
-	}
+	kdfRes, err = KDF(sharedSecrets[1].SecretHash)
+	assert.Nil(t, err)
 
-	mac2, err := computeMac(KDF(sharedSecrets[1].SecretHash), encRouting2)
+	encRouting2, err := AesCtr(kdfRes, routing2Bytes)
+	assert.Nil(t, err)
+
+	mac2, err := computeMac(kdfRes, encRouting2)
 	assert.Nil(t, err)
 
 	routing3 := RoutingInfo{NextHop: &Hop{Id: "Node2",
 		Address: "localhost:3332",
-		PubKey:  pub2,
+		PubKey:  pub2.Bytes(),
 	}, RoutingCommands: &c1,
 		NextHopMetaData: encRouting2,
 		Mac:             mac2,
 	}
 
 	routing3Bytes, err := proto.Marshal(&routing3)
-	if err != nil {
-		t.Error(err)
-	}
+	assert.Nil(t, err)
 
-	encExpectedRouting, err := AesCtr(KDF(sharedSecrets[0].SecretHash), routing3Bytes)
-	if err != nil {
-		t.Error(err)
-	}
+	kdfRes, err = KDF(sharedSecrets[0].SecretHash)
+	assert.Nil(t, err)
 
-	mac3, err := computeMac(KDF(sharedSecrets[0].SecretHash), encExpectedRouting)
+	encExpectedRouting, err := AesCtr(kdfRes, routing3Bytes)
+	assert.Nil(t, err)
+
+	mac3, err := computeMac(kdfRes, encExpectedRouting)
 	assert.Nil(t, err)
 
 	header := Header{Alpha: sharedSecrets[0].Alpha,
@@ -472,11 +401,9 @@ func TestProcessSphinxHeader(t *testing.T) {
 
 	nextHop, newCommands, newHeader, err := ProcessSphinxHeader(header, priv1)
 
-	if err != nil {
-		t.Error(err)
-	}
+	assert.Nil(t, err)
 
-	assert.True(t, proto.Equal(&nextHop, &Hop{Id: "Node2", Address: "localhost:3332", PubKey: pub2}))
+	assert.True(t, proto.Equal(&nextHop, &Hop{Id: "Node2", Address: "localhost:3332", PubKey: pub2.Bytes()}))
 	assert.True(t, proto.Equal(&newCommands, &c1))
 	assert.True(t, proto.Equal(&newHeader, &Header{Alpha: sharedSecrets[1].Alpha, Beta: encRouting2, Mac: mac2}))
 
@@ -486,38 +413,31 @@ func TestProcessSphinxPayload(t *testing.T) {
 
 	message := "Plaintext message"
 
-	pub1, priv1, err := GenerateKeyPair()
-	if err != nil {
-		t.Error(err)
-	}
-	pub2, priv2, err := GenerateKeyPair()
-	if err != nil {
-		t.Error(err)
-	}
-	pub3, priv3, err := GenerateKeyPair()
-	if err != nil {
-		t.Error(err)
-	}
+	priv1, pub1, err := GenerateKeyPair()
+	assert.Nil(t, err)
 
-	m1 := config.NewMixConfig("Node1", "localhost", "3331", pub1)
-	m2 := config.NewMixConfig("Node2", "localhost", "3332", pub2)
-	m3 := config.NewMixConfig("Node3", "localhost", "3333", pub3)
+	priv2, pub2, err := GenerateKeyPair()
+	assert.Nil(t, err)
+
+	priv3, pub3, err := GenerateKeyPair()
+	assert.Nil(t, err)
+
+	m1 := config.NewMixConfig("Node1", "localhost", "3331", pub1.Bytes())
+	m2 := config.NewMixConfig("Node2", "localhost", "3332", pub2.Bytes())
+	m3 := config.NewMixConfig("Node3", "localhost", "3333", pub3.Bytes())
 
 	nodes := []config.MixConfig{m1, m2, m3}
 
-	x := big.NewInt(100)
-	asb, err := getSharedSecrets(curve, nodes, *x)
-	if err != nil {
-		t.Error(err)
-	}
+	x, err := RandomElement()
+	assert.Nil(t, err)
+	asb, err := getSharedSecrets(nodes, x)
+	assert.Nil(t, err)
 
 	encMsg, err := encapsulateContent(asb, message)
-	if err != nil {
-		t.Error(err)
-	}
+	assert.Nil(t, err)
 
 	decMsg := encMsg
-	privs := [][]byte{priv1, priv2, priv3}
+	privs := []*PrivateKey{priv1, priv2, priv3}
 	for i, v := range privs {
 		decMsg, err = ProcessSphinxPayload(asb[i].Alpha, decMsg, v)
 		if err != nil {

@@ -3,6 +3,8 @@ package main
 import (
 	"os"
 
+	"github.com/nymtech/loopix-messaging/sphinx"
+
 	"github.com/nymtech/loopix-messaging/server"
 	"github.com/tav/golly/optparse"
 )
@@ -27,10 +29,10 @@ func cmdRun(args []string, usage string) {
 	}
 
 	// have constant keys to simplify the procedure so that pki/database would not need to be reset every run
-	privP := []byte{36, 15, 19, 37, 25, 137, 18, 6, 135, 122, 193, 134, 112, 92, 20, 237, 54, 204, 150, 242, 13, 113, 178, 175, 209, 164, 83, 201}
-	pubP := []byte{4, 212, 28, 250, 98, 86, 155, 24, 162, 117, 236, 179, 218, 173, 182, 40, 1, 18, 244, 31, 0, 246, 217, 108, 240, 152, 78, 215, 51, 70, 232, 202, 47, 45, 222, 165, 241, 132, 198, 137, 95, 126, 108, 47, 153, 49, 156, 105, 202, 153, 8, 249, 231, 84, 76, 241, 178}
+	privP := sphinx.BytesToPrivateKey([]byte{191, 43, 90, 175, 50, 224, 156, 22, 204, 173, 87, 255, 64, 152, 17, 30, 48, 162, 36, 95, 57, 34, 187, 183, 203, 215, 25, 172, 55, 199, 211, 59})
+	pubP := sphinx.BytesToPublicKey([]byte{17, 170, 15, 150, 155, 75, 240, 66, 54, 100, 131, 127, 193, 10, 133, 32, 62, 155, 9, 46, 200, 55, 60, 125, 223, 76, 170, 167, 100, 34, 176, 117})
 
-	baseProviderServer, err := server.NewProviderServer(defaultBenchmarkProviderID, defaultBenchmarkProviderHost, *port, pubP, privP, PkiDir)
+	baseProviderServer, err := server.NewProviderServer(defaultBenchmarkProviderID, defaultBenchmarkProviderHost, *port, privP, pubP, PkiDir)
 	if err != nil {
 		panic(err)
 	}

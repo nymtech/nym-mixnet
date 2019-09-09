@@ -29,7 +29,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
-	"crypto/elliptic"
 	"errors"
 )
 
@@ -46,14 +45,13 @@ type NetworkPKI struct {
 type MixClient interface {
 	EncodeIntoSphinxPacket(message string, recipient config.ClientConfig) ([]byte, error)
 	DecodeSphinxPacket(packet sphinx.SphinxPacket) (sphinx.SphinxPacket, error)
-	GetPublicKey() []byte
+	GetPublicKey() *sphinx.PublicKey
 }
 
 // CryptoClient contains a public/private keypair and an elliptic curve for a given provider and network.
 type CryptoClient struct {
-	pubKey   []byte
-	prvKey   []byte
-	curve    elliptic.Curve
+	pubKey   *sphinx.PublicKey
+	prvKey   *sphinx.PrivateKey
 	Provider config.MixConfig
 	Network  NetworkPKI
 }
@@ -84,7 +82,7 @@ func (c *CryptoClient) createSphinxPacket(message string, recipient config.Clien
 		return nil, err
 	}
 
-	sphinxPacket, err := sphinx.PackForwardMessage(c.curve, path, delays, message)
+	sphinxPacket, err := sphinx.PackForwardMessage(path, delays, message)
 	if err != nil {
 		logLocal.WithError(err).Error("Error in CreateSphinxPacket - the pack procedure failed")
 		return nil, err
@@ -165,11 +163,15 @@ func (c *CryptoClient) DecodeMessage(packet sphinx.SphinxPacket) (sphinx.SphinxP
 }
 
 // GetPublicKey returns the public key for this CryptoClient
-func (c *CryptoClient) GetPublicKey() []byte {
+func (c *CryptoClient) GetPublicKey() *sphinx.PublicKey {
 	return c.pubKey
 }
 
 // NewCryptoClient constructor function
-func NewCryptoClient(pubKey, privKey []byte, curve elliptic.Curve, provider config.MixConfig, network NetworkPKI) *CryptoClient {
-	return &CryptoClient{pubKey: pubKey, prvKey: privKey, curve: curve, Provider: provider, Network: network}
+func NewCryptoClient(privKey *sphinx.PrivateKey, pubKey *sphinx.PublicKey, provider config.MixConfig, network NetworkPKI) *CryptoClient {
+	return &CryptoClient{prvKey: privKey,
+		pubKey:   pubKey,
+		Provider: provider,
+		Network:  network,
+	}
 }

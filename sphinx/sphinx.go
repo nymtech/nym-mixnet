@@ -20,24 +20,20 @@
 package sphinx
 
 import (
-	fmt "fmt"
-
-	"github.com/nymtech/loopix-messaging/config"
-	"github.com/nymtech/loopix-messaging/logging"
-
+	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/elliptic"
+	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/golang/protobuf/proto"
-
-	"bytes"
-	"errors"
-	"math/big"
-	"strings"
+	"github.com/nymtech/loopix-messaging/config"
+	"github.com/nymtech/loopix-messaging/logging"
+	"golang.org/x/crypto/curve25519"
 )
 
-var curve = elliptic.P224()
+// var curve = elliptic.P224()
 var logLocal = logging.PackageLogger()
 
 const (
@@ -61,13 +57,13 @@ var (
 // In order to encapsulate the message PackForwardMessage computes two parts of the packet - the header and
 // the encrypted payload. If creating of any of the packet block failed, an error is returned. Otherwise,
 // a Sphinx packet format is returned.
-func PackForwardMessage(curve elliptic.Curve, path config.E2EPath, delays []float64, message string) (SphinxPacket, error) {
+func PackForwardMessage(path config.E2EPath, delays []float64, message string) (SphinxPacket, error) {
 	nodes := []config.MixConfig{path.IngressProvider}
 	nodes = append(nodes, path.Mixes...)
 	nodes = append(nodes, path.EgressProvider)
 	dest := path.Recipient
 
-	asb, header, err := createHeader(curve, nodes, delays, dest)
+	asb, header, err := createHeader(nodes, delays, dest)
 	if err != nil {
 		logLocal.WithError(err).Error("Error in PackForwardMessage - createHeader failed")
 		return SphinxPacket{}, err
@@ -88,16 +84,14 @@ func PackForwardMessage(curve elliptic.Curve, path config.E2EPath, delays []floa
 // createHeader computes the secret shared key between sender and the nodes and destination, which are used as keys for encryption.
 // createHeader returns the header and a list of the initial elements, used for creating the header. If any operation was unsuccessful
 // createHeader returns an error.
-func createHeader(curve elliptic.Curve, nodes []config.MixConfig, delays []float64, dest config.ClientConfig) ([]HeaderInitials, Header, error) {
-
-	x, err := randomBigInt(curve.Params())
-
+func createHeader(nodes []config.MixConfig, delays []float64, dest config.ClientConfig) ([]HeaderInitials, Header, error) {
+	x, err := RandomElement()
 	if err != nil {
-		logLocal.WithError(err).Error("Error in createHeader - randomBigInt failed")
+		logLocal.WithError(err).Error("Error in createHeader - Random failed")
 		return nil, Header{}, err
 	}
 
-	asb, err := getSharedSecrets(curve, nodes, x)
+	asb, err := getSharedSecrets(nodes, x)
 	if err != nil {
 		logLocal.WithError(err).Error("Error in createHeader - getSharedSecrets failed")
 		return nil, Header{}, err
@@ -140,13 +134,18 @@ func encapsulateHeader(asb []HeaderInitials, nodes []config.MixConfig, commands 
 		return Header{}, err
 	}
 
-	encFinalHop, err := AesCtr(KDF(asb[len(asb)-1].SecretHash), finalHopBytes)
+	kdfRes, err := KDF(asb[len(asb)-1].SecretHash)
+	if err != nil {
+		return Header{}, err
+	}
+
+	encFinalHop, err := AesCtr(kdfRes, finalHopBytes)
 	if err != nil {
 		logLocal.WithError(err).Error("Error in encapsulateHeader - AES_CTR encryption failed")
 		return Header{}, err
 	}
 
-	mac, err := computeMac(KDF(asb[len(asb)-1].SecretHash), encFinalHop)
+	mac, err := computeMac(kdfRes, encFinalHop)
 	if err != nil {
 		return Header{}, err
 	}
@@ -158,9 +157,12 @@ func encapsulateHeader(asb []HeaderInitials, nodes []config.MixConfig, commands 
 		nextNode := nodes[i+1]
 		routing := RoutingInfo{NextHop: &Hop{Id: nextNode.Id, Address: nextNode.Host + ":" + nextNode.Port, PubKey: nodes[i+1].PubKey}, RoutingCommands: &commands[i], NextHopMetaData: routingCommands[len(routingCommands)-1], Mac: mac}
 
-		encKey := KDF(asb[i].SecretHash)
-		routingBytes, err := proto.Marshal(&routing)
+		encKey, err := KDF(asb[i].SecretHash)
+		if err != nil {
+			return Header{}, err
+		}
 
+		routingBytes, err := proto.Marshal(&routing)
 		if err != nil {
 			return Header{}, err
 		}
@@ -171,7 +173,11 @@ func encapsulateHeader(asb []HeaderInitials, nodes []config.MixConfig, commands 
 		}
 
 		routingCommands = append(routingCommands, encRouting)
-		mac, err = computeMac(KDF(asb[i].SecretHash), encRouting)
+		kdfResL, err := KDF(asb[i].SecretHash)
+		if err != nil {
+			return Header{}, nil
+		}
+		mac, err = computeMac(kdfResL, encRouting)
 		if err != nil {
 			return Header{}, err
 		}
@@ -188,10 +194,12 @@ func encapsulateHeader(asb []HeaderInitials, nodes []config.MixConfig, commands 
 func encapsulateContent(asb []HeaderInitials, message string) ([]byte, error) {
 
 	enc := []byte(message)
-	// err := error(nil)
-	var err error
+
 	for i := len(asb) - 1; i >= 0; i-- {
-		sharedKey := KDF(asb[i].SecretHash)
+		sharedKey, err := KDF(asb[i].SecretHash)
+		if err != nil {
+			return nil, err
+		}
 		enc, err = AesCtr(sharedKey, enc)
 		if err != nil {
 			logLocal.WithError(err).Error("Error in encapsulateContent - AES_CTR encryption failed")
@@ -206,33 +214,59 @@ func encapsulateContent(asb []HeaderInitials, message string) ([]byte, error) {
 // shared secrets and blinding factors for each node on the path. As input getSharedSecrets takes the initial
 // secret value, the list of nodes, and the curve in which the cryptographic operations are performed.
 // getSharedSecrets returns the list of computed HeaderInitials or an error.
-func getSharedSecrets(curve elliptic.Curve, nodes []config.MixConfig, initialVal big.Int) ([]HeaderInitials, error) {
+func getSharedSecrets(nodes []config.MixConfig, initialVal *FieldElement) ([]HeaderInitials, error) {
 
-	blindFactors := []big.Int{initialVal}
+	blindFactors := []*FieldElement{initialVal}
 	var tuples []HeaderInitials
 
 	for i, n := range nodes {
 
-		alpha := expoGroupBase(curve, blindFactors)
+		// initial implementation:
+		// for x1, x2, ... xn in blindFactors:
+		// compute tmp := x1 * x2 * ... xn
+		// return g^tmp
 
-		// TODO: check if it's less than expected value so we could also determine here if we're using wrong curve
-		if len(n.PubKey) == 0 {
-			err := fmt.Errorf("No public key provided for node %v", i)
+		// replacing to:
+		// for x1, x2, ... xn in blindFactors:
+		// compute tmp1 := g^x1
+		// tmp2 := tmp1^x2
+		// ...
+		// return tmp{n-1}^xn
+		alpha := expoGroupBase(blindFactors)
+
+		if len(n.PubKey) != PublicKeySize {
+			err := fmt.Errorf("Invalid public key provided for node %v", i)
 			logLocal.Error(err)
 			return nil, err
 		}
 
-		s := expo(n.PubKey, blindFactors)
-		aesS := KDF(s)
+		// initial implementation:
+		// for x1, x2, ... xn in blindFactors:
+		// compute tmp := x1 * x2 * ... xn
+		// return base^tmp
 
-		blinder, err := computeBlindingFactor(curve, aesS)
+		// replacing to:
+		// for x1, x2, ... xn in blindFactors:
+		// compute tmp1 := base^x1
+		// tmp2 := tmp1^x2
+		// ...
+		// return tmpn-1^xn
+		s := expo(BytesToPublicKey(n.PubKey).ToFieldElement(), blindFactors)
+
+		// TODO: move to the other crypto file?
+		aesS, err := KDF(s.Bytes())
+		if err != nil {
+			return nil, err
+		}
+
+		blinder, err := computeBlindingFactor(aesS)
 		if err != nil {
 			logLocal.WithError(err).Error("Error in getSharedSecrets - computeBlindingFactor failed")
 			return nil, err
 		}
 
-		blindFactors = append(blindFactors, *blinder)
-		tuples = append(tuples, HeaderInitials{Alpha: alpha, Secret: s, Blinder: blinder.Bytes(), SecretHash: aesS})
+		blindFactors = append(blindFactors, blinder)
+		tuples = append(tuples, HeaderInitials{Alpha: alpha.Bytes(), Secret: s.Bytes(), Blinder: blinder.Bytes(), SecretHash: aesS})
 	}
 	return tuples, nil
 
@@ -271,16 +305,16 @@ func computeFillers(nodes []config.MixConfig, tuples []HeaderInitials) (string, 
 // shared secrets. Blinding factors allow both the sender and intermediate nodes
 // recompute the shared keys used at each hop of the message processing.
 // computeBlindingFactor returns a value of a blinding factor or an error.
-func computeBlindingFactor(curve elliptic.Curve, key []byte) (*big.Int, error) {
+func computeBlindingFactor(key []byte) (*FieldElement, error) {
 	iv := []byte("initialvector000")
 	blinderBytes, err := computeSharedSecretHash(key, iv)
 
 	if err != nil {
 		logLocal.WithError(err).Error("Error in computeBlindingFactor - computeSharedSecretHash failed")
-		return &big.Int{}, err
+		return nil, err
 	}
 
-	return bytesToBigNum(curve, blinderBytes), nil
+	return BytesToFieldElement(blinderBytes), nil
 }
 
 // computeSharedSecretHash computes the hash value of the shared secret key
@@ -307,7 +341,7 @@ func computeSharedSecretHash(key []byte, iv []byte) ([]byte, error) {
 // ProcessSphinxPacket returns a new packet and the routing information which should
 // be used by the processing node. If any cryptographic or parsing operation failed ProcessSphinxPacket
 // returns an error.
-func ProcessSphinxPacket(packetBytes []byte, privKey []byte) (Hop, Commands, []byte, error) {
+func ProcessSphinxPacket(packetBytes []byte, privKey *PrivateKey) (Hop, Commands, []byte, error) {
 
 	var packet SphinxPacket
 	err := proto.Unmarshal(packetBytes, &packet)
@@ -345,21 +379,24 @@ func ProcessSphinxPacket(packetBytes []byte, privKey []byte) (Hop, Commands, []b
 // performs the AES_CTR decryption, recomputes the blinding factor and updates the init public element from the header.
 // Next, ProcessSphinxHeader extracts the routing information from the decrypted packet and returns it, together with the
 // updated init public element. If any crypto or parsing operation failed ProcessSphinxHeader returns an error.
-func ProcessSphinxHeader(packet Header, privKey []byte) (Hop, Commands, Header, error) {
-
-	alpha := packet.Alpha
+func ProcessSphinxHeader(packet Header, privKey *PrivateKey) (Hop, Commands, Header, error) {
+	alpha := BytesToFieldElement(packet.Alpha)
 	beta := packet.Beta
 	mac := packet.Mac
 
-	var curve = elliptic.P224()
-	alphaX, alphaY := elliptic.Unmarshal(curve, alpha)
-	sharedSecretX, sharedSecretY := curve.Params().ScalarMult(alphaX, alphaY, privKey)
-	sharedSecret := elliptic.Marshal(curve, sharedSecretX, sharedSecretY)
+	sharedSecret := new(FieldElement)
+	curve25519.ScalarMult(sharedSecret.el(), privKey.ToFieldElement().el(), alpha.el())
 
-	aesS := KDF(sharedSecret)
-	encKey := KDF(aesS)
+	aesS, err := KDF(sharedSecret.Bytes())
+	if err != nil {
+		return Hop{}, Commands{}, Header{}, err
+	}
+	encKey, err := KDF(aesS)
+	if err != nil {
+		return Hop{}, Commands{}, Header{}, err
+	}
 
-	recomputedMac, err := computeMac(KDF(aesS), beta)
+	recomputedMac, err := computeMac(encKey, beta)
 	if err != nil {
 		return Hop{}, Commands{}, Header{}, err
 	}
@@ -368,14 +405,14 @@ func ProcessSphinxHeader(packet Header, privKey []byte) (Hop, Commands, Header, 
 		return Hop{}, Commands{}, Header{}, errors.New("packet processing error: MACs are not matching")
 	}
 
-	blinder, err := computeBlindingFactor(curve, aesS)
+	blinder, err := computeBlindingFactor(aesS)
 	if err != nil {
 		logLocal.WithError(err).Error("Error in ProcessSphinxHeader - computeBlindingFactor failed")
 		return Hop{}, Commands{}, Header{}, err
 	}
 
-	newAlphaX, newAlphaY := curve.Params().ScalarMult(alphaX, alphaY, blinder.Bytes())
-	newAlpha := elliptic.Marshal(curve, newAlphaX, newAlphaY)
+	newAlpha := new(FieldElement)
+	curve25519.ScalarMult(newAlpha.el(), blinder.el(), alpha.el())
 
 	decBeta, err := AesCtr(encKey, beta)
 	if err != nil {
@@ -391,7 +428,7 @@ func ProcessSphinxHeader(packet Header, privKey []byte) (Hop, Commands, Header, 
 	}
 	nextHop, commands, nextBeta, nextMac := readBeta(routingInfo)
 
-	return nextHop, commands, Header{Alpha: newAlpha, Beta: nextBeta, Mac: nextMac}, nil
+	return nextHop, commands, Header{Alpha: newAlpha.Bytes(), Beta: nextBeta, Mac: nextMac}, nil
 }
 
 // readBeta extracts all the fields from the RoutingInfo structure
@@ -407,15 +444,19 @@ func readBeta(beta RoutingInfo) (Hop, Commands, []byte, []byte) {
 // ProcessSphinxPayload unwraps a single layer of the encryption from the sphinx packet payload.
 // ProcessSphinxPayload first recomputes the shared secret which is used to perform the AES_CTR decryption.
 // ProcessSphinxPayload returns the new packet payload or an error if the decryption failed.
-func ProcessSphinxPayload(alpha []byte, payload []byte, privKey []byte) ([]byte, error) {
+func ProcessSphinxPayload(alpha []byte, payload []byte, privKey *PrivateKey) ([]byte, error) {
+	sharedSecret := new(FieldElement)
+	curve25519.ScalarMult(sharedSecret.el(), privKey.ToFieldElement().el(), BytesToFieldElement(alpha).el())
 
-	var curve = elliptic.P224()
-	alphaX, alphaY := elliptic.Unmarshal(curve, alpha)
-	sharedSecretX, sharedSecretY := curve.Params().ScalarMult(alphaX, alphaY, privKey)
-	sharedSecret := elliptic.Marshal(curve, sharedSecretX, sharedSecretY)
+	aesS, err := KDF(sharedSecret.Bytes())
+	if err != nil {
+		return nil, err
+	}
 
-	aesS := KDF(sharedSecret)
-	decKey := KDF(aesS)
+	decKey, err := KDF(aesS)
+	if err != nil {
+		return nil, err
+	}
 
 	decPayload, err := AesCtr(decKey, payload)
 	if err != nil {
