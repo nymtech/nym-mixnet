@@ -602,8 +602,8 @@ func (c *NetClient) ReadInNetworkFromPKI(pkiName string) error {
 	return nil
 }
 
-// The constructor function to create an new client object.
-// Function returns a new client object or an error, if occurred.
+// NewClient constructor function to create an new client object.
+// Returns a new client object or an error, if occurred.
 func NewClient(id, host, port string, prvKey *sphinx.PrivateKey, pubKey *sphinx.PublicKey, pkiDir string, provider config.MixConfig) (*NetClient, error) {
 	core := clientcore.NewCryptoClient(prvKey, pubKey, provider, clientcore.NetworkPKI{})
 	c := NetClient{id: id,
