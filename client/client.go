@@ -19,7 +19,6 @@ package client
 
 import (
 	"bytes"
-	"crypto/elliptic"
 	"crypto/rand"
 	"io/ioutil"
 	"math"
@@ -27,6 +26,8 @@ import (
 	"net"
 	"sync"
 	"time"
+
+	"github.com/nymtech/loopix-messaging/sphinx"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/nymtech/loopix-messaging/clientcore"
@@ -603,8 +604,8 @@ func (c *NetClient) ReadInNetworkFromPKI(pkiName string) error {
 
 // NewClient constructor function to create an new client object.
 // Returns a new client object or an error, if occurred.
-func NewClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir string, provider config.MixConfig) (*NetClient, error) {
-	core := clientcore.NewCryptoClient(pubKey, prvKey, elliptic.P224(), provider, clientcore.NetworkPKI{})
+func NewClient(id, host, port string, prvKey *sphinx.PrivateKey, pubKey *sphinx.PublicKey, pkiDir string, provider config.MixConfig) (*NetClient, error) {
+	core := clientcore.NewCryptoClient(prvKey, pubKey, provider, clientcore.NetworkPKI{})
 	c := NetClient{id: id,
 		host:         host,
 		port:         port,
@@ -612,7 +613,12 @@ func NewClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir strin
 		pkiDir:       pkiDir,
 		haltedCh:     make(chan struct{}),
 	}
-	c.config = config.ClientConfig{Id: c.id, Host: c.host, Port: c.port, PubKey: c.GetPublicKey(), Provider: &c.Provider}
+	c.config = config.ClientConfig{Id: c.id,
+		Host:     c.host,
+		Port:     c.port,
+		PubKey:   c.GetPublicKey().Bytes(),
+		Provider: &c.Provider,
+	}
 
 	configBytes, err := proto.Marshal(&c.config)
 
@@ -629,10 +635,15 @@ func NewClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir strin
 
 // NewTestClient constructs a client object, which can be used for testing. The object contains the crypto core
 // and the top-level of client, but does not involve networking and starting a listener.
-func NewTestClient(id, host, port string, pubKey []byte, prvKey []byte, pkiDir string, provider config.MixConfig) (*NetClient, error) {
-	core := clientcore.NewCryptoClient(pubKey, prvKey, elliptic.P224(), provider, clientcore.NetworkPKI{})
+func NewTestClient(id, host, port string, prvKey *sphinx.PrivateKey, pubKey *sphinx.PublicKey, pkiDir string, provider config.MixConfig) (*NetClient, error) {
+	core := clientcore.NewCryptoClient(prvKey, pubKey, provider, clientcore.NetworkPKI{})
 	c := NetClient{id: id, host: host, port: port, CryptoClient: core, pkiDir: pkiDir}
-	c.config = config.ClientConfig{Id: c.id, Host: c.host, Port: c.port, PubKey: c.GetPublicKey(), Provider: &c.Provider}
+	c.config = config.ClientConfig{Id: c.id,
+		Host:     c.host,
+		Port:     c.port,
+		PubKey:   c.GetPublicKey().Bytes(),
+		Provider: &c.Provider,
+	}
 
 	return &c, nil
 }

@@ -15,22 +15,20 @@
 package server
 
 import (
-	"path/filepath"
-
-	"github.com/nymtech/loopix-messaging/config"
-	"github.com/nymtech/loopix-messaging/helpers"
-	"github.com/nymtech/loopix-messaging/networker"
-	"github.com/nymtech/loopix-messaging/node"
-	"github.com/nymtech/loopix-messaging/sphinx"
-
-	"github.com/golang/protobuf/proto"
-
 	"bytes"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
 	"os"
+	"path/filepath"
+
+	"github.com/golang/protobuf/proto"
+	"github.com/nymtech/loopix-messaging/config"
+	"github.com/nymtech/loopix-messaging/helpers"
+	"github.com/nymtech/loopix-messaging/networker"
+	"github.com/nymtech/loopix-messaging/node"
+	"github.com/nymtech/loopix-messaging/sphinx"
 )
 
 // ProviderIt is the interface of a given Provider mix server
@@ -94,7 +92,7 @@ func (p *ProviderServer) run() {
 // unwrapping operation and checks whether the packet should be
 // forwarded or stored. If the processing was unsuccessful and error is returned.
 func (p *ProviderServer) receivedPacket(packet []byte) error {
-	logLocal.Info("Received new sphinx packet")
+	logLocal.Infof("%s: Received new sphinx packet", p.id)
 
 	c := make(chan []byte)
 	cAdr := make(chan sphinx.Hop)
@@ -137,12 +135,12 @@ func (p *ProviderServer) forwardPacket(sphinxPacket []byte, address string) erro
 	if err != nil {
 		return err
 	}
-
+	logLocal.Infof("%s: Going to forward the sphinx packet", p.id)
 	err = p.send(packetBytes, address)
 	if err != nil {
 		return err
 	}
-	logLocal.Info("Forwarded sphinx packet")
+	logLocal.Infof("%s: Forwarded sphinx packet", p.id)
 	return nil
 }
 
@@ -150,16 +148,19 @@ func (p *ProviderServer) forwardPacket(sphinxPacket []byte, address string) erro
 // and send the passed packet. If connection failed or
 // the packet could not be send, an error is returned
 func (p *ProviderServer) send(packet []byte, address string) error {
-
+	logLocal.Debugf("%s: Dialing", p.id)
 	conn, err := net.Dial("tcp", address)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
+	logLocal.Debugf("%s: Writing", p.id)
 
 	if _, err := conn.Write(packet); err != nil {
 		return err
 	}
+	logLocal.Debugf("%s: Returning", p.id)
+
 	return nil
 }
 
@@ -175,7 +176,7 @@ func (p *ProviderServer) listenForIncomingConnections() {
 		if err != nil {
 			logLocal.WithError(err).Error(err)
 		} else {
-			logLocal.Infof("Received new connection from %s", conn.RemoteAddr())
+			logLocal.Infof("%s: Received new connection from %s", p.id, conn.RemoteAddr())
 			errs := make(chan error, 1)
 			go p.handleConnection(conn, errs)
 			err = <-errs
@@ -402,10 +403,13 @@ func (p *ProviderServer) storeMessage(message []byte, inboxID string, messageID 
 
 // NewProviderServer constructs a new provider object.
 // NewProviderServer returns a new provider object and an error.
-func NewProviderServer(id string, host string, port string, pubKey []byte, prvKey []byte, pkiPath string) (*ProviderServer, error) {
-	node := node.NewMix(pubKey, prvKey)
+func NewProviderServer(id string, host string, port string, prvKey *sphinx.PrivateKey, pubKey *sphinx.PublicKey, pkiPath string) (*ProviderServer, error) {
+	node := node.NewMix(prvKey, pubKey)
 	providerServer := ProviderServer{id: id, host: host, port: port, Mix: node, listener: nil}
-	providerServer.config = config.MixConfig{Id: providerServer.id, Host: providerServer.host, Port: providerServer.port, PubKey: providerServer.GetPublicKey()}
+	providerServer.config = config.MixConfig{Id: providerServer.id,
+		Host:   providerServer.host,
+		Port:   providerServer.port,
+		PubKey: providerServer.GetPublicKey().Bytes()}
 	providerServer.assignedClients = make(map[string]ClientRecord)
 
 	configBytes, err := proto.Marshal(&providerServer.config)

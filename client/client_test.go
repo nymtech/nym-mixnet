@@ -15,6 +15,8 @@
 package client
 
 import (
+	"log"
+
 	sphinx "github.com/nymtech/loopix-messaging/sphinx"
 
 	"github.com/nymtech/loopix-messaging/config"
@@ -66,29 +68,24 @@ func SetupTestMixesInDatabase(t *testing.T) error {
 	}
 
 	db, err := setupTestDatabase()
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.Nil(t, err)
 
 	insertQuery := `INSERT INTO Pki (Id, Typ, Config) VALUES (?, ?, ?)`
 
 	for i := 0; i < 10; i++ {
-		pub, _, err := sphinx.GenerateKeyPair()
-		if err != nil {
-			return err
-		}
+		_, pub, err := sphinx.GenerateKeyPair()
+		assert.Nil(t, err)
+
 		m := config.MixConfig{Id: fmt.Sprintf("Mix%d", i),
 			Host:   "localhost",
 			Port:   strconv.Itoa(9980 + i),
-			PubKey: pub}
+			PubKey: pub.Bytes()}
 		mBytes, err := proto.Marshal(&m)
-		if err != nil {
-			return err
-		}
+		assert.Nil(t, err)
+
 		_, err = db.Exec(insertQuery, m.Id, "Mix", mBytes)
-		if err != nil {
-			return err
-		}
+		assert.Nil(t, err)
+
 		testMixSet = append(testMixSet, m)
 	}
 	return nil
@@ -101,21 +98,19 @@ func SetupTestClientsInDatabase(t *testing.T) {
 	}
 
 	db, err := setupTestDatabase()
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.Nil(t, err)
 
 	insertQuery := `INSERT INTO Pki (Id, Typ, Config) VALUES (?, ?, ?)`
 
 	for i := 0; i < 10; i++ {
-		pub, _, err := sphinx.GenerateKeyPair()
+		_, pub, err := sphinx.GenerateKeyPair()
 		if err != nil {
 			t.Fatal(err)
 		}
 		c := config.ClientConfig{Id: fmt.Sprintf("Client%d", i),
 			Host:   "localhost",
 			Port:   strconv.Itoa(9980 + i),
-			PubKey: pub}
+			PubKey: pub.Bytes()}
 		cBytes, err := proto.Marshal(&c)
 		if err != nil {
 			t.Fatal(err)
@@ -129,20 +124,14 @@ func SetupTestClientsInDatabase(t *testing.T) {
 }
 
 func SetupTestClient(t *testing.T) *NetClient {
-	pubP, _, err := sphinx.GenerateKeyPair()
-	if err != nil {
-		t.Fatal(err)
-	}
-	providerPubs = config.MixConfig{Id: "Provider", Host: "localhost", Port: "9995", PubKey: pubP}
+	_, pubP, err := sphinx.GenerateKeyPair()
+	assert.Nil(t, err)
+	providerPubs = config.MixConfig{Id: "Provider", Host: "localhost", Port: "9995", PubKey: pubP.Bytes()}
 
-	pubC, privC, err := sphinx.GenerateKeyPair()
-	if err != nil {
-		t.Fatal(err)
-	}
-	client, err := NewTestClient("Client", "localhost", "3332", pubC, privC, pkiDir, providerPubs)
-	if err != nil {
-		t.Fatal(err)
-	}
+	privC, pubC, err := sphinx.GenerateKeyPair()
+	assert.Nil(t, err)
+	client, err := NewTestClient("Client", "localhost", "3332", privC, pubC, pkiDir, providerPubs)
+	assert.Nil(t, err)
 
 	return client
 }
@@ -151,7 +140,7 @@ func clean() error {
 	if _, err := os.Stat(pkiDir); err == nil {
 		err := os.Remove(pkiDir)
 		if err != nil {
-			return err
+			log.Fatal(err)
 		}
 	}
 	return nil
@@ -261,9 +250,7 @@ func TestClient_ReadInMixnetPKI(t *testing.T) {
 
 	client := SetupTestClient(t)
 	err := client.ReadInNetworkFromPKI("testDatabase.db")
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.Nil(t, err)
 
 	assert.Equal(t, len(testMixSet), len(client.Network.Mixes))
 	for i := range testMixSet {

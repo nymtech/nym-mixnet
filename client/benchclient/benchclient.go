@@ -61,6 +61,7 @@ func (bc *BenchClient) sendMessages(n int, interval time.Duration) {
 	} else {
 		for i := 0; i < n; i++ {
 			msg := fmt.Sprintf("%v%v", payloadPrefix, i)
+			fmt.Println("Sending", msg)
 			if err := bc.SendMessage(msg, bc.recipient); err != nil {
 				// if there was error while sending message, we need to panic as otherwise the result might be biased
 				panic(err)
@@ -154,12 +155,12 @@ func NewBenchClient(nc *client.NetClient, numberMessages int, interval time.Dura
 			Id:     "BenchmarkClientRecipient",
 			Host:   "localhost",
 			Port:   "9998",
-			PubKey: []byte{4, 135, 189, 82, 245, 150, 224, 233, 57, 59, 242, 8, 142, 7, 3, 147, 51, 103, 243, 23, 190, 69, 148, 150, 88, 234, 183, 187, 37, 227, 247, 57, 83, 85, 250, 21, 162, 163, 64, 168, 6, 27, 2, 236, 76, 225, 133, 152, 102, 28, 42, 254, 225, 21, 12, 221, 211},
+			PubKey: []byte{21, 103, 130, 37, 105, 58, 162, 113, 91, 198, 76, 156, 194, 36, 45, 219, 121, 158, 255, 247, 44, 159, 243, 155, 215, 90, 67, 103, 64, 242, 95, 45},
 			Provider: &config.MixConfig{
 				Id:     "BenchmarkProvider",
 				Host:   "localhost",
 				Port:   "11000",
-				PubKey: []byte{4, 212, 28, 250, 98, 86, 155, 24, 162, 117, 236, 179, 218, 173, 182, 40, 1, 18, 244, 31, 0, 246, 217, 108, 240, 152, 78, 215, 51, 70, 232, 202, 47, 45, 222, 165, 241, 132, 198, 137, 95, 126, 108, 47, 153, 49, 156, 105, 202, 153, 8, 249, 231, 84, 76, 241, 178},
+				PubKey: []byte{17, 170, 15, 150, 155, 75, 240, 66, 54, 100, 131, 127, 193, 10, 133, 32, 62, 155, 9, 46, 200, 55, 60, 125, 223, 76, 170, 167, 100, 34, 176, 117},
 			},
 		},
 		numberMessages:     numberMessages,

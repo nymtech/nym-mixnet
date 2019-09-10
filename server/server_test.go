@@ -15,15 +15,6 @@
 package server
 
 import (
-	"github.com/nymtech/loopix-messaging/config"
-	"github.com/nymtech/loopix-messaging/helpers"
-	"github.com/nymtech/loopix-messaging/node"
-	"github.com/nymtech/loopix-messaging/sphinx"
-
-	"github.com/golang/protobuf/proto"
-	"github.com/stretchr/testify/assert"
-
-	"crypto/elliptic"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -31,31 +22,46 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/golang/protobuf/proto"
+	"github.com/nymtech/loopix-messaging/config"
+	"github.com/nymtech/loopix-messaging/helpers"
+	"github.com/nymtech/loopix-messaging/node"
+	"github.com/nymtech/loopix-messaging/sphinx"
+	"github.com/stretchr/testify/assert"
 )
 
 var mixServer *MixServer
 var providerServer *ProviderServer
 
 func createTestProvider() (*ProviderServer, error) {
-	pub, priv, err := sphinx.GenerateKeyPair()
+	priv, pub, err := sphinx.GenerateKeyPair()
 	if err != nil {
 		return nil, err
 	}
-	node := node.NewMix(pub, priv)
+	node := node.NewMix(priv, pub)
 	provider := ProviderServer{host: "localhost", port: "9999", Mix: node}
-	provider.config = config.MixConfig{Id: provider.id, Host: provider.host, Port: provider.port, PubKey: provider.GetPublicKey()}
+	provider.config = config.MixConfig{Id: provider.id,
+		Host:   provider.host,
+		Port:   provider.port,
+		PubKey: provider.GetPublicKey().Bytes(),
+	}
 	provider.assignedClients = make(map[string]ClientRecord)
 	return &provider, nil
 }
 
 func createTestMixnode() (*MixServer, error) {
-	pub, priv, err := sphinx.GenerateKeyPair()
+	priv, pub, err := sphinx.GenerateKeyPair()
 	if err != nil {
 		return nil, err
 	}
-	node := node.NewMix(pub, priv)
+	node := node.NewMix(priv, pub)
 	mix := MixServer{host: "localhost", port: "9995", Mix: node}
-	mix.config = config.MixConfig{Id: mix.id, Host: mix.host, Port: mix.port, PubKey: mix.GetPublicKey()}
+	mix.config = config.MixConfig{Id: mix.id,
+		Host:   mix.host,
+		Port:   mix.port,
+		PubKey: mix.GetPublicKey().Bytes(),
+	}
 	addr, err := helpers.ResolveTCPAddress(mix.host, mix.port)
 	if err != nil {
 		return nil, err
@@ -287,7 +293,7 @@ func TestProviderServer_HandleAssignRequest(t *testing.T) {
 
 func createTestPacket(t *testing.T) *sphinx.SphinxPacket {
 	path := config.E2EPath{IngressProvider: providerServer.config, Mixes: []config.MixConfig{mixServer.config}, EgressProvider: providerServer.config}
-	sphinxPacket, err := sphinx.PackForwardMessage(elliptic.P224(), path, []float64{0.1, 0.2, 0.3}, "Hello world")
+	sphinxPacket, err := sphinx.PackForwardMessage(path, []float64{0.1, 0.2, 0.3}, "Hello world")
 	if err != nil {
 		t.Fatal(err)
 		return nil

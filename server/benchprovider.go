@@ -17,14 +17,12 @@
 package server
 
 import (
+	"bytes"
 	"errors"
+	"fmt"
+	"net"
 	"os"
 	"time"
-
-	"bytes"
-	"fmt"
-	"io/ioutil"
-	"net"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/nymtech/loopix-messaging/config"
@@ -49,8 +47,8 @@ type BenchProvider struct {
 }
 
 func DisableLogging() {
-	logLocal.Warn("Disabling logging")
-	logLocal.Logger.Out = ioutil.Discard
+	// logLocal.Warn("Disabling logging")
+	// logLocal.Logger.Out = ioutil.Discard
 }
 
 // Start creates loggers for capturing info and error logs
@@ -129,7 +127,7 @@ func (p *BenchProvider) receivedPacket(packet []byte) error {
 
 	if bytes.Equal(flag, sphinx.LastHopFlag) {
 		if nextHop.Id == "BenchmarkClientRecipient" {
-			msgContent := string(dePacket[63:])
+			msgContent := string(dePacket[31:])
 			p.receivedMessages = append(p.receivedMessages, timestampedMessage{timestamp: time.Now(), content: msgContent})
 			p.receivedMessagesCount++
 			if p.receivedMessagesCount == p.numMessages {

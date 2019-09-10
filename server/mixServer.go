@@ -17,20 +17,24 @@ package server
 
 import (
 	"bytes"
+	"net"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/nymtech/loopix-messaging/config"
 	"github.com/nymtech/loopix-messaging/helpers"
 	"github.com/nymtech/loopix-messaging/logging"
 	"github.com/nymtech/loopix-messaging/networker"
 	"github.com/nymtech/loopix-messaging/node"
 	"github.com/nymtech/loopix-messaging/sphinx"
-
-	"net"
-
-	"github.com/golang/protobuf/proto"
+	"github.com/sirupsen/logrus"
 )
 
 var logLocal = logging.PackageLogger()
+
+func init() {
+	// For easier access for modifying logging level,
+	logLocal.Logger.SetLevel(logrus.InfoLevel)
+}
 
 // MixServerIt is the interface of a mix server.
 type MixServerIt interface {
@@ -63,7 +67,7 @@ func (m *MixServer) GetConfig() config.MixConfig {
 }
 
 func (m *MixServer) receivedPacket(packet []byte) error {
-	logLocal.Info("Received new sphinx packet")
+	logLocal.Infof("%s: Received new sphinx packet", m.id)
 
 	c := make(chan []byte)
 	cAdr := make(chan sphinx.Hop)
@@ -178,10 +182,14 @@ func (m *MixServer) handleConnection(conn net.Conn, errs chan<- error) {
 }
 
 // NewMixServer constructor
-func NewMixServer(id, host, port string, pubKey []byte, prvKey []byte, pkiPath string) (*MixServer, error) {
-	mix := node.NewMix(pubKey, prvKey)
+func NewMixServer(id, host, port string, prvKey *sphinx.PrivateKey, pubKey *sphinx.PublicKey, pkiPath string) (*MixServer, error) {
+	mix := node.NewMix(prvKey, pubKey)
 	mixServer := MixServer{id: id, host: host, port: port, Mix: mix, listener: nil}
-	mixServer.config = config.MixConfig{Id: mixServer.id, Host: mixServer.host, Port: mixServer.port, PubKey: mixServer.GetPublicKey()}
+	mixServer.config = config.MixConfig{Id: mixServer.id,
+		Host:   mixServer.host,
+		Port:   mixServer.port,
+		PubKey: mixServer.GetPublicKey().Bytes(),
+	}
 
 	configBytes, err := proto.Marshal(&mixServer.config)
 	if err != nil {
