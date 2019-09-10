@@ -83,8 +83,8 @@ func (bc *BenchClient) createSummaryDoc() error {
 		return err
 	}
 	fmt.Fprintf(f, "Timestamp\tContent\n")
-	var earliestMessageTimestamp time.Time = bc.sentMessages[0].timestamp
-	var latestMessageTimestamp time.Time = bc.sentMessages[0].timestamp
+	earliestMessageTimestamp := bc.sentMessages[0].timestamp
+	latestMessageTimestamp := bc.sentMessages[0].timestamp
 
 	for _, msg := range bc.sentMessages {
 		if msg.timestamp.Before(earliestMessageTimestamp) {
@@ -97,7 +97,11 @@ func (bc *BenchClient) createSummaryDoc() error {
 		fmt.Fprintf(f, "%v\t%v\n", msg.timestamp, msg.content)
 	}
 
-	fmt.Printf("Earliest timestamp: %v\nLatest timestamp: %v\ntimedelta: %v\n", earliestMessageTimestamp, latestMessageTimestamp, latestMessageTimestamp.Sub(earliestMessageTimestamp))
+	fmt.Printf("Earliest timestamp: %v\nLatest timestamp: %v\ntimedelta: %v\n",
+		earliestMessageTimestamp,
+		latestMessageTimestamp,
+		latestMessageTimestamp.Sub(earliestMessageTimestamp),
+	)
 
 	return nil
 }
@@ -106,7 +110,7 @@ func (bc *BenchClient) RunBench() error {
 	defer bc.Shutdown()
 	fmt.Println("starting bench client")
 
-	// ignore all loopix requirements about cover trafic, etc. and just blast the system with messages
+	// ignore all loopix requirements about cover traffic, etc. and just blast the system with messages
 	client.ToggleControlMessageFetching(false)
 	client.ToggleDropCoverTraffic(false)
 	client.ToggleLoopCoverTraffic(false)
@@ -147,23 +151,25 @@ func (bc *BenchClient) pregeneratePacket(message string, recipient config.Client
 	return nil
 }
 
-func NewBenchClient(nc *client.NetClient, numberMessages int, interval time.Duration, pregen bool) (*BenchClient, error) {
+func NewBenchClient(nc *client.NetClient, numMsgs int, interval time.Duration, pregen bool) (*BenchClient, error) {
 	bc := &BenchClient{
 		NetClient:    nc,
-		sentMessages: make([]timestampedMessage, numberMessages),
+		sentMessages: make([]timestampedMessage, numMsgs),
 		recipient: config.ClientConfig{
-			Id:     "BenchmarkClientRecipient",
-			Host:   "localhost",
-			Port:   "9998",
-			PubKey: []byte{21, 103, 130, 37, 105, 58, 162, 113, 91, 198, 76, 156, 194, 36, 45, 219, 121, 158, 255, 247, 44, 159, 243, 155, 215, 90, 67, 103, 64, 242, 95, 45},
+			Id:   "BenchmarkClientRecipient",
+			Host: "localhost",
+			Port: "9998",
+			PubKey: []byte{21, 103, 130, 37, 105, 58, 162, 113, 91, 198, 76, 156, 194, 36, 45,
+				219, 121, 158, 255, 247, 44, 159, 243, 155, 215, 90, 67, 103, 64, 242, 95, 45},
 			Provider: &config.MixConfig{
-				Id:     "BenchmarkProvider",
-				Host:   "localhost",
-				Port:   "11000",
-				PubKey: []byte{17, 170, 15, 150, 155, 75, 240, 66, 54, 100, 131, 127, 193, 10, 133, 32, 62, 155, 9, 46, 200, 55, 60, 125, 223, 76, 170, 167, 100, 34, 176, 117},
+				Id:   "BenchmarkProvider",
+				Host: "localhost",
+				Port: "11000",
+				PubKey: []byte{17, 170, 15, 150, 155, 75, 240, 66, 54, 100, 131, 127, 193, 10, 133,
+					32, 62, 155, 9, 46, 200, 55, 60, 125, 223, 76, 170, 167, 100, 34, 176, 117},
 			},
 		},
-		numberMessages:     numberMessages,
+		numberMessages:     numMsgs,
 		interval:           interval,
 		pregen:             pregen,
 		pregeneratedPacket: nil,

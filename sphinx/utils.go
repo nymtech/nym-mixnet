@@ -35,7 +35,7 @@ func BytesToString(b []byte) string {
 	result := ""
 	for _, v := range b {
 		s := fmt.Sprintf("%v", v)
-		result = result + s
+		result += s
 	}
 	return result
 }

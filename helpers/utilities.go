@@ -49,7 +49,7 @@ func Permute(slice []config.MixConfig) ([]config.MixConfig, error) {
 }
 
 // RandomSample takes a slice of MixConfigs, and returns a new
-// slice of length `length` in a randomized order.
+// slice of length `length` in a randomised order.
 func RandomSample(slice []config.MixConfig, length int) ([]config.MixConfig, error) {
 	if len(slice) < length {
 		return nil, errors.New(" cannot take a sample larger than the given list")
@@ -123,7 +123,7 @@ func DirExists(path string) (bool, error) {
 // SHA256 computes the hash value of a given argument using SHA256 algorithm.
 func SHA256(arg []byte) ([]byte, error) {
 	h := sha256.New()
-	if _, err := h.Write([]byte(arg)); err != nil {
+	if _, err := h.Write(arg); err != nil {
 		return nil, err
 	}
 	return h.Sum(nil), nil
@@ -224,5 +224,5 @@ func GetLocalIP() (string, error) {
 		}
 	}
 
-	return "", errors.New("Couldn't find a valid IP for your machine, check your internet connection")
+	return "", errors.New("couldn't find a valid IP for your machine, check your internet connection")
 }

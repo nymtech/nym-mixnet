@@ -31,8 +31,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var mixServer *MixServer
-var providerServer *ProviderServer
+//nolint: gochecknoglobals
+var (
+	mixServer      *MixServer
+	providerServer *ProviderServer
+)
 
 func createTestProvider() (*ProviderServer, error) {
 	priv, pub, err := sphinx.GenerateKeyPair()
@@ -114,13 +117,19 @@ func TestProviderServer_AuthenticateUser_Pass(t *testing.T) {
 	testToken := []byte("AuthenticationToken")
 	record := ClientRecord{id: "Alice", host: "localhost", port: "1111", pubKey: nil, token: testToken}
 	providerServer.assignedClients["Alice"] = record
-	assert.True(t, providerServer.authenticateUser("Alice", []byte("AuthenticationToken")), " Authentication should be successful")
+	assert.True(t,
+		providerServer.authenticateUser("Alice", []byte("AuthenticationToken")),
+		" Authentication should be successful",
+	)
 }
 
 func TestProviderServer_AuthenticateUser_Fail(t *testing.T) {
 	record := ClientRecord{id: "Alice", host: "localhost", port: "1111", pubKey: nil, token: []byte("AuthenticationToken")}
 	providerServer.assignedClients["Alice"] = record
-	assert.False(t, providerServer.authenticateUser("Alice", []byte("WrongAuthToken")), " Authentication should not be successful")
+	assert.False(t,
+		providerServer.authenticateUser("Alice", []byte("WrongAuthToken")),
+		" Authentication should not be successful",
+	)
 }
 
 func createInbox(id string, t *testing.T) {
@@ -134,10 +143,8 @@ func createInbox(id string, t *testing.T) {
 		if err := os.MkdirAll(path, 0755); err != nil {
 			t.Fatal(err)
 		}
-	} else {
-		if err := os.MkdirAll(path, 0755); err != nil {
-			t.Fatal(err)
-		}
+	} else if err := os.MkdirAll(path, 0755); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -212,8 +219,7 @@ func TestProviderServer_StoreMessage(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = os.Stat(filePath)
-	if err != nil {
+	if _, err := os.Stat(filePath); err != nil {
 		t.Fatal(err)
 	}
 	assert.Nil(t, err, "The file with the message should be created")
@@ -228,7 +234,12 @@ func TestProviderServer_StoreMessage(t *testing.T) {
 
 func TestProviderServer_HandlePullRequest_Pass(t *testing.T) {
 	testPullRequest := config.PullRequest{ClientId: "PassTestId", Token: []byte("TestToken")}
-	providerServer.assignedClients["PassTestId"] = ClientRecord{id: "TestId", host: "localhost", port: "1111", pubKey: nil, token: []byte("TestToken")}
+	providerServer.assignedClients["PassTestId"] = ClientRecord{id: "TestId",
+		host:   "localhost",
+		port:   "1111",
+		pubKey: nil,
+		token:  []byte("TestToken"),
+	}
 	bTestPullRequest, err := proto.Marshal(&testPullRequest)
 	if err != nil {
 		t.Error(err)
@@ -247,7 +258,11 @@ func TestProviderServer_HandlePullRequest_Fail(t *testing.T) {
 		t.Error(err)
 	}
 	err = providerServer.handlePullRequest(bTestPullRequest)
-	assert.EqualError(t, errors.New("authentication went wrong"), err.Error(), "HandlePullRequest should return an error if authentication failed")
+	assert.EqualError(t,
+		errors.New("authentication went wrong"),
+		err.Error(),
+		"HandlePullRequest should return an error if authentication failed",
+	)
 }
 
 func TestProviderServer_RegisterNewClient(t *testing.T) {
@@ -292,7 +307,10 @@ func TestProviderServer_HandleAssignRequest(t *testing.T) {
 }
 
 func createTestPacket(t *testing.T) *sphinx.SphinxPacket {
-	path := config.E2EPath{IngressProvider: providerServer.config, Mixes: []config.MixConfig{mixServer.config}, EgressProvider: providerServer.config}
+	path := config.E2EPath{IngressProvider: providerServer.config,
+		Mixes:          []config.MixConfig{mixServer.config},
+		EgressProvider: providerServer.config,
+	}
 	sphinxPacket, err := sphinx.PackForwardMessage(path, []float64{0.1, 0.2, 0.3}, "Hello world")
 	if err != nil {
 		t.Fatal(err)

@@ -37,6 +37,8 @@ import (
 	"github.com/nymtech/loopix-messaging/networker"
 )
 
+// TODO: we need to deal with all those globals
+//nolint: gochecknoglobals
 var (
 	logLocal                          = logging.PackageLogger()
 	loopCoverTrafficEnabled           = true
@@ -148,7 +150,7 @@ func DisableLogging() {
 
 // Start reads the network and users information from the PKI database
 // and starts the listening server. Returns an error
-// signaling whenever any operation was unsuccessful.
+// signalling whenever any operation was unsuccessful.
 func (c *NetClient) Start() error {
 	if err := c.resolveAddressAndStartListening(); err != nil {
 		return err
@@ -518,8 +520,7 @@ func (c *NetClient) runLoopCoverTrafficStream() error {
 			return err
 		}
 		logLocal.Info("Loop message sent")
-		err = delayBeforeContinue(loopRate)
-		if err != nil {
+		if err := delayBeforeContinue(loopRate); err != nil {
 			return err
 		}
 	}
@@ -541,8 +542,7 @@ func (c *NetClient) runDropCoverTrafficStream() error {
 			return err
 		}
 		logLocal.Info("Drop packet sent")
-		err = delayBeforeContinue(dropRate)
-		if err != nil {
+		if err := delayBeforeContinue(dropRate); err != nil {
 			return err
 		}
 	}
@@ -604,7 +604,17 @@ func (c *NetClient) ReadInNetworkFromPKI(pkiName string) error {
 
 // NewClient constructor function to create an new client object.
 // Returns a new client object or an error, if occurred.
-func NewClient(id, host, port string, prvKey *sphinx.PrivateKey, pubKey *sphinx.PublicKey, pkiDir string, provider config.MixConfig) (*NetClient, error) {
+// TODO: temporarily just split the function signature in multiple lines to make the lines shorter,
+// however, we should perhaps pass some struct instead like 'clientConfig'
+// that would encapsulate all the parameters?
+func NewClient(id string,
+	host string,
+	port string,
+	prvKey *sphinx.PrivateKey,
+	pubKey *sphinx.PublicKey,
+	pkiDir string,
+	provider config.MixConfig,
+) (*NetClient, error) {
 	core := clientcore.NewCryptoClient(prvKey, pubKey, provider, clientcore.NetworkPKI{})
 	c := NetClient{id: id,
 		host:         host,
@@ -635,7 +645,15 @@ func NewClient(id, host, port string, prvKey *sphinx.PrivateKey, pubKey *sphinx.
 
 // NewTestClient constructs a client object, which can be used for testing. The object contains the crypto core
 // and the top-level of client, but does not involve networking and starting a listener.
-func NewTestClient(id, host, port string, prvKey *sphinx.PrivateKey, pubKey *sphinx.PublicKey, pkiDir string, provider config.MixConfig) (*NetClient, error) {
+// TODO: similar issue as with 'NewClient' - need to create some config struct with the parameters
+func NewTestClient(id string,
+	host string,
+	port string,
+	prvKey *sphinx.PrivateKey,
+	pubKey *sphinx.PublicKey,
+	pkiDir string,
+	provider config.MixConfig,
+) (*NetClient, error) {
 	core := clientcore.NewCryptoClient(prvKey, pubKey, provider, clientcore.NetworkPKI{})
 	c := NetClient{id: id, host: host, port: port, CryptoClient: core, pkiDir: pkiDir}
 	c.config = config.ClientConfig{Id: c.id,

@@ -20,18 +20,17 @@
 package clientcore
 
 import (
+	"errors"
 	"fmt"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/nymtech/loopix-messaging/config"
 	"github.com/nymtech/loopix-messaging/helpers"
 	"github.com/nymtech/loopix-messaging/logging"
 	sphinx "github.com/nymtech/loopix-messaging/sphinx"
-
-	"github.com/golang/protobuf/proto"
-
-	"errors"
 )
 
+// TODO: the case of the global logger, perhaps make it part of a CryptoClient struct?
 var logLocal = logging.PackageLogger()
 
 // NetworkPKI holds PKI data about tne current network topology.
@@ -66,7 +65,7 @@ const (
 // The function generates a random path and a set of random values from exponential distribution.
 // Given those values it triggers the encode function, which packs the message into the
 // sphinx cryptographic packet format. Next, the encoded packet is combined with a
-// flag signaling that this is a usual network packet, and passed to be send.
+// flag signalling that this is a usual network packet, and passed to be send.
 // The function returns an error if any issues occurred.
 func (c *CryptoClient) createSphinxPacket(message string, recipient config.ClientConfig) ([]byte, error) {
 
@@ -97,15 +96,20 @@ func (c *CryptoClient) createSphinxPacket(message string, recipient config.Clien
 func (c *CryptoClient) buildPath(recipient config.ClientConfig) (config.E2EPath, error) {
 	mixSeq, err := c.getRandomMixSequence(c.Network.Mixes, pathLength)
 	if err != nil {
-		logLocal.WithError(err).Error("Error in buildPath - generating random mix path failed")
+		logLocal.WithError(err).Error("error in buildPath - generating random mix path failed")
 		return config.E2EPath{}, err
 	}
 	if recipient.Provider == nil || len(recipient.Provider.PubKey) == 0 {
-		err := fmt.Errorf("Error in buildPath - could not create path to the recipient, the EgressProvider has invalid configuration")
+		err := fmt.Errorf("error in buildPath - could not create path to the recipient," +
+			" the EgressProvider has invalid configuration")
 		logLocal.Error(err)
 		return config.E2EPath{}, err
 	}
-	path := config.E2EPath{IngressProvider: c.Provider, Mixes: mixSeq, EgressProvider: *recipient.Provider, Recipient: recipient}
+	path := config.E2EPath{IngressProvider: c.Provider,
+		Mixes:          mixSeq,
+		EgressProvider: *recipient.Provider,
+		Recipient:      recipient,
+	}
 	return path, nil
 }
 
@@ -168,7 +172,12 @@ func (c *CryptoClient) GetPublicKey() *sphinx.PublicKey {
 }
 
 // NewCryptoClient constructor function
-func NewCryptoClient(privKey *sphinx.PrivateKey, pubKey *sphinx.PublicKey, provider config.MixConfig, network NetworkPKI) *CryptoClient {
+// TODO: Same issue as with the 'NewClient' function
+func NewCryptoClient(privKey *sphinx.PrivateKey,
+	pubKey *sphinx.PublicKey,
+	provider config.MixConfig,
+	network NetworkPKI,
+) *CryptoClient {
 	return &CryptoClient{prvKey: privKey,
 		pubKey:   pubKey,
 		Provider: provider,

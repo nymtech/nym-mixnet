@@ -85,8 +85,8 @@ func (p *BenchProvider) createSummaryDoc() error {
 		return err
 	}
 	fmt.Fprintf(f, "Timestamp\tContent\n")
-	var earliestMessageTimestamp time.Time = p.receivedMessages[0].timestamp
-	var latestMessageTimestamp time.Time = p.receivedMessages[0].timestamp
+	earliestMessageTimestamp := p.receivedMessages[0].timestamp
+	latestMessageTimestamp := p.receivedMessages[0].timestamp
 
 	for _, msg := range p.receivedMessages {
 		if msg.timestamp.Before(earliestMessageTimestamp) {
@@ -99,7 +99,11 @@ func (p *BenchProvider) createSummaryDoc() error {
 		fmt.Fprintf(f, "%v\t%v\n", msg.timestamp, msg.content)
 	}
 
-	fmt.Printf("Earliest timestamp: %v\nLatest timestamp: %v\ntimedelta: %v\n", earliestMessageTimestamp, latestMessageTimestamp, latestMessageTimestamp.Sub(earliestMessageTimestamp))
+	fmt.Printf("Earliest timestamp: %v\nLatest timestamp: %v\ntimedelta: %v\n",
+		earliestMessageTimestamp,
+		latestMessageTimestamp,
+		latestMessageTimestamp.Sub(earliestMessageTimestamp),
+	)
 
 	return nil
 }
@@ -135,11 +139,11 @@ func (p *BenchProvider) receivedPacket(packet []byte) error {
 				close(p.doneCh)
 			}
 		} else {
-			panic(errors.New("Unknown recipient"))
+			panic(errors.New("unknown recipient"))
 		}
 	} else {
 		fmt.Fprintf(os.Stderr, "%v - %v", nextHop.Address, nextHop.Id)
-		panic(errors.New("Unknown type packet received - benchmarking results will be unreliable"))
+		panic(errors.New("unknown type packet received - benchmarking results will be unreliable"))
 	}
 
 	return nil
@@ -187,7 +191,7 @@ func (p *BenchProvider) handleConnection(conn net.Conn, errs chan<- error) {
 		}
 	} else {
 		fmt.Fprintf(os.Stderr, "%v", string(packet.Data))
-		panic(errors.New("Unknown packet received - can't have those during benchmark"))
+		panic(errors.New("unknown packet received - can't have those during benchmark"))
 	}
 	errs <- nil
 }

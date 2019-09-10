@@ -4,13 +4,12 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/nymtech/loopix-messaging/sphinx"
-
-	"github.com/gogo/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 	"github.com/nymtech/loopix-messaging/client"
 	"github.com/nymtech/loopix-messaging/client/benchclient"
 	"github.com/nymtech/loopix-messaging/config"
 	"github.com/nymtech/loopix-messaging/pki"
+	"github.com/nymtech/loopix-messaging/sphinx"
 	"github.com/tav/golly/optparse"
 )
 
@@ -24,6 +23,9 @@ const (
 	defaultBenchmarkProviderID = "Provider"
 )
 
+// I think here we need to sacrifice the linter error of too long lines for the formatting as it would hideous
+// if we split the 'preGenerate' definition line
+//nolint: lll
 func cmdRun(args []string, usage string) {
 	opts := newOpts("run [OPTIONS]", usage)
 	port := opts.Flags("--port").Label("PORT").String("Port on which loopix-client listens", defaultBenchmarkClientPort)
@@ -44,19 +46,27 @@ func cmdRun(args []string, usage string) {
 	row := db.QueryRow("SELECT Config FROM Pki WHERE Id = ? AND Typ = ?", defaultBenchmarkProviderID, "Provider")
 
 	var results []byte
-	err = row.Scan(&results)
-	if err != nil {
-		fmt.Println(err)
+	if err := row.Scan(&results); err != nil {
+		panic(err)
 	}
 	var providerInfo config.MixConfig
 	if err := proto.Unmarshal(results, &providerInfo); err != nil {
 		panic(err)
 	}
 
-	privC := sphinx.BytesToPrivateKey([]byte{66, 32, 162, 223, 15, 199, 170, 43, 68, 239, 37, 97, 73, 113, 106, 176, 56, 244, 146, 107, 187, 145, 29, 206, 200, 133, 167, 250, 19, 255, 242, 127})
-	pubC := sphinx.BytesToPublicKey([]byte{202, 54, 182, 74, 58, 128, 66, 117, 198, 114, 255, 254, 100, 155, 20, 238, 234, 96, 62, 187, 68, 173, 114, 95, 131, 248, 227, 164, 221, 39, 43, 89})
+	privC := sphinx.BytesToPrivateKey([]byte{66, 32, 162, 223, 15, 199, 170, 43, 68, 239, 37, 97, 73, 113, 106,
+		176, 56, 244, 146, 107, 187, 145, 29, 206, 200, 133, 167, 250, 19, 255, 242, 127})
+	pubC := sphinx.BytesToPublicKey([]byte{202, 54, 182, 74, 58, 128, 66, 117, 198, 114, 255, 254, 100, 155, 20,
+		238, 234, 96, 62, 187, 68, 173, 114, 95, 131, 248, 227, 164, 221, 39, 43, 89})
 
-	client, err := client.NewClient(defaultBenchmarkClientID, defaultBenchmarkClientHost, *port, privC, pubC, PkiDir, providerInfo)
+	client, err := client.NewClient(defaultBenchmarkClientID,
+		defaultBenchmarkClientHost,
+		*port,
+		privC,
+		pubC,
+		PkiDir,
+		providerInfo,
+	)
 	if err != nil {
 		panic(err)
 	}
@@ -66,8 +76,7 @@ func cmdRun(args []string, usage string) {
 		panic(err)
 	}
 
-	err = benchClient.RunBench()
-	if err != nil {
+	if err := benchClient.RunBench(); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to spawn client instance: %v\n", err)
 		os.Exit(-1)
 	}

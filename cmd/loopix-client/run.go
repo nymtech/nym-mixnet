@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/gogo/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 	"github.com/nymtech/loopix-messaging/client"
 	"github.com/nymtech/loopix-messaging/config"
 	"github.com/nymtech/loopix-messaging/pki"
@@ -41,20 +41,23 @@ func cmdRun(args []string, usage string) {
 	row := db.QueryRow("SELECT Config FROM Pki WHERE Id = ? AND Typ = ?", providerID, "Provider")
 
 	var results []byte
-	err = row.Scan(&results)
-	if err != nil {
-		fmt.Println(err)
+	if err := row.Scan(&results); err != nil {
+		panic(err)
 	}
 	var providerInfo config.MixConfig
 	if err := proto.Unmarshal(results, &providerInfo); err != nil {
 		panic(err)
 	}
 
-	privC1 := sphinx.BytesToPrivateKey([]byte{66, 32, 162, 223, 15, 199, 170, 43, 68, 239, 37, 97, 73, 113, 106, 176, 56, 244, 146, 107, 187, 145, 29, 206, 200, 133, 167, 250, 19, 255, 242, 127})
-	pubC1 := sphinx.BytesToPublicKey([]byte{202, 54, 182, 74, 58, 128, 66, 117, 198, 114, 255, 254, 100, 155, 20, 238, 234, 96, 62, 187, 68, 173, 114, 95, 131, 248, 227, 164, 221, 39, 43, 89})
+	privC1 := sphinx.BytesToPrivateKey([]byte{66, 32, 162, 223, 15, 199, 170, 43, 68, 239, 37, 97, 73, 113, 106,
+		176, 56, 244, 146, 107, 187, 145, 29, 206, 200, 133, 167, 250, 19, 255, 242, 127})
+	pubC1 := sphinx.BytesToPublicKey([]byte{202, 54, 182, 74, 58, 128, 66, 117, 198, 114, 255, 254, 100, 155, 20,
+		238, 234, 96, 62, 187, 68, 173, 114, 95, 131, 248, 227, 164, 221, 39, 43, 89})
 
-	privC2 := sphinx.BytesToPrivateKey([]byte{51, 206, 63, 231, 196, 148, 31, 110, 183, 209, 1, 16, 184, 47, 238, 103, 127, 213, 81, 180, 56, 178, 84, 45, 30, 196, 22, 51, 3, 108, 175, 87})
-	pubC2 := sphinx.BytesToPublicKey([]byte{21, 103, 130, 37, 105, 58, 162, 113, 91, 198, 76, 156, 194, 36, 45, 219, 121, 158, 255, 247, 44, 159, 243, 155, 215, 90, 67, 103, 64, 242, 95, 45})
+	privC2 := sphinx.BytesToPrivateKey([]byte{51, 206, 63, 231, 196, 148, 31, 110, 183, 209, 1, 16, 184, 47, 238,
+		103, 127, 213, 81, 180, 56, 178, 84, 45, 30, 196, 22, 51, 3, 108, 175, 87})
+	pubC2 := sphinx.BytesToPublicKey([]byte{21, 103, 130, 37, 105, 58, 162, 113, 91, 198, 76, 156, 194, 36, 45,
+		219, 121, 158, 255, 247, 44, 159, 243, 155, 215, 90, 67, 103, 64, 242, 95, 45})
 
 	var privC *sphinx.PrivateKey
 	var pubC *sphinx.PublicKey
@@ -76,8 +79,7 @@ func cmdRun(args []string, usage string) {
 		panic(err)
 	}
 
-	err = client.Start()
-	if err != nil {
+	if err := client.Start(); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to spawn client instance: %v\n", err)
 		os.Exit(-1)
 	}

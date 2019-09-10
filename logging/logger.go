@@ -15,10 +15,13 @@
 package logging
 
 import (
-	"github.com/sirupsen/logrus"
 	"runtime"
+
+	"github.com/sirupsen/logrus"
 )
 
+// TODO: global logger... Also is there any point of it being in the logging package considering
+// clients, providers, etc. already got globals loggers of their own?
 var baseLogger = logrus.New()
 
 type AnonymousMessagingLogger struct {
