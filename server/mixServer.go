@@ -29,8 +29,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// TODO: another case of the global logger
 var logLocal = logging.PackageLogger()
 
+// TODO: actually remove it in production code. This is only used to have easier access to different debug levels
+//nolint: gochecknoinits
 func init() {
 	// For easier access for modifying logging level,
 	logLocal.Logger.SetLevel(logrus.InfoLevel)
@@ -182,7 +185,14 @@ func (m *MixServer) handleConnection(conn net.Conn, errs chan<- error) {
 }
 
 // NewMixServer constructor
-func NewMixServer(id, host, port string, prvKey *sphinx.PrivateKey, pubKey *sphinx.PublicKey, pkiPath string) (*MixServer, error) {
+// TODO: Identical case to 'NewClient'
+func NewMixServer(id string,
+	host string,
+	port string,
+	prvKey *sphinx.PrivateKey,
+	pubKey *sphinx.PublicKey,
+	pkiPath string,
+) (*MixServer, error) {
 	mix := node.NewMix(prvKey, pubKey)
 	mixServer := MixServer{id: id, host: host, port: port, Mix: mix, listener: nil}
 	mixServer.config = config.MixConfig{Id: mixServer.id,

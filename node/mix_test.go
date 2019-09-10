@@ -25,6 +25,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+//nolint: gochecknoglobals
 var nodes []config.MixConfig
 
 func createProviderWorker() (*Mix, error) {
@@ -36,7 +37,10 @@ func createProviderWorker() (*Mix, error) {
 	return providerWorker, nil
 }
 
-func createTestPacket(mixes []config.MixConfig, provider config.MixConfig, recipient config.ClientConfig) (*sphinx.SphinxPacket, error) {
+func createTestPacket(mixes []config.MixConfig,
+	provider config.MixConfig,
+	recipient config.ClientConfig,
+) (*sphinx.SphinxPacket, error) {
 	path := config.E2EPath{IngressProvider: provider, Mixes: mixes, EgressProvider: provider, Recipient: recipient}
 	testPacket, err := sphinx.PackForwardMessage(path, []float64{1.4, 2.5, 2.3, 3.2, 7.4}, "Test Message")
 	if err != nil {
@@ -89,8 +93,15 @@ func TestMixProcessPacket(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	provider := config.MixConfig{Id: "Provider", Host: "localhost", Port: "3333", PubKey: providerWorker.pubKey.Bytes()}
-	dest := config.ClientConfig{Id: "Destination", Host: "localhost", Port: "3334", PubKey: pubD.Bytes(), Provider: &provider}
+	provider := config.MixConfig{Id: "Provider",
+		Host: "localhost",
+		Port: "3333", PubKey: providerWorker.pubKey.Bytes(),
+	}
+	dest := config.ClientConfig{Id: "Destination",
+		Host: "localhost",
+		Port: "3334", PubKey: pubD.Bytes(),
+		Provider: &provider,
+	}
 	mixes, err := createTestMixes()
 	if err != nil {
 		t.Fatal(err)
@@ -115,7 +126,10 @@ func TestMixProcessPacket(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, sphinx.Hop{Id: "Mix1", Address: "localhost:3330", PubKey: nodes[0].PubKey}, nextHop, "Next hop does not match")
+	assert.Equal(t, sphinx.Hop{Id: "Mix1",
+		Address: "localhost:3330",
+		PubKey:  nodes[0].PubKey,
+	}, nextHop, "Next hop does not match")
 	assert.Equal(t, reflect.TypeOf([]byte{}), reflect.TypeOf(dePacket))
 	assert.Equal(t, []byte("\xF1"), flag, reflect.TypeOf(dePacket))
 }

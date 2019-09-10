@@ -11,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 /*
 	Package node implements the core functions for a mix node, which allow to process the received cryptographic packets.
 */
@@ -30,8 +29,12 @@ type Mix struct {
 
 // ProcessPacket performs the processing operation on the received packet, including cryptographic operations and
 // extraction of the meta information.
-func (m *Mix) ProcessPacket(packet []byte, c chan<- []byte, cAdr chan<- sphinx.Hop, cFlag chan<- []byte, errCh chan<- error) {
-
+func (m *Mix) ProcessPacket(packet []byte,
+	c chan<- []byte,
+	cAdr chan<- sphinx.Hop,
+	cFlag chan<- []byte,
+	errCh chan<- error,
+) {
 	nextHop, commands, newPacket, err := sphinx.ProcessSphinxPacket(packet, m.prvKey)
 	if err != nil {
 		errCh <- err

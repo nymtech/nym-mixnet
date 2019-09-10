@@ -23,18 +23,23 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
+//nolint: gochecknoglobals
 var (
 	// TODO: perhaps move it elsewhere?
+	// TODO: proper comments on them
+	// AssigneFlag ...
 	AssigneFlag = []byte("\xa2")
-	CommFlag    = []byte("\xc6")
-	TokenFlag   = []byte("\xa9")
-	PullFlag    = []byte("\xff")
+	// CommFlag ...
+	CommFlag = []byte("\xc6")
+	// TokenFlag ...
+	TokenFlag = []byte("\xa9")
+	// PullFlag ...
+	PullFlag = []byte("\xff")
 )
 
 // NewMixConfig constructor
 func NewMixConfig(mixID, host, port string, pubKey []byte) MixConfig {
-	MixConfig := MixConfig{Id: mixID, Host: host, Port: port, PubKey: pubKey}
-	return MixConfig
+	return MixConfig{Id: mixID, Host: host, Port: port, PubKey: pubKey}
 }
 
 // NewClientConfig constructor

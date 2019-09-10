@@ -116,9 +116,9 @@ func (p *ProviderServer) receivedPacket(packet []byte) error {
 			return err
 		}
 	case bytes.Equal(flag, sphinx.LastHopFlag):
-		tmp_msg_id := fmt.Sprintf("TMP_MESSAGE_%v", helpers.RandomString(8))
+		tmpMsgID := fmt.Sprintf("TMP_MESSAGE_%v", helpers.RandomString(8))
 		// err = p.storeMessage(dePacket, nextHop.Id, "TMP_MESSAGE_ID")
-		err = p.storeMessage(dePacket, nextHop.Id, tmp_msg_id)
+		err = p.storeMessage(dePacket, nextHop.Id, tmpMsgID)
 
 		if err != nil {
 			return err
@@ -148,7 +148,7 @@ func (p *ProviderServer) forwardPacket(sphinxPacket []byte, address string) erro
 // and send the passed packet. If connection failed or
 // the packet could not be send, an error is returned
 func (p *ProviderServer) send(packet []byte, address string) error {
-	logLocal.Debugf("%s: Dialing", p.id)
+	logLocal.Debugf("%s: Dialling", p.id)
 	conn, err := net.Dial("tcp", address)
 	if err != nil {
 		return err
@@ -229,7 +229,8 @@ func (p *ProviderServer) handleConnection(conn net.Conn, errs chan<- error) {
 	errs <- nil
 }
 
-// RegisterNewClient generates a fresh authentication token and saves it together with client's public configuration data
+// RegisterNewClient generates a fresh authentication token and
+// saves it together with client's public configuration data
 // in the list of all registered clients. After the client is registered the function creates an inbox directory
 // for the client's inbox, in which clients messages will be stored.
 func (p *ProviderServer) registerNewClient(clientBytes []byte) ([]byte, string, error) {
@@ -243,7 +244,12 @@ func (p *ProviderServer) registerNewClient(clientBytes []byte) ([]byte, string, 
 	if err != nil {
 		return nil, "", err
 	}
-	record := ClientRecord{id: clientConf.Id, host: clientConf.Host, port: clientConf.Port, pubKey: clientConf.PubKey, token: token}
+	record := ClientRecord{id: clientConf.Id,
+		host:   clientConf.Host,
+		port:   clientConf.Port,
+		pubKey: clientConf.PubKey,
+		token:  token,
+	}
 	p.assignedClients[clientConf.Id] = record
 	address := clientConf.Host + ":" + clientConf.Port
 
@@ -307,7 +313,7 @@ func (p *ProviderServer) handlePullRequest(rqsBytes []byte) error {
 		case "EI":
 			logLocal.Info("Inbox is empty. Sending info to the client.")
 		case "SI":
-			logLocal.Info("All messages from the inbox succesfuly sent to the client.")
+			logLocal.Info("All messages from the inbox successfully sent to the client.")
 		}
 	} else {
 		logLocal.Warning("Authentication went wrong")
@@ -332,7 +338,7 @@ func (p *ProviderServer) authenticateUser(clientID string, clientToken []byte) b
 // FetchMessages checks whether an inbox exists and if it contains
 // stored messages. If inbox contains any stored messages, all of them
 // are send to the client one by one. FetchMessages returns a code
-// signaling whether (NI) inbox does not exist, (EI) inbox is empty,
+// signalling whether (NI) inbox does not exist, (EI) inbox is empty,
 // (SI) messages were send to the client; and an error.
 func (p *ProviderServer) fetchMessages(clientID string) (string, error) {
 
@@ -403,7 +409,14 @@ func (p *ProviderServer) storeMessage(message []byte, inboxID string, messageID 
 
 // NewProviderServer constructs a new provider object.
 // NewProviderServer returns a new provider object and an error.
-func NewProviderServer(id string, host string, port string, prvKey *sphinx.PrivateKey, pubKey *sphinx.PublicKey, pkiPath string) (*ProviderServer, error) {
+// TODO: same case as 'NewClient'
+func NewProviderServer(id string,
+	host string,
+	port string,
+	prvKey *sphinx.PrivateKey,
+	pubKey *sphinx.PublicKey,
+	pkiPath string,
+) (*ProviderServer, error) {
 	node := node.NewMix(prvKey, pubKey)
 	providerServer := ProviderServer{id: id, host: host, port: port, Mix: node, listener: nil}
 	providerServer.config = config.MixConfig{Id: providerServer.id,

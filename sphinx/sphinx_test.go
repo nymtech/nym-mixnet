@@ -100,7 +100,8 @@ func TestComputeBlindingFactor(t *testing.T) {
 	assert.Nil(t, err)
 
 	// I'M NOT SURE OF THAT EXPECTED VALUE
-	expected := [32]byte{0xd, 0xe6, 0xd2, 0x55, 0xc7, 0xde, 0x9a, 0x67, 0x16, 0x92, 0x2f, 0x5d, 0xe9, 0xee, 0x69, 0x44, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0}
+	expected := [32]byte{0xd, 0xe6, 0xd2, 0x55, 0xc7, 0xde, 0x9a, 0x67, 0x16, 0x92, 0x2f, 0x5d, 0xe9, 0xee,
+		0x69, 0x44, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0}
 
 	assert.Equal(t, expected, b.bytes)
 }
@@ -141,7 +142,11 @@ func TestGetSharedSecrets(t *testing.T) {
 	b0, err := computeBlindingFactor(aesS0)
 	assert.Nil(t, err)
 
-	expected = append(expected, HeaderInitials{Alpha: alpha0.Bytes(), Secret: s0.Bytes(), Blinder: b0.Bytes(), SecretHash: aesS0})
+	expected = append(expected, HeaderInitials{Alpha: alpha0.Bytes(),
+		Secret:     s0.Bytes(),
+		Blinder:    b0.Bytes(),
+		SecretHash: aesS0,
+	})
 	blindFactors = append(blindFactors, b0)
 
 	alpha1 := new(FieldElement)
@@ -152,7 +157,11 @@ func TestGetSharedSecrets(t *testing.T) {
 	b1, err := computeBlindingFactor(aesS1)
 	assert.Nil(t, err)
 
-	expected = append(expected, HeaderInitials{Alpha: alpha1.Bytes(), Secret: s1.Bytes(), Blinder: b1.Bytes(), SecretHash: aesS1})
+	expected = append(expected, HeaderInitials{Alpha: alpha1.Bytes(),
+		Secret:     s1.Bytes(),
+		Blinder:    b1.Bytes(),
+		SecretHash: aesS1,
+	})
 	blindFactors = append(blindFactors, b1)
 
 	alpha2 := new(FieldElement)
@@ -163,7 +172,11 @@ func TestGetSharedSecrets(t *testing.T) {
 	b2, err := computeBlindingFactor(aesS2)
 	assert.Nil(t, err)
 
-	expected = append(expected, HeaderInitials{Alpha: alpha2.Bytes(), Secret: s2.Bytes(), Blinder: b2.Bytes(), SecretHash: aesS2})
+	expected = append(expected, HeaderInitials{Alpha: alpha2.Bytes(),
+		Secret:     s2.Bytes(),
+		Blinder:    b2.Bytes(),
+		SecretHash: aesS2,
+	})
 	// this assignment was ineffectual
 	// blindFactors = append(blindFactors, *b2)
 

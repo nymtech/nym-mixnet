@@ -28,10 +28,12 @@ import (
 	"testing"
 )
 
-var client *CryptoClient
-
-// var path config.E2EPath
-var mixes []config.MixConfig
+// I guess in the case of a test file, globals are fine
+//nolint: gochecknoglobals
+var (
+	client *CryptoClient
+	mixes  []config.MixConfig
+)
 
 func Setup() error {
 	for i := 0; i < 10; i++ {
@@ -91,7 +93,12 @@ func TestCryptoClient_EncodeMessage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	recipient := config.ClientConfig{Id: "Recipient", Host: "localhost", Port: "9999", PubKey: pubD.Bytes(), Provider: &provider}
+	recipient := config.ClientConfig{Id: "Recipient",
+		Host:     "localhost",
+		Port:     "9999",
+		PubKey:   pubD.Bytes(),
+		Provider: &provider,
+	}
 	client.Provider = provider
 
 	encoded, err := client.EncodeMessage("Hello world", recipient)
@@ -125,17 +132,20 @@ func TestCryptoClient_GenerateDelaySequence_Pass(t *testing.T) {
 
 func TestCryptoClient_GenerateDelaySequence_Fail(t *testing.T) {
 	_, err := client.generateDelaySequence(0, 5)
-	assert.EqualError(t, errors.New("the parameter of exponential distribution has to be larger than zero"), err.Error(), "")
+	// TODO: make the error string a constant
+	assert.EqualError(t, errors.New("the parameter of exponential distribution has to be larger than zero"), err.Error())
 }
 
 func Test_GetRandomMixSequence_TooFewMixes(t *testing.T) {
-
 	sequence, err := client.getRandomMixSequence(mixes, 20)
-	if err != nil {
-		t.Fatal(err)
-	}
-	assert.Equal(t, 10, len(sequence), "When the given length is larger than the number of active nodes, the path should be "+
-		"the sequence of all active mixes")
+	assert.Nil(t, err)
+
+	assert.Equal(t,
+		10,
+		len(sequence),
+		"When the given length is larger than the number of active nodes, the path should be "+
+			"the sequence of all active mixes",
+	)
 }
 
 func Test_GetRandomMixSequence_MoreMixes(t *testing.T) {
@@ -144,8 +154,12 @@ func Test_GetRandomMixSequence_MoreMixes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert.Equal(t, 3, len(sequence), "When the given length is larger than the number of active nodes, the path should be "+
-		"the sequence of all active mixes")
+	assert.Equal(t,
+		3,
+		len(sequence),
+		"When the given length is larger than the number of active nodes, the path should be "+
+			"the sequence of all active mixes",
+	)
 
 }
 

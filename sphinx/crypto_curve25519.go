@@ -83,10 +83,6 @@ func (pub *PublicKey) ToFieldElement() *FieldElement {
 	return BytesToFieldElement(pub.Bytes())
 }
 
-func init() {
-	// TODO: do we need to seed the crypto/rand?
-}
-
 // GenerateKeyPair returns public and private keypair bytes for Curve25519 elliptic curve, or an error.
 func GenerateKeyPair() (*PrivateKey, *PublicKey, error) {
 	priv := new(PrivateKey)

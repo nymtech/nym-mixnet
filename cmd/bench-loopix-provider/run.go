@@ -17,6 +17,7 @@ const (
 	defaultBenchmarkProviderID   = "BenchmarkProvider"
 )
 
+//nolint: lll
 func cmdRun(args []string, usage string) {
 	opts := newOpts("run [OPTIONS]", usage)
 	port := opts.Flags("--port").Label("PORT").String("Port on which loopix-provider listens", defaultBenchmarkProviderPort)
@@ -29,10 +30,18 @@ func cmdRun(args []string, usage string) {
 	}
 
 	// have constant keys to simplify the procedure so that pki/database would not need to be reset every run
-	privP := sphinx.BytesToPrivateKey([]byte{191, 43, 90, 175, 50, 224, 156, 22, 204, 173, 87, 255, 64, 152, 17, 30, 48, 162, 36, 95, 57, 34, 187, 183, 203, 215, 25, 172, 55, 199, 211, 59})
-	pubP := sphinx.BytesToPublicKey([]byte{17, 170, 15, 150, 155, 75, 240, 66, 54, 100, 131, 127, 193, 10, 133, 32, 62, 155, 9, 46, 200, 55, 60, 125, 223, 76, 170, 167, 100, 34, 176, 117})
+	privP := sphinx.BytesToPrivateKey([]byte{191, 43, 90, 175, 50, 224, 156, 22, 204, 173, 87, 255, 64, 152, 17,
+		30, 48, 162, 36, 95, 57, 34, 187, 183, 203, 215, 25, 172, 55, 199, 211, 59})
+	pubP := sphinx.BytesToPublicKey([]byte{17, 170, 15, 150, 155, 75, 240, 66, 54, 100, 131, 127, 193, 10,
+		133, 32, 62, 155, 9, 46, 200, 55, 60, 125, 223, 76, 170, 167, 100, 34, 176, 117})
 
-	baseProviderServer, err := server.NewProviderServer(defaultBenchmarkProviderID, defaultBenchmarkProviderHost, *port, privP, pubP, PkiDir)
+	baseProviderServer, err := server.NewProviderServer(defaultBenchmarkProviderID,
+		defaultBenchmarkProviderHost,
+		*port,
+		privP,
+		pubP,
+		PkiDir,
+	)
 	if err != nil {
 		panic(err)
 	}

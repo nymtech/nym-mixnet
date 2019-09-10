@@ -33,7 +33,7 @@ import (
 	"golang.org/x/crypto/curve25519"
 )
 
-// var curve = elliptic.P224()
+// Yet another case of the global logger
 var logLocal = logging.PackageLogger()
 
 const (
@@ -42,11 +42,12 @@ const (
 	headerLength = 192
 )
 
+//nolint: gochecknoglobals
 var (
 	// LastHopFlag could have been storing this as a single byte, however, protobuf does not have single-byte fields
 	LastHopFlag = []byte("\xf0")
-	// RelayFlag denotes whether this message should continue further along the path of mixes. This is implementation-specific
-	// rather than being part of the Loopix protocol design.
+	// RelayFlag denotes whether this message should continue further along the path of mixes.
+	// This is implementation-specific rather than being part of the Loopix protocol design.
 	RelayFlag = []byte("\xf1")
 )
 
@@ -77,14 +78,19 @@ func PackForwardMessage(path config.E2EPath, delays []float64, message string) (
 	return SphinxPacket{Hdr: &header, Pld: payload}, nil
 }
 
-// createHeader builds the Sphinx packet header, consisting of three parts: the public element, the encapsulated routing information
-// and the message authentication code. createHeader layer encapsulates the routing information for each given node. The routing information
-// contains information where the packet should be forwarded next, how long it should be delayed by the node, and if relevant additional
-// auxiliary information. The message authentication code allows to detect tagging attacks.
-// createHeader computes the secret shared key between sender and the nodes and destination, which are used as keys for encryption.
-// createHeader returns the header and a list of the initial elements, used for creating the header. If any operation was unsuccessful
-// createHeader returns an error.
-func createHeader(nodes []config.MixConfig, delays []float64, dest config.ClientConfig) ([]HeaderInitials, Header, error) {
+// createHeader builds the Sphinx packet header, consisting of three parts: the public element,
+// the encapsulated routing information and the message authentication code.
+// createHeader layer encapsulates the routing information for each given node. The routing information
+// contains information where the packet should be forwarded next, how long it should be delayed by the node,
+// and if relevant additional auxiliary information. The message authentication code allows to detect tagging attacks.
+// createHeader computes the secret shared key between sender and the nodes and destination,
+// which are used as keys for encryption.
+// createHeader returns the header and a list of the initial elements, used for creating the header.
+// If any operation was unsuccessful createHeader returns an error.
+func createHeader(nodes []config.MixConfig,
+	delays []float64,
+	dest config.ClientConfig,
+) ([]HeaderInitials, Header, error) {
 	x, err := RandomElement()
 	if err != nil {
 		logLocal.WithError(err).Error("Error in createHeader - Random failed")
@@ -102,7 +108,7 @@ func createHeader(nodes []config.MixConfig, delays []float64, dest config.Client
 		return nil, Header{}, errors.New(" the number of shared secrets should be the same as the number of traversed nodes")
 	}
 
-	var commands []Commands
+	commands := make([]Commands, len(nodes))
 	for i := range nodes {
 		var c Commands
 		if i == len(nodes)-1 {
@@ -110,7 +116,7 @@ func createHeader(nodes []config.MixConfig, delays []float64, dest config.Client
 		} else {
 			c = Commands{Delay: delays[i], Flag: RelayFlag}
 		}
-		commands = append(commands, c)
+		commands[i] = c
 	}
 
 	header, err := encapsulateHeader(headerInitials, nodes, commands, dest)
@@ -126,8 +132,18 @@ func createHeader(nodes []config.MixConfig, delays []float64, dest config.Client
 // sequence of nodes the packet should traverse before reaching the destination, and message authentication codes,
 // given the pre-computed shared keys which are used for encryption.
 // encapsulateHeader returns the Header, or an error if any internal cryptographic of parsing operation failed.
-func encapsulateHeader(headerInitials []HeaderInitials, nodes []config.MixConfig, commands []Commands, destination config.ClientConfig) (Header, error) {
-	finalHop := RoutingInfo{NextHop: &Hop{Id: destination.Id, Address: destination.Host + ":" + destination.Port, PubKey: []byte{}}, RoutingCommands: &commands[len(commands)-1], NextHopMetaData: []byte{}, Mac: []byte{}}
+func encapsulateHeader(headerInitials []HeaderInitials,
+	nodes []config.MixConfig,
+	commands []Commands,
+	destination config.ClientConfig,
+) (Header, error) {
+	finalHop := RoutingInfo{NextHop: &Hop{Id: destination.Id,
+		Address: destination.Host + ":" + destination.Port,
+		PubKey:  []byte{},
+	}, RoutingCommands: &commands[len(commands)-1],
+		NextHopMetaData: []byte{},
+		Mac:             []byte{},
+	}
 
 	finalHopBytes, err := proto.Marshal(&finalHop)
 	if err != nil {
@@ -155,7 +171,13 @@ func encapsulateHeader(headerInitials []HeaderInitials, nodes []config.MixConfig
 	var encRouting []byte
 	for i := len(nodes) - 2; i >= 0; i-- {
 		nextNode := nodes[i+1]
-		routing := RoutingInfo{NextHop: &Hop{Id: nextNode.Id, Address: nextNode.Host + ":" + nextNode.Port, PubKey: nodes[i+1].PubKey}, RoutingCommands: &commands[i], NextHopMetaData: routingCommands[len(routingCommands)-1], Mac: mac}
+		routing := RoutingInfo{NextHop: &Hop{Id: nextNode.Id,
+			Address: nextNode.Host + ":" + nextNode.Port,
+			PubKey:  nodes[i+1].PubKey,
+		}, RoutingCommands: &commands[i],
+			NextHopMetaData: routingCommands[len(routingCommands)-1],
+			Mac:             mac,
+		}
 
 		encKey, err := KDF(headerInitials[i].SecretHash)
 		if err != nil {
@@ -217,8 +239,7 @@ func encapsulateContent(headerInitials []HeaderInitials, message string) ([]byte
 func getSharedSecrets(nodes []config.MixConfig, initialVal *FieldElement) ([]HeaderInitials, error) {
 
 	blindFactors := []*FieldElement{initialVal}
-	var tuples []HeaderInitials
-
+	tuples := make([]HeaderInitials, len(nodes))
 	for i, n := range nodes {
 
 		// initial implementation:
@@ -235,7 +256,7 @@ func getSharedSecrets(nodes []config.MixConfig, initialVal *FieldElement) ([]Hea
 		alpha := expoGroupBase(blindFactors)
 
 		if len(n.PubKey) != PublicKeySize {
-			err := fmt.Errorf("Invalid public key provided for node %v", i)
+			err := fmt.Errorf("invalid public key provided for node %v", i)
 			logLocal.Error(err)
 			return nil, err
 		}
@@ -266,7 +287,7 @@ func getSharedSecrets(nodes []config.MixConfig, initialVal *FieldElement) ([]Hea
 		}
 
 		blindFactors = append(blindFactors, blinder)
-		tuples = append(tuples, HeaderInitials{Alpha: alpha.Bytes(), Secret: s.Bytes(), Blinder: blinder.Bytes(), SecretHash: aesS})
+		tuples[i] = HeaderInitials{Alpha: alpha.Bytes(), Secret: s.Bytes(), Blinder: blinder.Bytes(), SecretHash: aesS}
 	}
 	return tuples, nil
 
@@ -285,7 +306,7 @@ func computeFillers(nodes []config.MixConfig, tuples []HeaderInitials) (string, 
 		}
 		mx := strings.Repeat("\x00", minLen) + base
 
-		xorVal, err := AesCtr([]byte(kx), []byte(mx))
+		xorVal, err := AesCtr(kx, []byte(mx))
 		if err != nil {
 			logLocal.WithError(err).Error("Error in computeFillers - AES_CTR failed")
 			return "", err
@@ -294,7 +315,7 @@ func computeFillers(nodes []config.MixConfig, tuples []HeaderInitials) (string, 
 		filler = BytesToString(xorVal)
 		filler = filler[minLen:]
 
-		minLen = minLen - K
+		minLen -= K
 	}
 
 	return filler, nil
@@ -377,8 +398,9 @@ func ProcessSphinxPacket(packetBytes []byte, privKey *PrivateKey) (Hop, Commands
 // ProcessSphinxHeader recomputes the shared key and checks whether the message authentication code is valid.
 // If not, the packet is dropped and error is returned. If MAC checking was passed successfully ProcessSphinxHeader
 // performs the AES_CTR decryption, recomputes the blinding factor and updates the init public element from the header.
-// Next, ProcessSphinxHeader extracts the routing information from the decrypted packet and returns it, together with the
-// updated init public element. If any crypto or parsing operation failed ProcessSphinxHeader returns an error.
+// Next, ProcessSphinxHeader extracts the routing information from the decrypted packet and returns it,
+// together with the updated init public element.
+// If any crypto or parsing operation failed ProcessSphinxHeader returns an error.
 func ProcessSphinxHeader(packet Header, privKey *PrivateKey) (Hop, Commands, Header, error) {
 	alpha := BytesToFieldElement(packet.Alpha)
 	beta := packet.Beta

@@ -27,8 +27,12 @@ import (
 	"testing"
 )
 
-var mixes []config.MixConfig
-var testDir string
+// I guess in the case of a test file, globals are fine
+//nolint: gochecknoglobals
+var (
+	mixes   []config.MixConfig
+	testDir string
+)
 
 // ByID implements the sort interface and sorts based on the id of the nodes
 type ByID []config.MixConfig
@@ -103,7 +107,11 @@ func TestPermute_Pass(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert.Equal(t, len(mixes), len(permuted), " Permute should return a permutation of a given slice, hence the lengths should be equal")
+	assert.Equal(t,
+		len(mixes),
+		len(permuted),
+		" Permute should return a permutation of a given slice, hence the lengths should be equal",
+	)
 	sort.Sort(ByID(mixes))
 	sort.Sort(ByID(permuted))
 	assert.True(t, reflect.DeepEqual(mixes, permuted))
@@ -112,7 +120,12 @@ func TestPermute_Pass(t *testing.T) {
 
 func TestPermute_Fail(t *testing.T) {
 	_, err := Permute([]config.MixConfig{})
-	assert.EqualError(t, errors.New(" cannot permute an empty list of mixes"), err.Error(), " Permute should return an error for an empty slice")
+	// TODO: redefine the error as a constant
+	assert.EqualError(t,
+		errors.New(" cannot permute an empty list of mixes"),
+		err.Error(),
+		" Permute should return an error for an empty slice",
+	)
 }
 
 func TestRandomExponential_Pass(t *testing.T) {
@@ -125,13 +138,23 @@ func TestRandomExponential_Pass(t *testing.T) {
 
 func TestRandomExponential_Fail_ZeroParam(t *testing.T) {
 	_, err := RandomExponential(0.0)
-	assert.EqualError(t, errors.New("the parameter of exponential distribution has to be larger than zero"), err.Error(), " RandomExponential should return an error if the given parameter is non-positive")
+	// TODO: redefine the error as a constant
+	assert.EqualError(t,
+		errors.New("the parameter of exponential distribution has to be larger than zero"),
+		err.Error(),
+		" RandomExponential should return an error if the given parameter is non-positive",
+	)
 
 }
 
 func TestRandomExponential_Fail_NegativeParam(t *testing.T) {
 	_, err := RandomExponential(-1.0)
-	assert.EqualError(t, errors.New("the parameter of exponential distribution has to be larger than zero"), err.Error(), " RandomExponential should return an error if the given parameter is non-positive")
+	// TODO: redefine the error as a constant
+	assert.EqualError(t,
+		errors.New("the parameter of exponential distribution has to be larger than zero"),
+		err.Error(),
+		" RandomExponential should return an error if the given parameter is non-positive",
+	)
 }
 
 func TestRandomSample_Pass_SmallerLen(t *testing.T) {
@@ -152,7 +175,12 @@ func TestRandomSample_Pass_EqualLen(t *testing.T) {
 
 func TestRandomSample_Fail(t *testing.T) {
 	_, err := RandomSample(mixes, 20)
-	assert.EqualError(t, errors.New(" cannot take a sample larger than the given list"), err.Error(), " RandomSample cannot take a sample larger than the given slice")
+	// TODO: redefine the error as a constant
+	assert.EqualError(t,
+		errors.New(" cannot take a sample larger than the given list"),
+		err.Error(),
+		" RandomSample cannot take a sample larger than the given slice",
+	)
 }
 
 func TestResolveTCPAddress(t *testing.T) {

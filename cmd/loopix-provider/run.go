@@ -13,11 +13,10 @@ import (
 
 const (
 	// PkiDb is the location of the database file, relative to the project root. TODO: move this to homedir.
-	PkiDb             = "pki/database.db"
-	defaultHost       = "localhost"
-	defaultID         = "Client1"
-	defaultPort       = "6666"
-	defaultProviderID = "666"
+	PkiDb       = "pki/database.db"
+	defaultHost = "localhost"
+	defaultID   = "Client1"
+	defaultPort = "6666"
 )
 
 func cmdRun(args []string, usage string) {
@@ -42,9 +41,10 @@ func cmdRun(args []string, usage string) {
 	if err != nil {
 		panic(err)
 	}
-	// even though we're just overwriting the passed value of host, the startup script(s) still rely on its existence
-	// and hence can't, for time being, be removed
-	host = &ip
+
+	if host != &ip {
+		host = &ip
+	}
 
 	pubP, privP, err := sphinx.GenerateKeyPair()
 	if err != nil {

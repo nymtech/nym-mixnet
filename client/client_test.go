@@ -15,30 +15,27 @@
 package client
 
 import (
-	"log"
-
-	sphinx "github.com/nymtech/loopix-messaging/sphinx"
-
-	"github.com/nymtech/loopix-messaging/config"
-
-	"github.com/golang/protobuf/proto"
-	"github.com/jmoiron/sqlx"
-	"github.com/stretchr/testify/assert"
-
 	"fmt"
 	"os"
 	"strconv"
 	"testing"
+
+	"github.com/golang/protobuf/proto"
+	"github.com/jmoiron/sqlx"
+	"github.com/nymtech/loopix-messaging/config"
+	sphinx "github.com/nymtech/loopix-messaging/sphinx"
+	"github.com/stretchr/testify/assert"
 )
-
-var providerPubs config.MixConfig
-var testMixSet []config.MixConfig
-
-//nolint: unused
-var testClientSet []config.ClientConfig
 
 const (
 	pkiDir = "testDatabase.db"
+)
+
+// I guess in the case of a test file, globals are fine
+//nolint: gochecknoglobals
+var (
+	providerPubs config.MixConfig
+	testMixSet   []config.MixConfig
 )
 
 func setupTestDatabase() (*sqlx.DB, error) {
@@ -119,7 +116,6 @@ func SetupTestClientsInDatabase(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		testClientSet = append(testClientSet, c)
 	}
 }
 
@@ -140,7 +136,7 @@ func clean() error {
 	if _, err := os.Stat(pkiDir); err == nil {
 		err := os.Remove(pkiDir)
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 	}
 	return nil
@@ -199,7 +195,12 @@ func TestClient_RegisterToProvider(t *testing.T) {
 //	if err != nil{
 //		t.Fatal(err)
 //	}
-//	recipient := config.ClientConfig{Id:"Recipient", Host:"localhost", Port:"9999", PubKey: pubR, Provider: &providerPubs}
+// recipient := config.ClientConfig{Id:"Recipient",
+// 	Host:"localhost",
+// 	Port:"9999",
+// 	PubKey: pubR,
+// 	Provider: &providerPubs,
+// }
 //	fmt.Println(recipient)
 //	pubM1, _, err := sphinx.GenerateKeyPair()
 //	if err != nil{
