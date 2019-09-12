@@ -27,6 +27,11 @@ import (
 	"github.com/nymtech/loopix-messaging/config"
 )
 
+var (
+	ErrPermEmptyList                = errors.New("cannot permute an empty list of mixes")
+	ErrTooBigSampleSize             = errors.New("cannot take a sample larger than the given list")
+	ErrExponentialDistributionParam = errors.New("the parameter of exponential distribution has to be larger than zero")
+)
 
 func init() {
 	// TODO: replace math/rand with crypto/rand to get rid of needing to seed it?
