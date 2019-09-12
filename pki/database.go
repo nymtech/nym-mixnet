@@ -31,9 +31,9 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-// EnsurePkiDb sets up the PKI database if it doesn't exist yet.
-func EnsurePkiDb(pkiDir string) error {
-	db, err := OpenDatabase(pkiDir, "sqlite3")
+// EnsureDbExists sets up the PKI database if it doesn't exist yet.
+func EnsureDbExists(pkiDb string) error {
+	db, err := OpenDatabase(pkiDb, "sqlite3")
 	if err != nil {
 		return err
 	}

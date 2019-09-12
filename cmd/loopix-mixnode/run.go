@@ -33,7 +33,7 @@ func cmdRun(args []string, usage string) {
 		os.Exit(1)
 	}
 
-	err := pki.EnsurePkiDb(PkiDb)
+	err := pki.EnsureDbExists(PkiDb)
 	if err != nil {
 		fmt.Println("PkiDb problem ")
 		panic(err)
