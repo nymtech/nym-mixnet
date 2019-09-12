@@ -208,8 +208,12 @@ func NewMixServer(id string,
 	if err != nil {
 		return nil, err
 	}
-	err = helpers.AddToDatabase(pkiPath, "Pki", mixServer.id, "Mix", configBytes)
-	if err != nil {
+
+	if err := helpers.AddToDatabase(pkiPath, "Pki", mixServer.id, "Mix", configBytes); err != nil {
+		return nil, err
+	}
+
+	if err := helpers.RegisterPresence(mixServer.id, mixServer.GetPublicKey(), layer); err != nil {
 		return nil, err
 	}
 
@@ -218,11 +222,12 @@ func NewMixServer(id string,
 	if err != nil {
 		return nil, err
 	}
-	mixServer.listener, err = net.ListenTCP("tcp", addr)
 
+	listener, err := net.ListenTCP("tcp", addr)
 	if err != nil {
 		return nil, err
 	}
+	mixServer.listener = listener
 
 	return &mixServer, nil
 }

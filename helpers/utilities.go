@@ -19,8 +19,16 @@
 package helpers
 
 import (
+	"bytes"
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"net/http"
+
 	"github.com/nymtech/loopix-messaging/config"
 	"github.com/nymtech/loopix-messaging/pki"
+	"github.com/nymtech/loopix-messaging/sphinx"
 
 	"github.com/golang/protobuf/proto"
 
@@ -105,6 +113,29 @@ func AddToDatabase(pkiPath string, tableName, id, typ string, config []byte) err
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+// RegisterPresence registers server presence at the directory server.
+func RegisterPresence(host string, publicKey *sphinx.PublicKey, layer int) error {
+	b64Key := base64.StdEncoding.EncodeToString(publicKey.Bytes())
+	values := map[string]interface{}{"host": host, "pubKey": b64Key, "layer": layer}
+	jsonValue, err := json.Marshal(values)
+	if err != nil {
+		return err
+	}
+
+	url := config.DirectoryServerBaseURL + config.DirectoryServerPresenceURL
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonValue))
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("response Status:", resp.Status)
+	fmt.Println("response Headers:", resp.Header)
+	body, _ := ioutil.ReadAll(resp.Body)
+	fmt.Println("response Body:", string(body))
+
 	return nil
 }
 

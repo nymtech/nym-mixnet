@@ -23,6 +23,14 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
+const (
+	DirectoryServerBaseURL        = "http://localhost:8080/"
+	DirectoryServerHealthcheckURL = "api/healthcheck"
+	DirectoryServerMetricsURL     = "api/metrics/mixes"
+	DirectoryServerPkiURL         = "api/nodes"
+	DirectoryServerPresenceURL    = "api/presence/mixnodes"
+)
+
 //nolint: gochecknoglobals
 var (
 	// TODO: perhaps move it elsewhere?
