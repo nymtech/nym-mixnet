@@ -52,6 +52,7 @@ type MixServer struct {
 	id       string
 	host     string
 	port     string
+	layer    int
 	listener *net.TCPListener
 	*node.Mix
 
@@ -186,15 +187,17 @@ func (m *MixServer) handleConnection(conn net.Conn, errs chan<- error) {
 
 // NewMixServer constructor
 // TODO: Identical case to 'NewClient'
+// TODO: remove pkiPath once it becomes completely replaced with the directory server
 func NewMixServer(id string,
 	host string,
 	port string,
 	prvKey *sphinx.PrivateKey,
 	pubKey *sphinx.PublicKey,
 	pkiPath string,
+	layer int,
 ) (*MixServer, error) {
 	mix := node.NewMix(prvKey, pubKey)
-	mixServer := MixServer{id: id, host: host, port: port, Mix: mix, listener: nil}
+	mixServer := MixServer{id: id, host: host, port: port, Mix: mix, layer: layer}
 	mixServer.config = config.MixConfig{Id: mixServer.id,
 		Host:   mixServer.host,
 		Port:   mixServer.port,
