@@ -20,34 +20,37 @@ package helpers
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
+	"net"
 	"net/http"
+	"os"
+	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/nymtech/loopix-messaging/config"
 	"github.com/nymtech/loopix-messaging/pki"
 	"github.com/nymtech/loopix-messaging/sphinx"
-
-	"github.com/golang/protobuf/proto"
-
-	"crypto/sha256"
-	"errors"
-	"math/rand"
-	"net"
-	"os"
-	"time"
 )
 
 // TODO: move rand.Seed into an init() function
+func init() {
+	// TODO: replace math/rand with crypto/rand to get rid of needing to seed it?
+	// + it will be more 'secure'
+	// However, we would need to implement 'Perm' ourselves
+	rand.Seed(time.Now().UTC().UnixNano())
+}
 
 func Permute(slice []config.MixConfig) ([]config.MixConfig, error) {
 	if len(slice) == 0 {
 		return nil, errors.New(" cannot permute an empty list of mixes")
 	}
 
-	rand.Seed(time.Now().UTC().UnixNano())
 	permutedData := make([]config.MixConfig, len(slice))
 	permutation := rand.Perm(len(slice))
 	for i, v := range permutation {
@@ -74,8 +77,6 @@ func RandomSample(slice []config.MixConfig, length int) ([]config.MixConfig, err
 // a very dummy implementation of getting "random" string of given length
 // could be improved in number of ways but for the test sake it's good enough
 func RandomString(length int) string {
-	rand.Seed(time.Now().UnixNano())
-
 	letterRunes := []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789")
 	b := make([]rune, length)
 	for i := range b {
@@ -85,7 +86,6 @@ func RandomString(length int) string {
 }
 
 func RandomExponential(expParam float64) (float64, error) {
-	rand.Seed(time.Now().UTC().UnixNano())
 	if expParam <= 0.0 {
 		return 0.0, errors.New("the parameter of exponential distribution has to be larger than zero")
 	}
