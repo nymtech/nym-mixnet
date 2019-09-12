@@ -139,6 +139,27 @@ func RegisterPresence(host string, publicKey *sphinx.PublicKey, layer int) error
 	return nil
 }
 
+// SendMixMetrics sends the mixnode related packet metrics to the directory server.
+func SendMixMetrics(metrics map[string]uint) error {
+	jsonValue, err := json.Marshal(metrics)
+	if err != nil {
+		return err
+	}
+
+	url := config.DirectoryServerBaseURL + config.DirectoryServerMetricsURL
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonValue))
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("response Status:", resp.Status)
+	fmt.Println("response Headers:", resp.Header)
+	body, _ := ioutil.ReadAll(resp.Body)
+	fmt.Println("response Body:", string(body))
+
+	return nil
+}
+
 // DirExists checks whether a directory exists at the given path.
 func DirExists(path string) (bool, error) {
 	_, err := os.Stat(path)

@@ -18,6 +18,8 @@ package server
 import (
 	"bytes"
 	"net"
+	"sync"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/nymtech/loopix-messaging/config"
@@ -27,6 +29,10 @@ import (
 	"github.com/nymtech/loopix-messaging/node"
 	"github.com/nymtech/loopix-messaging/sphinx"
 	"github.com/sirupsen/logrus"
+)
+
+const (
+	metricsInterval = time.Second
 )
 
 // TODO: another case of the global logger
@@ -56,7 +62,50 @@ type MixServer struct {
 	listener *net.TCPListener
 	*node.Mix
 
-	config config.MixConfig
+	config  config.MixConfig
+	metrics *metrics
+}
+
+type metrics struct {
+	sync.Mutex
+	sentMessages map[string]uint
+}
+
+func (m *metrics) reset() {
+	m.Lock()
+	defer m.Unlock()
+	m.sentMessages = make(map[string]uint)
+}
+
+func (m *metrics) addMessage(hopAddress string) {
+	m.Lock()
+	defer m.Unlock()
+	if _, ok := m.sentMessages[hopAddress]; ok {
+		m.sentMessages[hopAddress]++
+	} else {
+		m.sentMessages[hopAddress] = 1
+	}
+}
+
+func (m *metrics) sendToDirectoryServer() {
+	m.Lock()
+	defer m.Unlock()
+	// send the data in a new goroutine so we wouldn't block if there were issues in sending the data
+	metricsCopy := make(map[string]uint)
+	for k, v := range m.sentMessages {
+		metricsCopy[k] = v
+	}
+	go func(metricsCopy map[string]uint) {
+		if err := helpers.SendMixMetrics(metricsCopy); err != nil {
+			logLocal.Errorf("Failed to send metrics: %v", err)
+		}
+	}(metricsCopy)
+}
+
+func newMetrics() *metrics {
+	return &metrics{
+		sentMessages: make(map[string]uint),
+	}
 }
 
 // Start runs a mix server
@@ -92,6 +141,8 @@ func (m *MixServer) receivedPacket(packet []byte) error {
 		if err := m.forwardPacket(dePacket, nextHop.Address); err != nil {
 			return err
 		}
+		// add it only if we didn't return an error
+		m.metrics.addMessage(nextHop.Address)
 	} else {
 		logLocal.Info("Packet has non-forward flag. Packet dropped")
 	}
@@ -129,7 +180,9 @@ func (m *MixServer) send(packet []byte, address string) error {
 func (m *MixServer) run() {
 
 	defer m.listener.Close()
-	finish := make(chan bool)
+	finish := make(chan struct{})
+
+	go m.startSendingMetrics(finish)
 
 	go func() {
 		logLocal.Infof("Listening on %s", m.host+":"+m.port)
@@ -137,6 +190,19 @@ func (m *MixServer) run() {
 	}()
 
 	<-finish
+}
+
+func (m *MixServer) startSendingMetrics(finishCh chan struct{}) {
+	ticker := time.NewTicker(metricsInterval)
+	for {
+		select {
+		case <-ticker.C:
+			m.metrics.sendToDirectoryServer()
+			m.metrics.reset()
+		case <-finishCh:
+			return
+		}
+	}
 }
 
 func (m *MixServer) listenForIncomingConnections() {
@@ -197,7 +263,13 @@ func NewMixServer(id string,
 	layer int,
 ) (*MixServer, error) {
 	mix := node.NewMix(prvKey, pubKey)
-	mixServer := MixServer{id: id, host: host, port: port, Mix: mix, layer: layer}
+	mixServer := MixServer{id: id,
+		host:    host,
+		port:    port,
+		Mix:     mix,
+		layer:   layer,
+		metrics: newMetrics(),
+	}
 	mixServer.config = config.MixConfig{Id: mixServer.id,
 		Host:   mixServer.host,
 		Port:   mixServer.port,
