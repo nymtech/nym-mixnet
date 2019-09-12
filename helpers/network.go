@@ -32,6 +32,10 @@ import (
 	"github.com/nymtech/loopix-messaging/sphinx"
 )
 
+var (
+	ErrInvalidLocalIP = errors.New("couldn't find a valid IP for your machine, check your internet connection")
+)
+
 // ResolveTCPAddress returns an address of TCP end point given a host and port.
 func ResolveTCPAddress(host, port string) (*net.TCPAddr, error) {
 	addr, err := net.ResolveTCPAddr("tcp", host+":"+port)
@@ -72,7 +76,7 @@ func GetLocalIP() (string, error) {
 		}
 	}
 
-	return "", errors.New("couldn't find a valid IP for your machine, check your internet connection")
+	return "", ErrInvalidLocalIP
 }
 
 // RegisterPresence registers server presence at the directory server.
