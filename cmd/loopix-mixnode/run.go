@@ -13,10 +13,11 @@ import (
 
 const (
 	// PkiDb is the location of the database file, relative to the project root. TODO: move this to homedir.
-	PkiDb       = "pki/database.db"
-	defaultHost = "localhost"
-	defaultID   = "Client1"
-	defaultPort = "6666"
+	PkiDb        = "pki/database.db"
+	defaultHost  = "localhost"
+	defaultID    = "Mix1"
+	defaultPort  = "6666"
+	defaultLayer = -1
 )
 
 func cmdRun(args []string, usage string) {
@@ -24,6 +25,7 @@ func cmdRun(args []string, usage string) {
 	id := opts.Flags("--id").Label("ID").String("Id of the loopix-client we want to run", defaultID)
 	host := opts.Flags("--host").Label("HOST").String("The host on which the loopix-client is running", defaultHost)
 	port := opts.Flags("--port").Label("PORT").String("Port on which loopix-client listens", defaultPort)
+	layer := opts.Flags("--layer").Label("Layer").Int("Mixnet layer of this particular node", defaultLayer)
 
 	params := opts.Parse(args)
 	if len(params) != 0 {
@@ -51,7 +53,7 @@ func cmdRun(args []string, usage string) {
 		panic(err)
 	}
 
-	mixServer, err := server.NewMixServer(*id, *host, *port, pubM, privM, PkiDb)
+	mixServer, err := server.NewMixServer(*id, *host, *port, pubM, privM, PkiDb, *layer)
 	if err != nil {
 		panic(err)
 	}
