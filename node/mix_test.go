@@ -126,5 +126,5 @@ func TestMixProcessPacket(t *testing.T) {
 		PubKey:  nodes[0].PubKey,
 	}, nextHop, "Next hop does not match")
 	assert.Equal(t, reflect.TypeOf([]byte{}), reflect.TypeOf(dePacket))
-	assert.Equal(t, flags.LastHopFlag, flag, reflect.TypeOf(dePacket))
+	assert.Equal(t, flags.RelayFlag, flag, reflect.TypeOf(dePacket))
 }
