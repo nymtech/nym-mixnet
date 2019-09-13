@@ -47,9 +47,8 @@ func cmdRun(args []string, usage string) {
 		os.Exit(1)
 	}
 
-	err := pki.EnsureDbExists(PkiDb)
-	if err != nil {
-		fmt.Println("PkiDb problem ")
+	if err := pki.EnsureDbExists(PkiDb); err != nil {
+		fmt.Fprintf(os.Stderr, "PkiDb problem: %v ", err)
 		panic(err)
 	}
 
@@ -72,13 +71,11 @@ func cmdRun(args []string, usage string) {
 		panic(err)
 	}
 
-	err = mixServer.Start()
-	if err != nil {
+	if err := mixServer.Start(); err != nil {
 		panic(err)
 	}
 
-	wait := make(chan struct{})
-	<-wait
+	mixServer.Wait()
 }
 
 func newOpts(command string, usage string) *optparse.Parser {

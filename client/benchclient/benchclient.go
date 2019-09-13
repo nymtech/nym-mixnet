@@ -25,6 +25,7 @@ import (
 
 	"github.com/nymtech/loopix-messaging/client"
 	"github.com/nymtech/loopix-messaging/config"
+	"github.com/nymtech/loopix-messaging/flags"
 )
 
 const (
@@ -144,7 +145,7 @@ func (bc *BenchClient) pregeneratePacket(message string, recipient config.Client
 		return err
 	}
 
-	packetBytes, err := config.WrapWithFlag(config.CommFlag, sphinxPacket)
+	packetBytes, err := config.WrapWithFlag(flags.CommFlag, sphinxPacket)
 	if err != nil {
 		return err
 	}

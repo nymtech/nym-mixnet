@@ -29,6 +29,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/nymtech/loopix-messaging/config"
+	"github.com/nymtech/loopix-messaging/flags"
 	"github.com/nymtech/loopix-messaging/logging"
 	"golang.org/x/crypto/curve25519"
 )
@@ -40,15 +41,6 @@ const (
 	// K TODO: document padding-related Sphinx parameter
 	K            = 16
 	headerLength = 192
-)
-
-//nolint: gochecknoglobals
-var (
-	// LastHopFlag could have been storing this as a single byte, however, protobuf does not have single-byte fields
-	LastHopFlag = []byte("\xf0")
-	// RelayFlag denotes whether this message should continue further along the path of mixes.
-	// This is implementation-specific rather than being part of the Loopix protocol design.
-	RelayFlag = []byte("\xf1")
 )
 
 // PackForwardMessage encapsulates the given message into the cryptographic Sphinx packet format.
@@ -112,9 +104,9 @@ func createHeader(nodes []config.MixConfig,
 	for i := range nodes {
 		var c Commands
 		if i == len(nodes)-1 {
-			c = Commands{Delay: delays[i], Flag: LastHopFlag}
+			c = Commands{Delay: delays[i], Flag: flags.LastHopFlag.Bytes()}
 		} else {
-			c = Commands{Delay: delays[i], Flag: RelayFlag}
+			c = Commands{Delay: delays[i], Flag: flags.RelayFlag.Bytes()}
 		}
 		commands[i] = c
 	}

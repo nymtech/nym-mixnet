@@ -19,6 +19,7 @@ package node
 import (
 	"time"
 
+	"github.com/nymtech/loopix-messaging/flags"
 	"github.com/nymtech/loopix-messaging/sphinx"
 )
 
@@ -27,12 +28,35 @@ type Mix struct {
 	prvKey *sphinx.PrivateKey
 }
 
+type PacketProcessingResult struct {
+	packetData []byte
+	nextHop    sphinx.Hop
+	flag       []byte
+	err        error
+}
+
+func (p *PacketProcessingResult) PacketData() []byte {
+	return p.packetData
+}
+
+func (p *PacketProcessingResult) NextHop() sphinx.Hop {
+	return p.nextHop
+}
+
+func (p *PacketProcessingResult) Flag() []byte {
+	return p.flag
+}
+
+func (p *PacketProcessingResult) Err() error {
+	return p.err
+}
+
 // ProcessPacket performs the processing operation on the received packet, including cryptographic operations and
 // extraction of the meta information.
 func (m *Mix) ProcessPacket(packet []byte,
-	c chan<- []byte,
-	cAdr chan<- sphinx.Hop,
-	cFlag chan<- []byte,
+	packetDataCh chan<- []byte,
+	nextHopCh chan<- sphinx.Hop,
+	flagCh chan<- flags.SphinxFlag,
 	errCh chan<- error,
 ) {
 	nextHop, commands, newPacket, err := sphinx.ProcessSphinxPacket(packet, m.prvKey)
@@ -40,18 +64,14 @@ func (m *Mix) ProcessPacket(packet []byte,
 		errCh <- err
 	}
 
-	timeoutCh := make(chan []byte, 1)
+	// rather than sleeping in new gouroutine and waiting for channel data that is sent from it
+	// just sleep in the main goroutine and avoid extra communication overhead
+	time.Sleep(time.Second * time.Duration(commands.Delay))
 
-	go func(p []byte, delay float64) {
-		time.Sleep(time.Second * time.Duration(delay))
-		timeoutCh <- p
-	}(newPacket, commands.Delay)
-
-	c <- <-timeoutCh
-	cAdr <- nextHop
-	cFlag <- commands.Flag
+	packetDataCh <- newPacket
+	nextHopCh <- nextHop
+	flagCh <- flags.SphinxFlagFromBytes(commands.Flag)
 	errCh <- nil
-
 }
 
 // GetPublicKey returns the public key of the mixnode.

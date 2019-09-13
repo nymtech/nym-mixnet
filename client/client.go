@@ -18,7 +18,6 @@
 package client
 
 import (
-	"bytes"
 	"crypto/rand"
 	"io/ioutil"
 	"math"
@@ -27,6 +26,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/nymtech/loopix-messaging/flags"
 	"github.com/nymtech/loopix-messaging/sphinx"
 
 	"github.com/golang/protobuf/proto"
@@ -237,7 +237,7 @@ func (c *NetClient) encodeMessage(message string, recipient config.ClientConfig)
 		return nil, err
 	}
 
-	packetBytes, err := config.WrapWithFlag(config.CommFlag, sphinxPacket)
+	packetBytes, err := config.WrapWithFlag(flags.CommFlag, sphinxPacket)
 	if err != nil {
 		logLocal.WithError(err).Error("Error in sending message - wrap with flag returned an error")
 		return nil, err
@@ -310,8 +310,8 @@ func (c *NetClient) handleConnection(conn net.Conn) {
 		logLocal.WithError(err).Error("Error in unmarshal incoming packet")
 	}
 
-	switch {
-	case bytes.Equal(packet.Flag, config.TokenFlag):
+	switch flags.PacketTypeFlagFromBytes(packet.Flag) {
+	case flags.TokenFlag:
 		c.registerToken(packet.Data)
 		go func() {
 			err := c.controlOutQueue()
@@ -334,7 +334,7 @@ func (c *NetClient) handleConnection(conn net.Conn) {
 			}()
 		}
 
-	case bytes.Equal(packet.Flag, config.CommFlag):
+	case flags.CommFlag:
 		_, err := c.processPacket(packet.Data)
 		if err != nil {
 			logLocal.WithError(err).Error("Error in processing received packet")
@@ -373,7 +373,7 @@ func (c *NetClient) sendRegisterMessageToProvider() error {
 		return err
 	}
 
-	pktBytes, err := config.WrapWithFlag(config.AssigneFlag, confBytes)
+	pktBytes, err := config.WrapWithFlag(flags.AssignFlag, confBytes)
 	if err != nil {
 		logLocal.WithError(err).Error("Error in register provider - wrap with flag returned an error")
 		return err
@@ -398,7 +398,7 @@ func (c *NetClient) getMessagesFromProvider() error {
 		return err
 	}
 
-	pktBytes, err := config.WrapWithFlag(config.PullFlag, pullRqsBytes)
+	pktBytes, err := config.WrapWithFlag(flags.PullFlag, pullRqsBytes)
 	if err != nil {
 		logLocal.WithError(err).Error("Error in register provider - marshal of provider config returned an error")
 		return err
@@ -472,7 +472,7 @@ func (c *NetClient) createDropCoverMessage() ([]byte, error) {
 		return nil, err
 	}
 
-	packetBytes, err := config.WrapWithFlag(config.CommFlag, sphinxPacket)
+	packetBytes, err := config.WrapWithFlag(flags.CommFlag, sphinxPacket)
 	if err != nil {
 		return nil, err
 	}
@@ -498,7 +498,7 @@ func (c *NetClient) createLoopCoverMessage() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	packetBytes, err := config.WrapWithFlag(config.CommFlag, sphinxPacket)
+	packetBytes, err := config.WrapWithFlag(flags.CommFlag, sphinxPacket)
 	if err != nil {
 		return nil, err
 	}

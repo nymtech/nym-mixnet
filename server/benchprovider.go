@@ -17,7 +17,6 @@
 package server
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"net"
@@ -26,6 +25,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/nymtech/loopix-messaging/config"
+	"github.com/nymtech/loopix-messaging/flags"
 	"github.com/nymtech/loopix-messaging/sphinx"
 )
 
@@ -114,22 +114,22 @@ func (p *BenchProvider) createSummaryDoc() error {
 func (p *BenchProvider) receivedPacket(packet []byte) error {
 	logLocal.Info("Received new sphinx packet")
 
-	c := make(chan []byte)
-	cAdr := make(chan sphinx.Hop)
-	cFlag := make(chan []byte)
+	packetDataCh := make(chan []byte)
+	nextHopCh := make(chan sphinx.Hop)
+	flagCh := make(chan flags.SphinxFlag)
 	errCh := make(chan error)
 
-	go p.ProcessPacket(packet, c, cAdr, cFlag, errCh)
-	dePacket := <-c
-	nextHop := <-cAdr
-	flag := <-cFlag
+	go p.ProcessPacket(packet, packetDataCh, nextHopCh, flagCh, errCh)
+	dePacket := <-packetDataCh
+	nextHop := <-nextHopCh
+	flag := <-flagCh
 	err := <-errCh
 
 	if err != nil {
 		return err
 	}
 
-	if bytes.Equal(flag, sphinx.LastHopFlag) {
+	if flag == flags.LastHopFlag {
 		if nextHop.Id == "BenchmarkClientRecipient" {
 			msgContent := string(dePacket[31:])
 			p.receivedMessages = append(p.receivedMessages, timestampedMessage{timestamp: time.Now(), content: msgContent})
@@ -185,7 +185,7 @@ func (p *BenchProvider) handleConnection(conn net.Conn, errs chan<- error) {
 		errs <- err
 	}
 
-	if bytes.Equal(packet.Flag, config.CommFlag) {
+	if flags.PacketTypeFlagFromBytes(packet.Flag) == flags.CommFlag {
 		if err := p.receivedPacket(packet.Data); err != nil {
 			panic(err)
 		}

@@ -25,6 +25,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/nymtech/loopix-messaging/config"
+	"github.com/nymtech/loopix-messaging/flags"
 	"github.com/nymtech/loopix-messaging/helpers"
 	"github.com/nymtech/loopix-messaging/networker"
 	"github.com/nymtech/loopix-messaging/node"
@@ -94,28 +95,28 @@ func (p *ProviderServer) run() {
 func (p *ProviderServer) receivedPacket(packet []byte) error {
 	logLocal.Infof("%s: Received new sphinx packet", p.id)
 
-	c := make(chan []byte)
-	cAdr := make(chan sphinx.Hop)
-	cFlag := make(chan []byte)
+	packetDataCh := make(chan []byte)
+	nextHopCh := make(chan sphinx.Hop)
+	flagCh := make(chan flags.SphinxFlag)
 	errCh := make(chan error)
 
-	go p.ProcessPacket(packet, c, cAdr, cFlag, errCh)
-	dePacket := <-c
-	nextHop := <-cAdr
-	flag := <-cFlag
+	go p.ProcessPacket(packet, packetDataCh, nextHopCh, flagCh, errCh)
+	dePacket := <-packetDataCh
+	nextHop := <-nextHopCh
+	flag := <-flagCh
 	err := <-errCh
 
 	if err != nil {
 		return err
 	}
 
-	switch {
-	case bytes.Equal(flag, sphinx.RelayFlag):
+	switch flag {
+	case flags.RelayFlag:
 		err = p.forwardPacket(dePacket, nextHop.Address)
 		if err != nil {
 			return err
 		}
-	case bytes.Equal(flag, sphinx.LastHopFlag):
+	case flags.LastHopFlag:
 		tmpMsgID := fmt.Sprintf("TMP_MESSAGE_%v", helpers.RandomString(8))
 		// err = p.storeMessage(dePacket, nextHop.Id, "TMP_MESSAGE_ID")
 		err = p.storeMessage(dePacket, nextHop.Id, tmpMsgID)
@@ -131,7 +132,7 @@ func (p *ProviderServer) receivedPacket(packet []byte) error {
 }
 
 func (p *ProviderServer) forwardPacket(sphinxPacket []byte, address string) error {
-	packetBytes, err := config.WrapWithFlag(config.CommFlag, sphinxPacket)
+	packetBytes, err := config.WrapWithFlag(flags.CommFlag, sphinxPacket)
 	if err != nil {
 		return err
 	}
@@ -205,18 +206,18 @@ func (p *ProviderServer) handleConnection(conn net.Conn, errs chan<- error) {
 		errs <- err
 	}
 
-	switch {
-	case bytes.Equal(packet.Flag, config.AssigneFlag):
+	switch flags.PacketTypeFlagFromBytes(packet.Flag) {
+	case flags.AssignFlag:
 		err = p.handleAssignRequest(packet.Data)
 		if err != nil {
 			errs <- err
 		}
-	case bytes.Equal(packet.Flag, config.CommFlag):
+	case flags.CommFlag:
 		err = p.receivedPacket(packet.Data)
 		if err != nil {
 			errs <- err
 		}
-	case bytes.Equal(packet.Flag, config.PullFlag):
+	case flags.PullFlag:
 		err = p.handlePullRequest(packet.Data)
 		if err != nil {
 			errs <- err
@@ -278,7 +279,7 @@ func (p *ProviderServer) handleAssignRequest(packet []byte) error {
 		return err
 	}
 
-	tokenBytes, err := config.WrapWithFlag(config.TokenFlag, token)
+	tokenBytes, err := config.WrapWithFlag(flags.TokenFlag, token)
 	if err != nil {
 		return err
 	}
@@ -368,7 +369,7 @@ func (p *ProviderServer) fetchMessages(clientID string) (string, error) {
 		address := p.assignedClients[clientID].host + ":" + p.assignedClients[clientID].port
 		logLocal.Infof("Found stored message for address %s", address)
 		logLocal.Infof("Messages data: %v", string(dat))
-		msgBytes, err := config.WrapWithFlag(config.CommFlag, dat)
+		msgBytes, err := config.WrapWithFlag(flags.CommFlag, dat)
 		if err != nil {
 			return "", err
 		}

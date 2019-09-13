@@ -21,6 +21,7 @@ package config
 
 import (
 	"github.com/golang/protobuf/proto"
+	"github.com/nymtech/loopix-messaging/flags"
 )
 
 const (
@@ -29,20 +30,6 @@ const (
 	DirectoryServerMetricsURL     = "api/metrics/mixes"
 	DirectoryServerPkiURL         = "api/nodes"
 	DirectoryServerPresenceURL    = "api/presence/mixnodes"
-)
-
-//nolint: gochecknoglobals
-var (
-	// TODO: perhaps move it elsewhere?
-	// TODO: proper comments on them
-	// AssigneFlag ...
-	AssigneFlag = []byte("\xa2")
-	// CommFlag ...
-	CommFlag = []byte("\xc6")
-	// TokenFlag ...
-	TokenFlag = []byte("\xa9")
-	// PullFlag ...
-	PullFlag = []byte("\xff")
 )
 
 // NewMixConfig constructor
@@ -58,8 +45,8 @@ func NewClientConfig(clientID, host, port string, pubKey []byte, providerInfo Mi
 
 // WrapWithFlag packs the given byte information together with a specified flag into the
 // packet.
-func WrapWithFlag(flag []byte, data []byte) ([]byte, error) {
-	m := GeneralPacket{Flag: flag, Data: data}
+func WrapWithFlag(flag flags.PacketTypeFlag, data []byte) ([]byte, error) {
+	m := GeneralPacket{Flag: flag.Bytes(), Data: data}
 	mBytes, err := proto.Marshal(&m)
 	if err != nil {
 		return nil, err

@@ -29,10 +29,30 @@ const (
 	// RelayFlag denotes whether this message should continue further along the path of mixes.
 	// This is implementation-specific rather than being part of the Loopix protocol design.
 	RelayFlag SphinxFlag = '\xf1'
+	// InvalidFlag denotes an invalid sphinx flag.
+	InvalidSphinxFlag SphinxFlag = '\x00'
 )
 
 func (sf SphinxFlag) Bytes() []byte {
 	return []byte{byte(sf)}
+}
+
+func SphinxFlagFromByte(b byte) SphinxFlag {
+	switch b {
+	case byte(LastHopFlag):
+		return LastHopFlag
+	case byte(RelayFlag):
+		return LastHopFlag
+	default:
+		return InvalidSphinxFlag
+	}
+}
+
+func SphinxFlagFromBytes(b []byte) SphinxFlag {
+	if len(b) != 1 {
+		return InvalidSphinxFlag
+	}
+	return SphinxFlagFromByte(b[0])
 }
 
 // PacketTypeFlag represents flag present in all general data packets exchanged between all entities in the system.
@@ -49,8 +69,32 @@ const (
 	TokenFlag PacketTypeFlag = '\xa9'
 	// PullFlag is used to indicate client request to obtain all its messages stored at a particular provider.
 	PullFlag PacketTypeFlag = '\xff'
+	// InvalidFlag is used to indicate an invalid packet type flag.
+	InvalidPacketTypeFlag PacketTypeFlag = '\x00'
 )
 
 func (pf PacketTypeFlag) Bytes() []byte {
 	return []byte{byte(pf)}
+}
+
+func PacketTypeFlagFromByte(b byte) PacketTypeFlag {
+	switch b {
+	case byte(AssignFlag):
+		return AssignFlag
+	case byte(CommFlag):
+		return CommFlag
+	case byte(TokenFlag):
+		return TokenFlag
+	case byte(PullFlag):
+		return PullFlag
+	default:
+		return InvalidPacketTypeFlag
+	}
+}
+
+func PacketTypeFlagFromBytes(b []byte) PacketTypeFlag {
+	if len(b) != 1 {
+		return InvalidPacketTypeFlag
+	}
+	return PacketTypeFlagFromByte(b[0])
 }
