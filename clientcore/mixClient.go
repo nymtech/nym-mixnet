@@ -26,12 +26,9 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/nymtech/loopix-messaging/config"
 	"github.com/nymtech/loopix-messaging/helpers"
-	"github.com/nymtech/loopix-messaging/logging"
-	sphinx "github.com/nymtech/loopix-messaging/sphinx"
+	"github.com/nymtech/loopix-messaging/sphinx"
+	"github.com/sirupsen/logrus"
 )
-
-// TODO: the case of the global logger, perhaps make it part of a CryptoClient struct?
-var logLocal = logging.PackageLogger()
 
 // NetworkPKI holds PKI data about tne current network topology.
 // This allows public-key encryption to happen.
@@ -53,6 +50,7 @@ type CryptoClient struct {
 	prvKey   *sphinx.PrivateKey
 	Provider config.MixConfig
 	Network  NetworkPKI
+	log      *logrus.Logger
 }
 
 const (
@@ -71,19 +69,19 @@ func (c *CryptoClient) createSphinxPacket(message string, recipient config.Clien
 
 	path, err := c.buildPath(recipient)
 	if err != nil {
-		logLocal.WithError(err).Error("Error in CreateSphinxPacket - generating random path failed")
+		c.log.Errorf("Error in CreateSphinxPacket - generating random path failed: %v", err)
 		return nil, err
 	}
 
 	delays, err := c.generateDelaySequence(desiredRateParameter, path.Len())
 	if err != nil {
-		logLocal.WithError(err).Error("Error in CreateSphinxPacket - generating sequence of delays failed")
+		c.log.Errorf("Error in CreateSphinxPacket - generating sequence of delays failed: %v", err)
 		return nil, err
 	}
 
 	sphinxPacket, err := sphinx.PackForwardMessage(path, delays, message)
 	if err != nil {
-		logLocal.WithError(err).Error("Error in CreateSphinxPacket - the pack procedure failed")
+		c.log.Errorf("Error in CreateSphinxPacket - the pack procedure failed: %v", err)
 		return nil, err
 	}
 
@@ -96,13 +94,13 @@ func (c *CryptoClient) createSphinxPacket(message string, recipient config.Clien
 func (c *CryptoClient) buildPath(recipient config.ClientConfig) (config.E2EPath, error) {
 	mixSeq, err := c.getRandomMixSequence(c.Network.Mixes, pathLength)
 	if err != nil {
-		logLocal.WithError(err).Error("error in buildPath - generating random mix path failed")
+		c.log.Errorf("error in buildPath - generating random mix path failed: %v", err)
 		return config.E2EPath{}, err
 	}
 	if recipient.Provider == nil || len(recipient.Provider.PubKey) == 0 {
 		err := fmt.Errorf("error in buildPath - could not create path to the recipient," +
 			" the EgressProvider has invalid configuration")
-		logLocal.Error(err)
+		c.log.Error(err.Error())
 		return config.E2EPath{}, err
 	}
 	path := config.E2EPath{IngressProvider: c.Provider,
@@ -125,7 +123,7 @@ func (c *CryptoClient) getRandomMixSequence(mixes []config.MixConfig, length int
 	}
 	randomSeq, err := helpers.RandomSample(mixes, length)
 	if err != nil {
-		logLocal.WithError(err).Error("Error in getRandomMixSequence - sampling procedure failed")
+		c.log.Errorf("Error in getRandomMixSequence - sampling procedure failed: %v", err)
 		return nil, err
 	}
 	return randomSeq, nil
@@ -139,7 +137,7 @@ func (c *CryptoClient) generateDelaySequence(desiredRateParameter float64, lengt
 	for i := 0; i < length; i++ {
 		d, err := helpers.RandomExponential(desiredRateParameter)
 		if err != nil {
-			logLocal.WithError(err).Error("Error in generateDelaySequence - generating random exponential sample failed")
+			c.log.Errorf("Error in generateDelaySequence - generating random exponential sample failed: %v", err)
 			return nil, err
 		}
 		delays = append(delays, d)
@@ -154,7 +152,7 @@ func (c *CryptoClient) EncodeMessage(message string, recipient config.ClientConf
 
 	packet, err := c.createSphinxPacket(message, recipient)
 	if err != nil {
-		logLocal.WithError(err).Error("Error in EncodeMessage - the pack procedure failed")
+		c.log.Errorf("Error in EncodeMessage - the pack procedure failed: %v", err)
 		return nil, err
 	}
 	return packet, err
@@ -177,10 +175,12 @@ func NewCryptoClient(privKey *sphinx.PrivateKey,
 	pubKey *sphinx.PublicKey,
 	provider config.MixConfig,
 	network NetworkPKI,
+	log *logrus.Logger,
 ) *CryptoClient {
 	return &CryptoClient{prvKey: privKey,
 		pubKey:   pubKey,
 		Provider: provider,
 		Network:  network,
+		log:      log,
 	}
 }

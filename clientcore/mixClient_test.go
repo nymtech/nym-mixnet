@@ -16,6 +16,7 @@ package clientcore
 
 import (
 	"github.com/nymtech/loopix-messaging/config"
+	"github.com/nymtech/loopix-messaging/logger"
 	sphinx "github.com/nymtech/loopix-messaging/sphinx"
 
 	"github.com/stretchr/testify/assert"
@@ -36,6 +37,12 @@ var (
 )
 
 func Setup() error {
+	baseDisabledLogger, err := logger.New("", "panic", true)
+	if err != nil {
+		return err
+	}
+	disabledLog := baseDisabledLogger.GetLogger("test")
+
 	for i := 0; i < 10; i++ {
 		_, pub, err := sphinx.GenerateKeyPair()
 		if err != nil {
@@ -49,7 +56,7 @@ func Setup() error {
 	if err != nil {
 		return err
 	}
-	client = NewCryptoClient(privC, pubC, config.MixConfig{}, NetworkPKI{})
+	client = NewCryptoClient(privC, pubC, config.MixConfig{}, NetworkPKI{}, disabledLog)
 
 	//Client a pair of mix configs, a single provider and a recipient
 	_, pub1, err := sphinx.GenerateKeyPair()

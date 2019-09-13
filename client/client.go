@@ -27,16 +27,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/nymtech/loopix-messaging/flags"
-	"github.com/nymtech/loopix-messaging/logger"
-	"github.com/nymtech/loopix-messaging/sphinx"
-	"github.com/sirupsen/logrus"
-
 	"github.com/golang/protobuf/proto"
 	"github.com/nymtech/loopix-messaging/clientcore"
 	"github.com/nymtech/loopix-messaging/config"
+	"github.com/nymtech/loopix-messaging/flags"
 	"github.com/nymtech/loopix-messaging/helpers"
+	"github.com/nymtech/loopix-messaging/logger"
 	"github.com/nymtech/loopix-messaging/networker"
+	"github.com/nymtech/loopix-messaging/sphinx"
+	"github.com/sirupsen/logrus"
 )
 
 // TODO: we need to deal with all those globals
@@ -619,12 +618,18 @@ func NewClient(id string,
 	pkiDir string,
 	provider config.MixConfig,
 ) (*NetClient, error) {
-	core := clientcore.NewCryptoClient(prvKey, pubKey, provider, clientcore.NetworkPKI{})
 
 	baseLogger, err := logger.New(defaultLogFileLocation, defaultLogLevel, false)
 	if err != nil {
 		return nil, err
 	}
+
+	core := clientcore.NewCryptoClient(prvKey,
+		pubKey,
+		provider,
+		clientcore.NetworkPKI{},
+		baseLogger.GetLogger("cryptoClient "+id),
+	)
 
 	log := baseLogger.GetLogger(id)
 
@@ -667,8 +672,21 @@ func NewTestClient(id string,
 	pkiDir string,
 	provider config.MixConfig,
 ) (*NetClient, error) {
-	core := clientcore.NewCryptoClient(prvKey, pubKey, provider, clientcore.NetworkPKI{})
-	c := NetClient{id: id, host: host, port: port, CryptoClient: core, pkiDir: pkiDir}
+	baseDisabledLogger, err := logger.New(defaultLogFileLocation, defaultLogLevel, true)
+	if err != nil {
+		return nil, err
+	}
+	// this logger can be shared as it will be disabled anyway
+	disabledLog := baseDisabledLogger.GetLogger("test")
+
+	core := clientcore.NewCryptoClient(prvKey, pubKey, provider, clientcore.NetworkPKI{}, disabledLog)
+	c := NetClient{id: id,
+		host:         host,
+		port:         port,
+		CryptoClient: core,
+		pkiDir:       pkiDir,
+		log:          disabledLog,
+	}
 	c.config = config.ClientConfig{Id: c.id,
 		Host:     c.host,
 		Port:     c.port,
