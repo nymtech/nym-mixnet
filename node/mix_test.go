@@ -80,11 +80,6 @@ func TestMain(m *testing.M) {
 }
 
 func TestMixProcessPacket(t *testing.T) {
-	packetDataCh := make(chan []byte, 1)
-	nextHopCh := make(chan sphinx.Hop, 1)
-	flagCh := make(chan flags.SphinxFlag, 1)
-	errCh := make(chan error, 1)
-
 	pubD, _, err := sphinx.GenerateKeyPair()
 	if err != nil {
 		t.Fatal(err)
@@ -118,12 +113,11 @@ func TestMixProcessPacket(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	providerWorker.ProcessPacket(testPacketBytes, packetDataCh, nextHopCh, flagCh, errCh)
-	dePacket := <-packetDataCh
-	nextHop := <-nextHopCh
-	flag := <-flagCh
-	err = <-errCh
-	if err != nil {
+	res := providerWorker.ProcessPacket(testPacketBytes)
+	dePacket := res.PacketData()
+	nextHop := res.NextHop()
+	flag := res.Flag()
+	if err := res.Err(); err != nil {
 		t.Fatal(err)
 	}
 

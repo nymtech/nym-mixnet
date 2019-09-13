@@ -26,7 +26,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/nymtech/loopix-messaging/config"
 	"github.com/nymtech/loopix-messaging/flags"
-	"github.com/nymtech/loopix-messaging/sphinx"
 )
 
 const (
@@ -114,24 +113,17 @@ func (p *BenchProvider) createSummaryDoc() error {
 func (p *BenchProvider) receivedPacket(packet []byte) error {
 	logLocal.Info("Received new sphinx packet")
 
-	packetDataCh := make(chan []byte)
-	nextHopCh := make(chan sphinx.Hop)
-	flagCh := make(chan flags.SphinxFlag)
-	errCh := make(chan error)
-
-	go p.ProcessPacket(packet, packetDataCh, nextHopCh, flagCh, errCh)
-	dePacket := <-packetDataCh
-	nextHop := <-nextHopCh
-	flag := <-flagCh
-	err := <-errCh
-
-	if err != nil {
+	res := p.ProcessPacket(packet)
+	dePacket := res.PacketData()
+	nextHop := res.NextHop()
+	flag := res.Flag()
+	if err := res.Err(); err != nil {
 		return err
 	}
 
 	if flag == flags.LastHopFlag {
 		if nextHop.Id == "BenchmarkClientRecipient" {
-			msgContent := string(dePacket[31:])
+			msgContent := string(dePacket[37:])
 			p.receivedMessages = append(p.receivedMessages, timestampedMessage{timestamp: time.Now(), content: msgContent})
 			p.receivedMessagesCount++
 			if p.receivedMessagesCount == p.numMessages {

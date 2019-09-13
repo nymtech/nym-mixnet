@@ -144,18 +144,11 @@ func (m *MixServer) GetConfig() config.MixConfig {
 func (m *MixServer) receivedPacket(packet []byte) error {
 	logLocal.Infof("%s: Received new sphinx packet", m.id)
 
-	packetDataCh := make(chan []byte)
-	nextHopCh := make(chan sphinx.Hop)
-	flagCh := make(chan flags.SphinxFlag)
-	errCh := make(chan error)
-
-	go m.ProcessPacket(packet, packetDataCh, nextHopCh, flagCh, errCh)
-	dePacket := <-packetDataCh
-	nextHop := <-nextHopCh
-	flag := <-flagCh
-	err := <-errCh
-
-	if err != nil {
+	res := m.ProcessPacket(packet)
+	dePacket := res.PacketData()
+	nextHop := res.NextHop()
+	flag := res.Flag()
+	if err := res.Err(); err != nil {
 		return err
 	}
 

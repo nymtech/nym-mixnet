@@ -95,33 +95,23 @@ func (p *ProviderServer) run() {
 func (p *ProviderServer) receivedPacket(packet []byte) error {
 	logLocal.Infof("%s: Received new sphinx packet", p.id)
 
-	packetDataCh := make(chan []byte)
-	nextHopCh := make(chan sphinx.Hop)
-	flagCh := make(chan flags.SphinxFlag)
-	errCh := make(chan error)
-
-	go p.ProcessPacket(packet, packetDataCh, nextHopCh, flagCh, errCh)
-	dePacket := <-packetDataCh
-	nextHop := <-nextHopCh
-	flag := <-flagCh
-	err := <-errCh
-
-	if err != nil {
+	res := p.ProcessPacket(packet)
+	dePacket := res.PacketData()
+	nextHop := res.NextHop()
+	flag := res.Flag()
+	if err := res.Err(); err != nil {
 		return err
 	}
 
 	switch flag {
 	case flags.RelayFlag:
-		err = p.forwardPacket(dePacket, nextHop.Address)
-		if err != nil {
+		if err := p.forwardPacket(dePacket, nextHop.Address); err != nil {
 			return err
 		}
 	case flags.LastHopFlag:
 		tmpMsgID := fmt.Sprintf("TMP_MESSAGE_%v", helpers.RandomString(8))
 		// err = p.storeMessage(dePacket, nextHop.Id, "TMP_MESSAGE_ID")
-		err = p.storeMessage(dePacket, nextHop.Id, tmpMsgID)
-
-		if err != nil {
+		if err := p.storeMessage(dePacket, nextHop.Id, tmpMsgID); err != nil {
 			return err
 		}
 	default:

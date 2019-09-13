@@ -31,7 +31,7 @@ type Mix struct {
 type PacketProcessingResult struct {
 	packetData []byte
 	nextHop    sphinx.Hop
-	flag       []byte
+	flag       flags.SphinxFlag
 	err        error
 }
 
@@ -43,7 +43,7 @@ func (p *PacketProcessingResult) NextHop() sphinx.Hop {
 	return p.nextHop
 }
 
-func (p *PacketProcessingResult) Flag() []byte {
+func (p *PacketProcessingResult) Flag() flags.SphinxFlag {
 	return p.flag
 }
 
@@ -53,25 +53,21 @@ func (p *PacketProcessingResult) Err() error {
 
 // ProcessPacket performs the processing operation on the received packet, including cryptographic operations and
 // extraction of the meta information.
-func (m *Mix) ProcessPacket(packet []byte,
-	packetDataCh chan<- []byte,
-	nextHopCh chan<- sphinx.Hop,
-	flagCh chan<- flags.SphinxFlag,
-	errCh chan<- error,
-) {
+func (m *Mix) ProcessPacket(packet []byte) *PacketProcessingResult {
+	res := new(PacketProcessingResult)
+
 	nextHop, commands, newPacket, err := sphinx.ProcessSphinxPacket(packet, m.prvKey)
-	if err != nil {
-		errCh <- err
-	}
+	res.err = err
 
 	// rather than sleeping in new gouroutine and waiting for channel data that is sent from it
 	// just sleep in the main goroutine and avoid extra communication overhead
 	time.Sleep(time.Second * time.Duration(commands.Delay))
 
-	packetDataCh <- newPacket
-	nextHopCh <- nextHop
-	flagCh <- flags.SphinxFlagFromBytes(commands.Flag)
-	errCh <- nil
+	res.packetData = newPacket
+	res.nextHop = nextHop
+	res.flag = flags.SphinxFlagFromBytes(commands.Flag)
+
+	return res
 }
 
 // GetPublicKey returns the public key of the mixnode.
