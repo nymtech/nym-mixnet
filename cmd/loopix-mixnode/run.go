@@ -20,7 +20,7 @@ import (
 
 	"github.com/nymtech/loopix-messaging/helpers"
 	"github.com/nymtech/loopix-messaging/pki"
-	"github.com/nymtech/loopix-messaging/server"
+	"github.com/nymtech/loopix-messaging/server/mixnode"
 	"github.com/nymtech/loopix-messaging/sphinx"
 	"github.com/tav/golly/optparse"
 )
@@ -66,7 +66,7 @@ func cmdRun(args []string, usage string) {
 		panic(err)
 	}
 
-	mixServer, err := server.NewMixServer(*id, *host, *port, pubM, privM, PkiDb, *layer)
+	mixServer, err := mixnode.NewMixServer(*id, *host, *port, pubM, privM, PkiDb, *layer)
 	if err != nil {
 		panic(err)
 	}

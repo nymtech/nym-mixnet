@@ -1,4 +1,4 @@
-// Copyright 2018 The Loopix-Messaging Authors
+// Copyright 2018-2019 The Loopix-Messaging Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package server implements the mix server.
-package server
+// Package mixnode implements the mix server.
+package mixnode
 
 import (
 	"net"
@@ -24,7 +24,7 @@ import (
 	"github.com/nymtech/loopix-messaging/config"
 	"github.com/nymtech/loopix-messaging/flags"
 	"github.com/nymtech/loopix-messaging/helpers"
-	"github.com/nymtech/loopix-messaging/logging"
+	"github.com/nymtech/loopix-messaging/logger"
 	"github.com/nymtech/loopix-messaging/networker"
 	"github.com/nymtech/loopix-messaging/node"
 	"github.com/nymtech/loopix-messaging/sphinx"
@@ -34,17 +34,14 @@ import (
 const (
 	metricsInterval  = time.Second
 	presenceInterval = 5 * time.Second
+
+	// Below should be moved to a config file once we have it
+	// logFileLocation can either point to some valid file to which all log data should be written
+	// or if left an empty string, stdout will be used instead
+	defaultLogFileLocation = ""
+	// considering we are under heavy development and nowhere near production level, log EVERYTHING
+	defaultLogLevel = "trace"
 )
-
-// TODO: another case of the global logger
-var logLocal = logging.PackageLogger()
-
-// TODO: actually remove it in production code. This is only used to have easier access to different debug levels
-//nolint: gochecknoinits
-func init() {
-	// For easier access for modifying logging level,
-	logLocal.Logger.SetLevel(logrus.InfoLevel)
-}
 
 // MixServerIt is the interface of a mix server.
 type MixServerIt interface {
@@ -56,22 +53,23 @@ type MixServerIt interface {
 
 // MixServer is the data of a mix server
 type MixServer struct {
+	*node.Mix
 	id       string
 	host     string
 	port     string
 	layer    int
 	listener *net.TCPListener
-	*node.Mix
-
 	config   config.MixConfig
 	metrics  *metrics
 	haltedCh chan struct{}
 	haltOnce sync.Once
+	log      *logrus.Logger
 }
 
 type metrics struct {
 	sync.Mutex
 	sentMessages map[string]uint
+	log          *logrus.Logger
 }
 
 func (m *metrics) reset() {
@@ -100,13 +98,14 @@ func (m *metrics) sendToDirectoryServer() {
 	}
 	go func(metricsCopy map[string]uint) {
 		if err := helpers.SendMixMetrics(metricsCopy); err != nil {
-			logLocal.Errorf("Failed to send metrics: %v", err)
+			m.log.Errorf("Failed to send metrics: %v", err)
 		}
 	}(metricsCopy)
 }
 
-func newMetrics() *metrics {
+func newMetrics(log *logrus.Logger) *metrics {
 	return &metrics{
+		log:          log,
 		sentMessages: make(map[string]uint),
 	}
 }
@@ -123,7 +122,7 @@ func (m *MixServer) Shutdown() {
 
 // calls any required cleanup code
 func (m *MixServer) halt() {
-	logLocal.Info("Starting graceful shutdown")
+	m.log.Info("Starting graceful shutdown")
 	// close any listeners, free resources, etc
 	// possibly send "remove presence" message
 
@@ -142,7 +141,7 @@ func (m *MixServer) GetConfig() config.MixConfig {
 }
 
 func (m *MixServer) receivedPacket(packet []byte) error {
-	logLocal.Infof("%s: Received new sphinx packet", m.id)
+	m.log.Infof("%s: Received new sphinx packet", m.id)
 
 	res := m.ProcessPacket(packet)
 	dePacket := res.PacketData()
@@ -159,7 +158,7 @@ func (m *MixServer) receivedPacket(packet []byte) error {
 		// add it only if we didn't return an error
 		m.metrics.addMessage(nextHop.Address)
 	} else {
-		logLocal.Info("Packet has non-forward flag. Packet dropped")
+		m.log.Info("Packet has non-forward flag. Packet dropped")
 	}
 	return nil
 }
@@ -196,7 +195,7 @@ func (m *MixServer) run() {
 	go m.startSendingPresence()
 
 	go func() {
-		logLocal.Infof("Listening on %s", m.host+":"+m.port)
+		m.log.Infof("Listening on %s", m.host+":"+m.port)
 		m.listenForIncomingConnections()
 	}()
 
@@ -222,7 +221,7 @@ func (m *MixServer) startSendingPresence() {
 		select {
 		case <-ticker.C:
 			if err := helpers.RegisterPresence(m.id, m.GetPublicKey(), m.layer); err != nil {
-				logLocal.Errorf("Failed to register presence: %v", err)
+				m.log.Errorf("Failed to register presence: %v", err)
 			}
 		case <-m.haltedCh:
 			return
@@ -234,14 +233,14 @@ func (m *MixServer) listenForIncomingConnections() {
 	for {
 		conn, err := m.listener.Accept()
 		if err != nil {
-			logLocal.WithError(err).Error(err)
+			m.log.Errorf("Error when listening for incoming connection: %v", err)
 		} else {
-			logLocal.Infof("Received connection from %s", conn.RemoteAddr())
+			m.log.Infof("Received connection from %s", conn.RemoteAddr())
 			errs := make(chan error, 1)
 			go m.handleConnection(conn, errs)
 			err = <-errs
 			if err != nil {
-				logLocal.WithError(err).Error(err)
+				m.log.Errorf("Error when listening for incoming connection: %v", err)
 			}
 		}
 	}
@@ -267,7 +266,7 @@ func (m *MixServer) handleConnection(conn net.Conn, errs chan<- error) {
 			errs <- err
 		}
 	default:
-		logLocal.Infof("Packet flag %s not recognised. Packet dropped", packet.Flag)
+		m.log.Infof("Packet flag %s not recognised. Packet dropped", packet.Flag)
 		errs <- nil
 	}
 	errs <- nil
@@ -284,14 +283,23 @@ func NewMixServer(id string,
 	pkiPath string,
 	layer int,
 ) (*MixServer, error) {
+
+	baseLogger, err := logger.New(defaultLogFileLocation, defaultLogLevel, false)
+	if err != nil {
+		return nil, err
+	}
+
+	log := baseLogger.GetLogger(id)
+
 	mix := node.NewMix(prvKey, pubKey)
 	mixServer := MixServer{id: id,
 		host:     host,
 		port:     port,
 		Mix:      mix,
 		layer:    layer,
-		metrics:  newMetrics(),
+		metrics:  newMetrics(baseLogger.GetLogger("metrics " + id)),
 		haltedCh: make(chan struct{}),
+		log:      log,
 	}
 	mixServer.config = config.MixConfig{Id: mixServer.id,
 		Host:   mixServer.host,
@@ -325,4 +333,35 @@ func NewMixServer(id string,
 	mixServer.listener = listener
 
 	return &mixServer, nil
+}
+
+func CreateTestMixnode() (*MixServer, error) {
+	priv, pub, err := sphinx.GenerateKeyPair()
+	if err != nil {
+		return nil, err
+	}
+	baseDisabledLogger, err := logger.New(defaultLogFileLocation, defaultLogLevel, true)
+	if err != nil {
+		return nil, err
+	}
+	// this logger can be shared as it will be disabled anyway
+	disabledLog := baseDisabledLogger.GetLogger("test")
+
+	node := node.NewMix(priv, pub)
+	mix := MixServer{host: "localhost", port: "9995", Mix: node, log: disabledLog}
+	mix.config = config.MixConfig{Id: mix.id,
+		Host:   mix.host,
+		Port:   mix.port,
+		PubKey: mix.GetPublicKey().Bytes(),
+	}
+	addr, err := helpers.ResolveTCPAddress(mix.host, mix.port)
+	if err != nil {
+		return nil, err
+	}
+
+	mix.listener, err = net.ListenTCP("tcp", addr)
+	if err != nil {
+		return nil, err
+	}
+	return &mix, nil
 }

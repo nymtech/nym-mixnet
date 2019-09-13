@@ -20,7 +20,7 @@ import (
 
 	"github.com/nymtech/loopix-messaging/helpers"
 	"github.com/nymtech/loopix-messaging/pki"
-	"github.com/nymtech/loopix-messaging/server"
+	"github.com/nymtech/loopix-messaging/server/provider"
 	"github.com/nymtech/loopix-messaging/sphinx"
 	"github.com/tav/golly/optparse"
 )
@@ -65,7 +65,7 @@ func cmdRun(args []string, usage string) {
 		panic(err)
 	}
 
-	providerServer, err := server.NewProviderServer(*id, *host, *port, pubP, privP, PkiDb)
+	providerServer, err := provider.NewProviderServer(*id, *host, *port, pubP, privP, PkiDb)
 	if err != nil {
 		panic(err)
 	}

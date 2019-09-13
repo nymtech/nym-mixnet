@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package server
+package provider
 
 import (
 	"errors"
@@ -66,7 +66,7 @@ func (p *BenchProvider) run() {
 	defer p.listener.Close()
 
 	go func() {
-		logLocal.Infof("Listening on %s", p.host+":"+p.port)
+		p.log.Infof("Listening on %s", p.host+":"+p.port)
 		p.listenForIncomingConnections()
 	}()
 
@@ -111,7 +111,7 @@ func (p *BenchProvider) createSummaryDoc() error {
 // unwrapping operation and checks whether the packet should be
 // forwarded or stored. If the processing was unsuccessful and error is returned.
 func (p *BenchProvider) receivedPacket(packet []byte) error {
-	logLocal.Info("Received new sphinx packet")
+	p.log.Info("Received new sphinx packet")
 
 	res := p.ProcessPacket(packet)
 	dePacket := res.PacketData()
@@ -146,14 +146,14 @@ func (p *BenchProvider) listenForIncomingConnections() {
 		conn, err := p.listener.Accept()
 
 		if err != nil {
-			logLocal.WithError(err).Error(err)
+			p.log.Errorf("Error when listening for incoming connection: %v", err)
 		} else {
-			logLocal.Infof("Received new connection from %s", conn.RemoteAddr())
+			p.log.Infof("Received new connection from %s", conn.RemoteAddr())
 			errs := make(chan error, 1)
 			go p.handleConnection(conn, errs)
 			err = <-errs
 			if err != nil {
-				logLocal.WithError(err).Error(err)
+				p.log.Errorf("Error when listening for incoming connection: %v", err)
 			}
 		}
 	}

@@ -17,9 +17,8 @@ package main
 import (
 	"os"
 
+	"github.com/nymtech/loopix-messaging/server/provider"
 	"github.com/nymtech/loopix-messaging/sphinx"
-
-	"github.com/nymtech/loopix-messaging/server"
 	"github.com/tav/golly/optparse"
 )
 
@@ -49,7 +48,7 @@ func cmdRun(args []string, usage string) {
 	pubP := sphinx.BytesToPublicKey([]byte{17, 170, 15, 150, 155, 75, 240, 66, 54, 100, 131, 127, 193, 10,
 		133, 32, 62, 155, 9, 46, 200, 55, 60, 125, 223, 76, 170, 167, 100, 34, 176, 117})
 
-	baseProviderServer, err := server.NewProviderServer(defaultBenchmarkProviderID,
+	baseProviderServer, err := provider.NewProviderServer(defaultBenchmarkProviderID,
 		defaultBenchmarkProviderHost,
 		*port,
 		privP,
@@ -60,12 +59,12 @@ func cmdRun(args []string, usage string) {
 		panic(err)
 	}
 
-	benchmarkProviderServer, err := server.NewBenchProvider(baseProviderServer, *numMessages)
+	benchmarkProviderServer, err := provider.NewBenchProvider(baseProviderServer, *numMessages)
 	if err != nil {
 		panic(err)
 	}
 
-	server.DisableLogging()
+	provider.DisableLogging()
 
 	err = benchmarkProviderServer.RunBench()
 	if err != nil {
