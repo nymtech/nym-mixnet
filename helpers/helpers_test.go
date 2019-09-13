@@ -1,4 +1,4 @@
-// Copyright 2018 The Loopix-Messaging Authors
+// Copyright 2018-2019 The Loopix-Messaging Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,16 +15,14 @@
 package helpers
 
 import (
-	"github.com/nymtech/loopix-messaging/config"
-
-	"github.com/stretchr/testify/assert"
-
-	"errors"
 	"fmt"
 	"os"
 	"reflect"
 	"sort"
 	"testing"
+
+	"github.com/nymtech/loopix-messaging/config"
+	"github.com/stretchr/testify/assert"
 )
 
 // I guess in the case of a test file, globals are fine
@@ -122,7 +120,7 @@ func TestPermute_Fail(t *testing.T) {
 	_, err := Permute([]config.MixConfig{})
 	// TODO: redefine the error as a constant
 	assert.EqualError(t,
-		errors.New(" cannot permute an empty list of mixes"),
+		ErrPermEmptyList,
 		err.Error(),
 		" Permute should return an error for an empty slice",
 	)
@@ -140,7 +138,7 @@ func TestRandomExponential_Fail_ZeroParam(t *testing.T) {
 	_, err := RandomExponential(0.0)
 	// TODO: redefine the error as a constant
 	assert.EqualError(t,
-		errors.New("the parameter of exponential distribution has to be larger than zero"),
+		ErrExponentialDistributionParam,
 		err.Error(),
 		" RandomExponential should return an error if the given parameter is non-positive",
 	)
@@ -151,7 +149,7 @@ func TestRandomExponential_Fail_NegativeParam(t *testing.T) {
 	_, err := RandomExponential(-1.0)
 	// TODO: redefine the error as a constant
 	assert.EqualError(t,
-		errors.New("the parameter of exponential distribution has to be larger than zero"),
+		ErrExponentialDistributionParam,
 		err.Error(),
 		" RandomExponential should return an error if the given parameter is non-positive",
 	)
@@ -177,7 +175,7 @@ func TestRandomSample_Fail(t *testing.T) {
 	_, err := RandomSample(mixes, 20)
 	// TODO: redefine the error as a constant
 	assert.EqualError(t,
-		errors.New(" cannot take a sample larger than the given list"),
+		ErrTooBigSampleSize,
 		err.Error(),
 		" RandomSample cannot take a sample larger than the given slice",
 	)
