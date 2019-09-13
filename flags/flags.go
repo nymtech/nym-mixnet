@@ -42,7 +42,7 @@ func SphinxFlagFromByte(b byte) SphinxFlag {
 	case byte(LastHopFlag):
 		return LastHopFlag
 	case byte(RelayFlag):
-		return LastHopFlag
+		return RelayFlag
 	default:
 		return InvalidSphinxFlag
 	}
