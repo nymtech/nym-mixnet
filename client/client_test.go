@@ -241,20 +241,20 @@ func TestClient_ProcessPacket(t *testing.T) {
 
 }
 
-func TestClient_ReadInMixnetPKI(t *testing.T) {
-	if err := clean(); err != nil {
-		t.Fatal(err)
-	}
-	if err := SetupTestMixesInDatabase(t); err != nil {
-		t.Fatal(err)
-	}
+// func TestClient_ReadInMixnetPKI(t *testing.T) {
+// 	if err := clean(); err != nil {
+// 		t.Fatal(err)
+// 	}
+// 	if err := SetupTestMixesInDatabase(t); err != nil {
+// 		t.Fatal(err)
+// 	}
 
-	client := SetupTestClient(t)
-	err := client.ReadInNetworkFromPKI("testDatabase.db")
-	assert.Nil(t, err)
+// 	client := SetupTestClient(t)
+// 	err := client.ReadInNetworkFromPKI("testDatabase.db")
+// 	assert.Nil(t, err)
 
-	assert.Equal(t, len(testMixSet), len(client.Network.Mixes))
-	for i := range testMixSet {
-		assert.True(t, proto.Equal(&testMixSet[i], &client.Network.Mixes[i]))
-	}
-}
+// 	assert.Equal(t, len(testMixSet), len(client.Network.Mixes))
+// 	for i := range testMixSet {
+// 		assert.True(t, proto.Equal(&testMixSet[i], &client.Network.Mixes[i]))
+// 	}
+// }

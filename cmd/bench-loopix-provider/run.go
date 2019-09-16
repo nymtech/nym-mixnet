@@ -23,8 +23,6 @@ import (
 )
 
 const (
-	// PkiDir is the location of the database file, relative to the project root. TODO: move this to homedir.
-	PkiDir                       = "pki/database.db"
 	defaultBenchmarkProviderHost = "localhost"
 	defaultBenchmarkProviderPort = "11000"
 	defaultBenchmarkProviderID   = "BenchmarkProvider"
@@ -53,7 +51,6 @@ func cmdRun(args []string, usage string) {
 		*port,
 		privP,
 		pubP,
-		PkiDir,
 	)
 	if err != nil {
 		panic(err)

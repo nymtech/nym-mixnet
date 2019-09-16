@@ -6,6 +6,7 @@ message MixConfig {
     string Host = 2;
     string Port = 3;
     bytes PubKey = 4;
+    uint64 Layer = 5;
 }
 
 message ClientConfig {
