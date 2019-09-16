@@ -32,5 +32,5 @@ func main() {
 	info := map[string]string{
 		"run": "Run a persistent Loopix client process",
 	}
-	optparse.Commands("loopix-client", "0.0.1", cmds, info, logo)
+	optparse.Commands("loopix-client", "0.0.2", cmds, info, logo)
 }

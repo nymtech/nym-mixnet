@@ -52,7 +52,7 @@ var (
 	// FIXME: temporarily moved to variable to make it possible to override it by bench client
 	// the parameter of the exponential distribution which defines the rate of sending by client
 	// the desiredRateParameter is the reciprocal of the expected value of the exponential distribution
-	desiredRateParameter = 0.2
+	desiredRateParameter = 5.0
 )
 
 const (
