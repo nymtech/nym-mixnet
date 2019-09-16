@@ -145,7 +145,10 @@ func (p *ProviderServer) startSendingPresence() {
 	for {
 		select {
 		case <-ticker.C:
-			if err := helpers.RegisterMixProviderPresence(p.host+p.port, p.GetPublicKey(), p.convertRecordsToModelData()); err != nil {
+			if err := helpers.RegisterMixProviderPresence(p.host+":"+p.port,
+				p.GetPublicKey(),
+				p.convertRecordsToModelData(),
+			); err != nil {
 				p.log.Errorf("Failed to register presence: %v", err)
 			}
 		case <-p.haltedCh:
@@ -504,7 +507,10 @@ func NewProviderServer(id string,
 		return nil, err
 	}
 
-	if err := helpers.RegisterMixProviderPresence(providerServer.host+providerServer.port, providerServer.GetPublicKey(), providerServer.convertRecordsToModelData()); err != nil {
+	if err := helpers.RegisterMixProviderPresence(providerServer.host+":"+providerServer.port,
+		providerServer.GetPublicKey(),
+		providerServer.convertRecordsToModelData(),
+	); err != nil {
 		return nil, err
 	}
 
