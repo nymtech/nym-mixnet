@@ -18,12 +18,14 @@
 package client
 
 import (
+	"bufio"
 	"crypto/rand"
 	"fmt"
 	"io/ioutil"
 	"math"
 	"math/big"
 	"net"
+	"os"
 	"sync"
 	"time"
 
@@ -56,7 +58,7 @@ const (
 	dropRate = 0.1
 	// the rate at which clients are querying the provider for received packets. fetchRate value is the
 	// parameter of an exponential distribution, and is the reciprocal of the expected value of the exp. distribution
-	fetchRate = 0.01
+	fetchRate = 5
 
 	// Below should be moved to a config file once we have it
 	// logFileLocation can either point to some valid file to which all log data should be written
@@ -64,6 +66,9 @@ const (
 	defaultLogFileLocation = ""
 	// considering we are under heavy development and nowhere near production level, log EVERYTHING
 	defaultLogLevel = "trace"
+
+	dummyLoad = "DummyPayloadMessage"
+	loopLoad  = "LoopCoverMessage"
 )
 
 // Client is the client networking interface
@@ -91,6 +96,7 @@ type NetClient struct {
 	haltedCh         chan struct{}
 	haltOnce         sync.Once
 	log              *logrus.Logger
+	demoRecipient    config.ClientConfig
 }
 
 // OutQueue returns a reference to the client's outQueue. It's a queue
@@ -151,6 +157,31 @@ func (c *NetClient) DisableLogging() {
 	c.log.Out = ioutil.Discard
 }
 
+func (c *NetClient) ChangeLoggingLevel(levelStr string) {
+	level, err := logrus.ParseLevel(levelStr)
+	if err != nil {
+		c.log.Errorf("Failed to parse passed logging level '%v': %v", levelStr, err)
+	}
+	c.log.Infof("Changing logging level to %v", level.String())
+	c.log.SetLevel(level)
+}
+
+func (c *NetClient) startInputRoutine() {
+	reader := bufio.NewReader(os.Stdin)
+
+	for {
+		input, err := reader.ReadString('\n')
+		if err != nil {
+			c.log.Errorf("Failed to read user input: %v", err)
+		}
+		input = input[:len(input)-1]
+		c.log.Infof("Sending: %v to %v", input, c.demoRecipient.GetId())
+		if err := c.SendMessage(input, c.demoRecipient); err != nil {
+			c.log.Errorf("Failed to send %v to %v: %v", input, c.demoRecipient.GetId(), err)
+		}
+	}
+}
+
 // Start reads the network and users information from the PKI database
 // and starts the listening server. Returns an error
 // signalling whenever any operation was unsuccessful.
@@ -184,6 +215,7 @@ func (c *NetClient) Start() error {
 	}()
 
 	go c.startListenerInNewRoutine()
+	go c.startInputRoutine()
 	return nil
 }
 
@@ -319,7 +351,7 @@ func (c *NetClient) handleConnection(conn net.Conn) {
 		go func() {
 			err := c.controlOutQueue()
 			if err != nil {
-				c.log.Errorf("Error in the controller of the outgoing packets queue. Possible security threat.: %v", err)
+				c.log.Panicf("Error in the controller of the outgoing packets queue. Possible security threat.: %v", err)
 			}
 		}()
 
@@ -338,20 +370,28 @@ func (c *NetClient) handleConnection(conn net.Conn) {
 		}
 
 	case flags.CommFlag:
-		_, err := c.processPacket(packet.Data)
+		packetData, err := c.processPacket(packet.Data)
 		if err != nil {
 			c.log.Errorf("Error in processing received packet: %v", err)
 		}
-		c.log.Infof("Received new message: %v", string(packet.Data))
+		packetDataStr := string(packetData)
+		switch packetDataStr {
+		case loopLoad:
+			c.log.Debugf("Received loop cover message %v", packetDataStr)
+		case dummyLoad:
+			c.log.Debugf("Received drop cover message %v", packetDataStr)
+		default:
+			c.log.Infof("Received new message: %v", packetDataStr)
+		}
 	default:
-		c.log.Infof("Packet flag not recognised. Packet dropped.")
+		c.log.Warnf("Packet flag not recognised. Packet dropped.")
 	}
 }
 
 // RegisterToken stores the authentication token received from the provider
 func (c *NetClient) registerToken(token []byte) {
 	c.token = token
-	c.log.Infof(" Registered token %s", c.token)
+	c.log.Debugf(" Registered token %s", c.token)
 	c.registrationDone <- true
 }
 
@@ -359,8 +399,10 @@ func (c *NetClient) registerToken(token []byte) {
 // encapsulated message or error in case the processing
 // was unsuccessful.
 func (c *NetClient) processPacket(packet []byte) ([]byte, error) {
-	// c.log.Infof(" Processing packet")
-	return packet, nil
+
+	// c.log.Debugf(" Processing packet")
+	// c.log.Tracef("Removing first 37 bytes of the message")
+	return packet[38:], nil
 }
 
 // SendRegisterMessageToProvider allows the client to register with the selected provider.
@@ -368,7 +410,7 @@ func (c *NetClient) processPacket(packet []byte) ([]byte, error) {
 // or returns an error.
 func (c *NetClient) sendRegisterMessageToProvider() error {
 
-	c.log.Infof("Sending request to provider to register")
+	c.log.Debugf("Sending request to provider to register")
 
 	confBytes, err := proto.Marshal(&c.config)
 	if err != nil {
@@ -419,14 +461,14 @@ func (c *NetClient) getMessagesFromProvider() error {
 // If a message awaits in the queue, it is sent. Otherwise a
 // drop cover message is sent instead.
 func (c *NetClient) controlOutQueue() error {
-	c.log.Infof("Queue controller started")
+	c.log.Debugf("Queue controller started")
 	for {
 		select {
 		case realPacket := <-c.outQueue:
 			if err := c.send(realPacket, c.Provider.Host, c.Provider.Port); err != nil {
 				c.log.Errorf("Could not send real packet: %v", err)
 			}
-			c.log.Infof("Real packet was sent")
+			c.log.Debugf("Real packet was sent")
 		default:
 			if rateCompliantCoverMessagesEnabled {
 				dummyPacket, err := c.createDropCoverMessage()
@@ -454,7 +496,7 @@ func (c *NetClient) controlMessagingFetching() {
 			c.log.Errorf("Could not get message from provider: %v", err)
 			continue
 		}
-		c.log.Infof("Sent request to provider to fetch messages")
+		// c.log.Infof("Sent request to provider to fetch messages")
 		err := delayBeforeContinue(fetchRate)
 		if err != nil {
 			c.log.Errorf("Error in ControlMessagingFetching - generating random exp. value failed: %v", err)
@@ -465,7 +507,6 @@ func (c *NetClient) controlMessagingFetching() {
 // CreateCoverMessage packs a dummy message into a Sphinx packet.
 // The dummy message is a loop message.
 func (c *NetClient) createDropCoverMessage() ([]byte, error) {
-	dummyLoad := "DummyPayloadMessage"
 	randomRecipient, err := c.getRandomRecipient(c.Network.Clients)
 	if err != nil {
 		return nil, err
@@ -496,7 +537,6 @@ func (c *NetClient) getRandomRecipient(slice []config.ClientConfig) (config.Clie
 // a sphinx packet. The loop message is destinated back to the sender
 // createLoopCoverMessage returns a byte representation of the encapsulated packet and an error
 func (c *NetClient) createLoopCoverMessage() ([]byte, error) {
-	loopLoad := "LoopCoverMessage"
 	sphinxPacket, err := c.EncodeMessage(loopLoad, c.config)
 	if err != nil {
 		return nil, err
@@ -512,7 +552,7 @@ func (c *NetClient) createLoopCoverMessage() ([]byte, error) {
 // In each stream iteration it sends a freshly created loop packet and
 // waits a random time before scheduling the next loop packet.
 func (c *NetClient) runLoopCoverTrafficStream() error {
-	c.log.Infof("Stream of loop cover traffic started")
+	c.log.Debugf("Stream of loop cover traffic started")
 	for {
 		loopPacket, err := c.createLoopCoverMessage()
 		if err != nil {
@@ -522,7 +562,7 @@ func (c *NetClient) runLoopCoverTrafficStream() error {
 			c.log.Errorf("Could not send loop cover traffic message: %v", err)
 			return err
 		}
-		c.log.Infof("Loop message sent")
+		c.log.Debugf("Loop message sent")
 		if err := delayBeforeContinue(loopRate); err != nil {
 			return err
 		}
@@ -534,7 +574,7 @@ func (c *NetClient) runLoopCoverTrafficStream() error {
 // to a randomly selected user in the network. The drop packet is sent
 // and the next stream call is scheduled after random time.
 func (c *NetClient) runDropCoverTrafficStream() error {
-	c.log.Infof("Stream of drop cover traffic started")
+	c.log.Debugf("Stream of drop cover traffic started")
 	for {
 		dropPacket, err := c.createDropCoverMessage()
 		if err != nil {
@@ -544,7 +584,7 @@ func (c *NetClient) runDropCoverTrafficStream() error {
 			c.log.Errorf("Could not send loop drop cover traffic message: %v", err)
 			return err
 		}
-		c.log.Infof("Drop packet sent")
+		c.log.Debugf("Drop packet sent")
 		if err := delayBeforeContinue(dropRate); err != nil {
 			return err
 		}
@@ -585,7 +625,7 @@ func (c *NetClient) turnOnDropCoverTraffic() {
 // the connection or fetching data from the PKI went wrong,
 // an error is returned.
 func (c *NetClient) ReadInNetworkFromPKI(pkiName string) error {
-	c.log.Infof("Reading network information from the PKI: %s", pkiName)
+	c.log.Debugf("Reading network information from the PKI: %s", pkiName)
 
 	mixes, err := helpers.GetMixesPKI(pkiName)
 	if err != nil {
@@ -601,7 +641,7 @@ func (c *NetClient) ReadInNetworkFromPKI(pkiName string) error {
 	}
 	c.Network.Clients = clients
 
-	c.log.Infof("Network information uploaded")
+	c.log.Debugf("Network information uploaded")
 	return nil
 }
 
@@ -617,6 +657,7 @@ func NewClient(id string,
 	pubKey *sphinx.PublicKey,
 	pkiDir string,
 	provider config.MixConfig,
+	demoRecipient config.ClientConfig,
 ) (*NetClient, error) {
 
 	baseLogger, err := logger.New(defaultLogFileLocation, defaultLogLevel, false)
@@ -634,12 +675,13 @@ func NewClient(id string,
 	log := baseLogger.GetLogger(id)
 
 	c := NetClient{id: id,
-		host:         host,
-		port:         port,
-		CryptoClient: core,
-		pkiDir:       pkiDir,
-		haltedCh:     make(chan struct{}),
-		log:          log,
+		host:          host,
+		port:          port,
+		CryptoClient:  core,
+		pkiDir:        pkiDir,
+		haltedCh:      make(chan struct{}),
+		log:           log,
+		demoRecipient: demoRecipient,
 	}
 	c.config = config.ClientConfig{Id: c.id,
 		Host:     c.host,
