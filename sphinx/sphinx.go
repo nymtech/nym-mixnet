@@ -29,26 +29,14 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/nymtech/loopix-messaging/config"
-	"github.com/nymtech/loopix-messaging/logging"
+	"github.com/nymtech/loopix-messaging/flags"
 	"golang.org/x/crypto/curve25519"
 )
-
-// Yet another case of the global logger
-var logLocal = logging.PackageLogger()
 
 const (
 	// K TODO: document padding-related Sphinx parameter
 	K            = 16
 	headerLength = 192
-)
-
-//nolint: gochecknoglobals
-var (
-	// LastHopFlag could have been storing this as a single byte, however, protobuf does not have single-byte fields
-	LastHopFlag = []byte("\xf0")
-	// RelayFlag denotes whether this message should continue further along the path of mixes.
-	// This is implementation-specific rather than being part of the Loopix protocol design.
-	RelayFlag = []byte("\xf1")
 )
 
 // PackForwardMessage encapsulates the given message into the cryptographic Sphinx packet format.
@@ -66,14 +54,14 @@ func PackForwardMessage(path config.E2EPath, delays []float64, message string) (
 
 	headerInitials, header, err := createHeader(nodes, delays, dest)
 	if err != nil {
-		logLocal.WithError(err).Error("Error in PackForwardMessage - createHeader failed")
-		return SphinxPacket{}, err
+		errMsg := fmt.Errorf("error in PackForwardMessage - createHeader failed: %v", err)
+		return SphinxPacket{}, errMsg
 	}
 
 	payload, err := encapsulateContent(headerInitials, message)
 	if err != nil {
-		logLocal.WithError(err).Error("Error in PackForwardMessage - encapsulateContent failed")
-		return SphinxPacket{}, err
+		errMsg := fmt.Errorf("error in PackForwardMessage - encapsulateContent failed: %v", err)
+		return SphinxPacket{}, errMsg
 	}
 	return SphinxPacket{Hdr: &header, Pld: payload}, nil
 }
@@ -93,36 +81,36 @@ func createHeader(nodes []config.MixConfig,
 ) ([]HeaderInitials, Header, error) {
 	x, err := RandomElement()
 	if err != nil {
-		logLocal.WithError(err).Error("Error in createHeader - Random failed")
-		return nil, Header{}, err
+		errMsg := fmt.Errorf("error in createHeader - Random failed: %v", err)
+		return nil, Header{}, errMsg
 	}
 
 	headerInitials, err := getSharedSecrets(nodes, x)
 	if err != nil {
-		logLocal.WithError(err).Error("Error in createHeader - getSharedSecrets failed")
-		return nil, Header{}, err
+		errMsg := fmt.Errorf("error in createHeader - getSharedSecrets failed: %v", err)
+		return nil, Header{}, errMsg
 	}
 
 	if len(headerInitials) != len(nodes) {
-		logLocal.WithError(err).Error("Error in createHeader - wrong number of shared secrets failed")
-		return nil, Header{}, errors.New(" the number of shared secrets should be the same as the number of traversed nodes")
+		errMsg := fmt.Errorf("error in createHeader - wrong number of shared secrets failed: %v", err)
+		return nil, Header{}, errMsg
 	}
 
 	commands := make([]Commands, len(nodes))
 	for i := range nodes {
 		var c Commands
 		if i == len(nodes)-1 {
-			c = Commands{Delay: delays[i], Flag: LastHopFlag}
+			c = Commands{Delay: delays[i], Flag: flags.LastHopFlag.Bytes()}
 		} else {
-			c = Commands{Delay: delays[i], Flag: RelayFlag}
+			c = Commands{Delay: delays[i], Flag: flags.RelayFlag.Bytes()}
 		}
 		commands[i] = c
 	}
 
 	header, err := encapsulateHeader(headerInitials, nodes, commands, dest)
 	if err != nil {
-		logLocal.WithError(err).Error("Error in createHeader - encapsulateHeader failed")
-		return nil, Header{}, err
+		errMsg := fmt.Errorf("error in createHeader - encapsulateHeader failed: %v", err)
+		return nil, Header{}, errMsg
 	}
 	return headerInitials, header, nil
 
@@ -157,8 +145,8 @@ func encapsulateHeader(headerInitials []HeaderInitials,
 
 	encFinalHop, err := AesCtr(kdfRes, finalHopBytes)
 	if err != nil {
-		logLocal.WithError(err).Error("Error in encapsulateHeader - AES_CTR encryption failed")
-		return Header{}, err
+		errMsg := fmt.Errorf("error in encapsulateHeader - AES_CTR encryption failed: %v", err)
+		return Header{}, errMsg
 	}
 
 	mac, err := computeMac(kdfRes, encFinalHop)
@@ -224,8 +212,8 @@ func encapsulateContent(headerInitials []HeaderInitials, message string) ([]byte
 		}
 		enc, err = AesCtr(sharedKey, enc)
 		if err != nil {
-			logLocal.WithError(err).Error("Error in encapsulateContent - AES_CTR encryption failed")
-			return nil, err
+			errMsg := fmt.Errorf("error in encapsulateContent - AES_CTR encryption failed: %v", err)
+			return nil, errMsg
 		}
 
 	}
@@ -256,9 +244,8 @@ func getSharedSecrets(nodes []config.MixConfig, initialVal *FieldElement) ([]Hea
 		alpha := expoGroupBase(blindFactors)
 
 		if len(n.PubKey) != PublicKeySize {
-			err := fmt.Errorf("invalid public key provided for node %v", i)
-			logLocal.Error(err)
-			return nil, err
+			errMsg := fmt.Errorf("invalid public key provided for node %v", i)
+			return nil, errMsg
 		}
 
 		// initial implementation:
@@ -282,8 +269,8 @@ func getSharedSecrets(nodes []config.MixConfig, initialVal *FieldElement) ([]Hea
 
 		blinder, err := computeBlindingFactor(aesS)
 		if err != nil {
-			logLocal.WithError(err).Error("Error in getSharedSecrets - computeBlindingFactor failed")
-			return nil, err
+			errMsg := fmt.Errorf("error in getSharedSecrets - computeBlindingFactor failed: %v", err)
+			return nil, errMsg
 		}
 
 		blindFactors = append(blindFactors, blinder)
@@ -308,8 +295,8 @@ func computeFillers(nodes []config.MixConfig, tuples []HeaderInitials) (string, 
 
 		xorVal, err := AesCtr(kx, []byte(mx))
 		if err != nil {
-			logLocal.WithError(err).Error("Error in computeFillers - AES_CTR failed")
-			return "", err
+			errMsg := fmt.Errorf("error in computeFillers - AES_CTR failed: %v", err)
+			return "", errMsg
 		}
 
 		filler = BytesToString(xorVal)
@@ -331,8 +318,8 @@ func computeBlindingFactor(key []byte) (*FieldElement, error) {
 	blinderBytes, err := computeSharedSecretHash(key, iv)
 
 	if err != nil {
-		logLocal.WithError(err).Error("Error in computeBlindingFactor - computeSharedSecretHash failed")
-		return nil, err
+		errMsg := fmt.Errorf("error in computeBlindingFactor - computeSharedSecretHash failed: %v", err)
+		return nil, errMsg
 	}
 
 	return BytesToFieldElement(blinderBytes), nil
@@ -344,8 +331,8 @@ func computeSharedSecretHash(key []byte, iv []byte) ([]byte, error) {
 	aesCipher, err := aes.NewCipher(key)
 
 	if err != nil {
-		logLocal.WithError(err).Error("Error in computeSharedSecretHash - creating new AES cipher failed")
-		return nil, err
+		errMsg := fmt.Errorf("error in computeSharedSecretHash - creating new AES cipher failed: %v", err)
+		return nil, errMsg
 	}
 
 	stream := cipher.NewCTR(aesCipher, iv)
@@ -368,27 +355,27 @@ func ProcessSphinxPacket(packetBytes []byte, privKey *PrivateKey) (Hop, Commands
 	err := proto.Unmarshal(packetBytes, &packet)
 
 	if err != nil {
-		logLocal.WithError(err).Error("Error in ProcessSphinxPacket - unmarshal of packet failed")
-		return Hop{}, Commands{}, nil, err
+		errMsg := fmt.Errorf("error in ProcessSphinxPacket - unmarshal of packet failed: %v", err)
+		return Hop{}, Commands{}, nil, errMsg
 	}
 
 	hop, commands, newHeader, err := ProcessSphinxHeader(*packet.Hdr, privKey)
 	if err != nil {
-		logLocal.WithError(err).Error("Error in ProcessSphinxPacket - ProcessSphinxHeader failed")
-		return Hop{}, Commands{}, nil, err
+		errMsg := fmt.Errorf("error in ProcessSphinxPacket - ProcessSphinxHeader failed: %v", err)
+		return Hop{}, Commands{}, nil, errMsg
 	}
 
 	newPayload, err := ProcessSphinxPayload(packet.Hdr.Alpha, packet.Pld, privKey)
 	if err != nil {
-		logLocal.WithError(err).Error("Error in ProcessSphinxPacket - ProcessSphinxPayload failed")
-		return Hop{}, Commands{}, nil, err
+		errMsg := fmt.Errorf("error in ProcessSphinxPacket - ProcessSphinxPayload failed: %v", err)
+		return Hop{}, Commands{}, nil, errMsg
 	}
 
 	newPacket := SphinxPacket{Hdr: &newHeader, Pld: newPayload}
 	newPacketBytes, err := proto.Marshal(&newPacket)
 	if err != nil {
-		logLocal.WithError(err).Error("Error in ProcessSphinxPacket - marshal of packet failed")
-		return Hop{}, Commands{}, nil, err
+		errMsg := fmt.Errorf("error in ProcessSphinxPacket - marshal of packet failed: %v", err)
+		return Hop{}, Commands{}, nil, errMsg
 	}
 
 	return hop, commands, newPacketBytes, nil
@@ -429,8 +416,8 @@ func ProcessSphinxHeader(packet Header, privKey *PrivateKey) (Hop, Commands, Hea
 
 	blinder, err := computeBlindingFactor(aesS)
 	if err != nil {
-		logLocal.WithError(err).Error("Error in ProcessSphinxHeader - computeBlindingFactor failed")
-		return Hop{}, Commands{}, Header{}, err
+		errMsg := fmt.Errorf("error in ProcessSphinxHeader - computeBlindingFactor failed: %v", err)
+		return Hop{}, Commands{}, Header{}, errMsg
 	}
 
 	newAlpha := new(FieldElement)
@@ -438,15 +425,15 @@ func ProcessSphinxHeader(packet Header, privKey *PrivateKey) (Hop, Commands, Hea
 
 	decBeta, err := AesCtr(encKey, beta)
 	if err != nil {
-		logLocal.WithError(err).Error("Error in ProcessSphinxHeader - AES_CTR failed")
-		return Hop{}, Commands{}, Header{}, err
+		errMsg := fmt.Errorf("error in ProcessSphinxHeader - AES_CTR failed: %v", err)
+		return Hop{}, Commands{}, Header{}, errMsg
 	}
 
 	var routingInfo RoutingInfo
 	err = proto.Unmarshal(decBeta, &routingInfo)
 	if err != nil {
-		logLocal.WithError(err).Error("Error in ProcessSphinxHeader - unmarshal of beta failed")
-		return Hop{}, Commands{}, Header{}, err
+		errMsg := fmt.Errorf("error in ProcessSphinxHeader - unmarshal of beta failed: %v", err)
+		return Hop{}, Commands{}, Header{}, errMsg
 	}
 	nextHop, commands, nextBeta, nextMac := readBeta(routingInfo)
 
@@ -482,8 +469,8 @@ func ProcessSphinxPayload(alpha []byte, payload []byte, privKey *PrivateKey) ([]
 
 	decPayload, err := AesCtr(decKey, payload)
 	if err != nil {
-		logLocal.WithError(err).Error("Error in ProcessSphinxPayload - AES_CTR decryption failed")
-		return nil, err
+		errMsg := fmt.Errorf("error in ProcessSphinxPayload - AES_CTR decryption failed: %v", err)
+		return nil, errMsg
 	}
 
 	return decPayload, nil

@@ -18,6 +18,7 @@
 
 logDir="$PWD/logs"
 pkiDb="$PWD/pki/database.db"
+inboxDir="$PWD/inboxes"
 
 if [ -f $pkiDb ]
 then
@@ -37,6 +38,16 @@ then
     mkdir $logDir
 else
     echo "Nothing to remove. The logs directory does not exist."
+fi
+
+if [ -d $inboxDir ]
+then
+    echo "Removing existing inboxes in the following directory: " $inboxDir
+    rm -rf $inboxDir
+    echo "Creating a new inboxes folder in directory: " $inboxDir
+    mkdir $inboxDir
+else
+    echo "Nothing to remove. The inboxes directory does not exist."
 fi
 
 function kill_port() {

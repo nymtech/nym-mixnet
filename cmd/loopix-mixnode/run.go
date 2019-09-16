@@ -1,3 +1,17 @@
+// Copyright 2019 The Loopix-Messaging Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package main
 
 import (
@@ -6,7 +20,7 @@ import (
 
 	"github.com/nymtech/loopix-messaging/helpers"
 	"github.com/nymtech/loopix-messaging/pki"
-	"github.com/nymtech/loopix-messaging/server"
+	"github.com/nymtech/loopix-messaging/server/mixnode"
 	"github.com/nymtech/loopix-messaging/sphinx"
 	"github.com/tav/golly/optparse"
 )
@@ -33,9 +47,8 @@ func cmdRun(args []string, usage string) {
 		os.Exit(1)
 	}
 
-	err := pki.EnsurePkiDb(PkiDb)
-	if err != nil {
-		fmt.Println("PkiDb problem ")
+	if err := pki.EnsureDbExists(PkiDb); err != nil {
+		fmt.Fprintf(os.Stderr, "PkiDb problem: %v ", err)
 		panic(err)
 	}
 
@@ -53,18 +66,16 @@ func cmdRun(args []string, usage string) {
 		panic(err)
 	}
 
-	mixServer, err := server.NewMixServer(*id, *host, *port, pubM, privM, PkiDb, *layer)
+	mixServer, err := mixnode.NewMixServer(*id, *host, *port, pubM, privM, PkiDb, *layer)
 	if err != nil {
 		panic(err)
 	}
 
-	err = mixServer.Start()
-	if err != nil {
+	if err := mixServer.Start(); err != nil {
 		panic(err)
 	}
 
-	wait := make(chan struct{})
-	<-wait
+	mixServer.Wait()
 }
 
 func newOpts(command string, usage string) *optparse.Parser {

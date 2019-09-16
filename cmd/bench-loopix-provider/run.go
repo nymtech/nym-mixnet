@@ -1,11 +1,24 @@
+// Copyright 2019 The Loopix-Messaging Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package main
 
 import (
 	"os"
 
+	"github.com/nymtech/loopix-messaging/server/provider"
 	"github.com/nymtech/loopix-messaging/sphinx"
-
-	"github.com/nymtech/loopix-messaging/server"
 	"github.com/tav/golly/optparse"
 )
 
@@ -35,7 +48,7 @@ func cmdRun(args []string, usage string) {
 	pubP := sphinx.BytesToPublicKey([]byte{17, 170, 15, 150, 155, 75, 240, 66, 54, 100, 131, 127, 193, 10,
 		133, 32, 62, 155, 9, 46, 200, 55, 60, 125, 223, 76, 170, 167, 100, 34, 176, 117})
 
-	baseProviderServer, err := server.NewProviderServer(defaultBenchmarkProviderID,
+	baseProviderServer, err := provider.NewProviderServer(defaultBenchmarkProviderID,
 		defaultBenchmarkProviderHost,
 		*port,
 		privP,
@@ -46,12 +59,12 @@ func cmdRun(args []string, usage string) {
 		panic(err)
 	}
 
-	benchmarkProviderServer, err := server.NewBenchProvider(baseProviderServer, *numMessages)
+	benchmarkProviderServer, err := provider.NewBenchProvider(baseProviderServer, *numMessages)
 	if err != nil {
 		panic(err)
 	}
 
-	server.DisableLogging()
+	provider.DisableLogging()
 
 	err = benchmarkProviderServer.RunBench()
 	if err != nil {

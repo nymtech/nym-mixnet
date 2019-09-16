@@ -1,3 +1,17 @@
+// Copyright 2019 The Loopix-Messaging Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package main
 
 import (
@@ -27,6 +41,7 @@ func cmdRun(args []string, usage string) {
 	host := opts.Flags("--host").Label("HOST").String("The host on which the loopix-client is running", defaultHost)
 	port := opts.Flags("--port").Label("PORT").String("Port on which loopix-client listens", defaultPort)
 	providerID := opts.Flags("--provider").Label("PROVIDER").String("Id of the provider to connect to", defaultProviderID)
+	demo := opts.Flags("--demo").Label("DEMO").Bool("Should the client be run in demo mode")
 
 	params := opts.Parse(args)
 	if len(params) != 0 {
@@ -61,20 +76,39 @@ func cmdRun(args []string, usage string) {
 
 	var privC *sphinx.PrivateKey
 	var pubC *sphinx.PublicKey
+	var demoRecipient config.ClientConfig
 
 	switch *id {
 	case "Client1":
 		pubC = pubC1
 		privC = privC1
+		if *demo == true {
+			demoRecipient = config.ClientConfig{
+				Id:       "Client2",
+				Host:     "localhost",
+				Port:     "9998",
+				PubKey:   pubC2.Bytes(),
+				Provider: &providerInfo,
+			}
+		}
 	case "Client2":
 		pubC = pubC2
 		privC = privC2
+		if *demo {
+			demoRecipient = config.ClientConfig{
+				Id:       "Client1",
+				Host:     "localhost",
+				Port:     "9999",
+				PubKey:   pubC1.Bytes(),
+				Provider: &providerInfo,
+			}
+		}
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown client instance: %v\n", *id)
 		os.Exit(-1)
 	}
 
-	client, err := client.NewClient(*id, *host, *port, privC, pubC, PkiDb, providerInfo)
+	client, err := client.NewClient(*id, *host, *port, privC, pubC, PkiDb, providerInfo, demoRecipient)
 	if err != nil {
 		panic(err)
 	}
@@ -82,6 +116,10 @@ func cmdRun(args []string, usage string) {
 	if err := client.Start(); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to spawn client instance: %v\n", err)
 		os.Exit(-1)
+	}
+
+	if *id == "Client1" {
+		client.ChangeLoggingLevel("Info")
 	}
 
 	wait := make(chan struct{})

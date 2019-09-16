@@ -1,4 +1,4 @@
-// Copyright 2018 The Loopix-Messaging Authors
+// Copyright 2018-2019 The Loopix-Messaging Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,28 +21,17 @@ package config
 
 import (
 	"github.com/golang/protobuf/proto"
+	"github.com/nymtech/loopix-messaging/flags"
 )
 
 const (
-	DirectoryServerBaseURL        = "http://localhost:8080/"
-	DirectoryServerHealthcheckURL = "api/healthcheck"
-	DirectoryServerMetricsURL     = "api/metrics/mixes"
-	DirectoryServerPkiURL         = "api/nodes"
-	DirectoryServerPresenceURL    = "api/presence/mixnodes"
-)
-
-//nolint: gochecknoglobals
-var (
-	// TODO: perhaps move it elsewhere?
-	// TODO: proper comments on them
-	// AssigneFlag ...
-	AssigneFlag = []byte("\xa2")
-	// CommFlag ...
-	CommFlag = []byte("\xc6")
-	// TokenFlag ...
-	TokenFlag = []byte("\xa9")
-	// PullFlag ...
-	PullFlag = []byte("\xff")
+	DirectoryServerBaseURL                = "http://localhost:8080/"
+	DirectoryServerHealthcheckURL         = "http://localhost:8080/api/healthcheck"
+	DirectoryServerMetricsURL             = "http://localhost:8080/api/metrics/mixes"
+	DirectoryServerPkiURL                 = "http://localhost:8080/api/nodes"
+	DirectoryServerMixPresenceURL         = "http://localhost:8080/api/presence/mixnodes"
+	DirectoryServerMixProviderPresenceURL = "http://localhost:8080/api/presence/mixproviders"
+	DirectoryServerTopology               = "http://localhost:8080/api/presence/topology"
 )
 
 // NewMixConfig constructor
@@ -58,8 +47,8 @@ func NewClientConfig(clientID, host, port string, pubKey []byte, providerInfo Mi
 
 // WrapWithFlag packs the given byte information together with a specified flag into the
 // packet.
-func WrapWithFlag(flag []byte, data []byte) ([]byte, error) {
-	m := GeneralPacket{Flag: flag, Data: data}
+func WrapWithFlag(flag flags.PacketTypeFlag, data []byte) ([]byte, error) {
+	m := GeneralPacket{Flag: flag.Bytes(), Data: data}
 	mBytes, err := proto.Marshal(&m)
 	if err != nil {
 		return nil, err

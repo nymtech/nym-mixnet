@@ -14,10 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package server
+package provider
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"net"
@@ -26,7 +25,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/nymtech/loopix-messaging/config"
-	"github.com/nymtech/loopix-messaging/sphinx"
+	"github.com/nymtech/loopix-messaging/flags"
 )
 
 const (
@@ -67,7 +66,7 @@ func (p *BenchProvider) run() {
 	defer p.listener.Close()
 
 	go func() {
-		logLocal.Infof("Listening on %s", p.host+":"+p.port)
+		p.log.Infof("Listening on %s", p.host+":"+p.port)
 		p.listenForIncomingConnections()
 	}()
 
@@ -112,26 +111,19 @@ func (p *BenchProvider) createSummaryDoc() error {
 // unwrapping operation and checks whether the packet should be
 // forwarded or stored. If the processing was unsuccessful and error is returned.
 func (p *BenchProvider) receivedPacket(packet []byte) error {
-	logLocal.Info("Received new sphinx packet")
+	p.log.Info("Received new sphinx packet")
 
-	c := make(chan []byte)
-	cAdr := make(chan sphinx.Hop)
-	cFlag := make(chan []byte)
-	errCh := make(chan error)
-
-	go p.ProcessPacket(packet, c, cAdr, cFlag, errCh)
-	dePacket := <-c
-	nextHop := <-cAdr
-	flag := <-cFlag
-	err := <-errCh
-
-	if err != nil {
+	res := p.ProcessPacket(packet)
+	dePacket := res.PacketData()
+	nextHop := res.NextHop()
+	flag := res.Flag()
+	if err := res.Err(); err != nil {
 		return err
 	}
 
-	if bytes.Equal(flag, sphinx.LastHopFlag) {
+	if flag == flags.LastHopFlag {
 		if nextHop.Id == "BenchmarkClientRecipient" {
-			msgContent := string(dePacket[31:])
+			msgContent := string(dePacket[38:])
 			p.receivedMessages = append(p.receivedMessages, timestampedMessage{timestamp: time.Now(), content: msgContent})
 			p.receivedMessagesCount++
 			if p.receivedMessagesCount == p.numMessages {
@@ -154,14 +146,14 @@ func (p *BenchProvider) listenForIncomingConnections() {
 		conn, err := p.listener.Accept()
 
 		if err != nil {
-			logLocal.WithError(err).Error(err)
+			p.log.Errorf("Error when listening for incoming connection: %v", err)
 		} else {
-			logLocal.Infof("Received new connection from %s", conn.RemoteAddr())
+			p.log.Infof("Received new connection from %s", conn.RemoteAddr())
 			errs := make(chan error, 1)
 			go p.handleConnection(conn, errs)
 			err = <-errs
 			if err != nil {
-				logLocal.WithError(err).Error(err)
+				p.log.Errorf("Error when listening for incoming connection: %v", err)
 			}
 		}
 	}
@@ -185,7 +177,7 @@ func (p *BenchProvider) handleConnection(conn net.Conn, errs chan<- error) {
 		errs <- err
 	}
 
-	if bytes.Equal(packet.Flag, config.CommFlag) {
+	if flags.PacketTypeFlagFromBytes(packet.Flag) == flags.CommFlag {
 		if err := p.receivedPacket(packet.Data); err != nil {
 			panic(err)
 		}

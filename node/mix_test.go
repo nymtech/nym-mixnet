@@ -21,6 +21,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/nymtech/loopix-messaging/config"
+	"github.com/nymtech/loopix-messaging/flags"
 	"github.com/nymtech/loopix-messaging/sphinx"
 	"github.com/stretchr/testify/assert"
 )
@@ -79,11 +80,6 @@ func TestMain(m *testing.M) {
 }
 
 func TestMixProcessPacket(t *testing.T) {
-	ch := make(chan []byte, 1)
-	chHop := make(chan sphinx.Hop, 1)
-	cAdr := make(chan []byte, 1)
-	errCh := make(chan error, 1)
-
 	pubD, _, err := sphinx.GenerateKeyPair()
 	if err != nil {
 		t.Fatal(err)
@@ -117,12 +113,11 @@ func TestMixProcessPacket(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	providerWorker.ProcessPacket(testPacketBytes, ch, chHop, cAdr, errCh)
-	dePacket := <-ch
-	nextHop := <-chHop
-	flag := <-cAdr
-	err = <-errCh
-	if err != nil {
+	res := providerWorker.ProcessPacket(testPacketBytes)
+	dePacket := res.PacketData()
+	nextHop := res.NextHop()
+	flag := res.Flag()
+	if err := res.Err(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -131,5 +126,5 @@ func TestMixProcessPacket(t *testing.T) {
 		PubKey:  nodes[0].PubKey,
 	}, nextHop, "Next hop does not match")
 	assert.Equal(t, reflect.TypeOf([]byte{}), reflect.TypeOf(dePacket))
-	assert.Equal(t, []byte("\xF1"), flag, reflect.TypeOf(dePacket))
+	assert.Equal(t, flags.RelayFlag, flag, reflect.TypeOf(dePacket))
 }
