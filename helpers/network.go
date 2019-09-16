@@ -23,9 +23,11 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"io/ioutil"
 	"net"
 	"net/http"
 
+	"github.com/nymtech/directory-server/models"
 	"github.com/nymtech/loopix-messaging/config"
 	"github.com/nymtech/loopix-messaging/sphinx"
 )
@@ -77,8 +79,8 @@ func GetLocalIP() (string, error) {
 	return "", ErrInvalidLocalIP
 }
 
-// RegisterPresence registers server presence at the directory server.
-func RegisterPresence(host string, publicKey *sphinx.PublicKey, layer int) error {
+// RegisterMixNodePresence registers server presence at the directory server.
+func RegisterMixNodePresence(host string, publicKey *sphinx.PublicKey, layer int) error {
 	b64Key := base64.StdEncoding.EncodeToString(publicKey.Bytes())
 	values := map[string]interface{}{"host": host, "pubKey": b64Key, "layer": layer}
 	jsonValue, err := json.Marshal(values)
@@ -86,11 +88,11 @@ func RegisterPresence(host string, publicKey *sphinx.PublicKey, layer int) error
 		return err
 	}
 
-	url := config.DirectoryServerBaseURL + config.DirectoryServerPresenceURL
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonValue))
+	resp, err := http.Post(config.DirectoryServerMixPresenceURL, "application/json", bytes.NewBuffer(jsonValue))
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 	_ = resp
 	// TODO: properly parse it, etc.
 
@@ -104,13 +106,53 @@ func SendMixMetrics(metrics map[string]uint) error {
 		return err
 	}
 
-	url := config.DirectoryServerBaseURL + config.DirectoryServerMetricsURL
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonValue))
+	resp, err := http.Post(config.DirectoryServerMetricsURL, "application/json", bytes.NewBuffer(jsonValue))
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
+
 	_ = resp
 	// TODO: properly parse it, etc.
 
 	return nil
+}
+
+// RegisterMixProviderPresence registers server presence at the directory server.
+func RegisterMixProviderPresence(host string, publicKey *sphinx.PublicKey, clients []models.RegisteredClient) error {
+	b64Key := base64.StdEncoding.EncodeToString(publicKey.Bytes())
+	values := map[string]interface{}{"host": host, "pubKey": b64Key, "registeredClients": clients}
+	jsonValue, err := json.Marshal(values)
+	if err != nil {
+		return err
+	}
+
+	resp, err := http.Post(config.DirectoryServerMixProviderPresenceURL, "application/json", bytes.NewBuffer(jsonValue))
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	_ = resp
+	// TODO: properly parse it, etc.
+
+	return nil
+}
+
+func GetNetworkTopology() (*models.Topology, error) {
+	resp, err := http.Get(config.DirectoryServerTopology)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	model := &models.Topology{}
+	if err := json.Unmarshal(body, model); err != nil {
+		return nil, err
+	}
+
+	return model, nil
 }

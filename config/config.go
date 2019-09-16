@@ -25,11 +25,13 @@ import (
 )
 
 const (
-	DirectoryServerBaseURL        = "http://localhost:8080/"
-	DirectoryServerHealthcheckURL = "api/healthcheck"
-	DirectoryServerMetricsURL     = "api/metrics/mixes"
-	DirectoryServerPkiURL         = "api/nodes"
-	DirectoryServerPresenceURL    = "api/presence/mixnodes"
+	DirectoryServerBaseURL                = "http://localhost:8080/"
+	DirectoryServerHealthcheckURL         = "http://localhost:8080/api/healthcheck"
+	DirectoryServerMetricsURL             = "http://localhost:8080/api/metrics/mixes"
+	DirectoryServerPkiURL                 = "http://localhost:8080/api/nodes"
+	DirectoryServerMixPresenceURL         = "http://localhost:8080/api/presence/mixnodes"
+	DirectoryServerMixProviderPresenceURL = "http://localhost:8080/api/presence/mixproviders"
+	DirectoryServerTopology               = "http://localhost:8080/api/presence/topology"
 )
 
 // NewMixConfig constructor

@@ -12,19 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package mixserver implements the mix provider.
+// Package provider implements the mix provider.
 package provider
 
 import (
 	"bytes"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
+	"sync"
+	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/nymtech/directory-server/models"
 	"github.com/nymtech/loopix-messaging/config"
 	"github.com/nymtech/loopix-messaging/flags"
 	"github.com/nymtech/loopix-messaging/helpers"
@@ -36,6 +40,8 @@ import (
 )
 
 const (
+	presenceInterval = 2 * time.Second
+
 	// Below should be moved to a config file once we have it
 	// logFileLocation can either point to some valid file to which all log data should be written
 	// or if left an empty string, stdout will be used instead
@@ -61,6 +67,8 @@ type ProviderServer struct {
 	listener        *net.TCPListener
 	assignedClients map[string]ClientRecord
 	config          config.MixConfig
+	haltedCh        chan struct{}
+	haltOnce        sync.Once
 	log             *logrus.Logger
 }
 
@@ -71,6 +79,25 @@ type ClientRecord struct {
 	port   string
 	pubKey []byte
 	token  []byte
+}
+
+// Wait waits till the provider is terminated for any reason.
+func (p *ProviderServer) Wait() {
+	<-p.haltedCh
+}
+
+// Shutdown cleanly shuts down a given provider instance.
+func (p *ProviderServer) Shutdown() {
+	p.haltOnce.Do(func() { p.halt() })
+}
+
+// calls any required cleanup code
+func (p *ProviderServer) halt() {
+	p.log.Info("Starting graceful shutdown")
+	// close any listeners, free resources, etc
+	// possibly send "remove presence" message
+
+	close(p.haltedCh)
 }
 
 // Start creates loggers for capturing info and error logs
@@ -91,14 +118,40 @@ func (p *ProviderServer) GetConfig() config.MixConfig {
 func (p *ProviderServer) run() {
 
 	defer p.listener.Close()
-	finish := make(chan bool)
 
 	go func() {
 		p.log.Infof("Listening on %s", p.host+":"+p.port)
 		p.listenForIncomingConnections()
 	}()
 
-	<-finish
+	go p.startSendingPresence()
+
+	p.Wait()
+}
+
+func (p *ProviderServer) convertRecordsToModelData() []models.RegisteredClient {
+	registeredClients := make([]models.RegisteredClient, 0, len(p.assignedClients))
+	for _, entry := range p.assignedClients {
+		registeredClients = append(registeredClients, models.RegisteredClient{
+			Host:   entry.host + ":" + entry.port,
+			PubKey: base64.StdEncoding.EncodeToString(entry.pubKey),
+		})
+	}
+	return registeredClients
+}
+
+func (p *ProviderServer) startSendingPresence() {
+	ticker := time.NewTicker(presenceInterval)
+	for {
+		select {
+		case <-ticker.C:
+			if err := helpers.RegisterMixProviderPresence(p.host+p.port, p.GetPublicKey(), p.convertRecordsToModelData()); err != nil {
+				p.log.Errorf("Failed to register presence: %v", err)
+			}
+		case <-p.haltedCh:
+			return
+		}
+	}
 }
 
 // Function processes the received sphinx packet, performs the
@@ -433,6 +486,7 @@ func NewProviderServer(id string,
 		port:     port,
 		Mix:      node,
 		listener: nil,
+		haltedCh: make(chan struct{}),
 		log:      log,
 	}
 	providerServer.config = config.MixConfig{Id: providerServer.id,
@@ -447,6 +501,10 @@ func NewProviderServer(id string,
 	}
 	err = helpers.AddToDatabase(pkiPath, "Pki", providerServer.id, "Provider", configBytes)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := helpers.RegisterMixProviderPresence(providerServer.host+providerServer.port, providerServer.GetPublicKey(), providerServer.convertRecordsToModelData()); err != nil {
 		return nil, err
 	}
 

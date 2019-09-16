@@ -220,7 +220,7 @@ func (m *MixServer) startSendingPresence() {
 	for {
 		select {
 		case <-ticker.C:
-			if err := helpers.RegisterPresence(m.id, m.GetPublicKey(), m.layer); err != nil {
+			if err := helpers.RegisterMixNodePresence(m.id, m.GetPublicKey(), m.layer); err != nil {
 				m.log.Errorf("Failed to register presence: %v", err)
 			}
 		case <-m.haltedCh:
@@ -316,7 +316,7 @@ func NewMixServer(id string,
 		return nil, err
 	}
 
-	if err := helpers.RegisterPresence(mixServer.id, mixServer.GetPublicKey(), layer); err != nil {
+	if err := helpers.RegisterMixNodePresence(mixServer.host+mixServer.port, mixServer.GetPublicKey(), layer); err != nil {
 		return nil, err
 	}
 
