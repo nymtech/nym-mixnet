@@ -10,9 +10,10 @@ require (
 	github.com/mattn/go-colorable v0.1.2 // indirect
 	github.com/mattn/go-sqlite3 v1.5.0
 	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b // indirect
+	github.com/nymtech/directory-server v0.0.0-20190916143248-9fd40a9a38a3
 	github.com/sirupsen/logrus v1.4.2
-	github.com/stretchr/testify v1.2.2
+	github.com/stretchr/testify v1.4.0
 	github.com/tav/golly v0.0.0-20180823113506-ad032321f11e
-	golang.org/x/crypto v0.0.0-20190829043050-9756ffdc2472
-	golang.org/x/net v0.0.0-20190404232315-eb5bcb51f2a3
+	golang.org/x/crypto v0.0.0-20190909091759-094676da4a83
+	golang.org/x/net v0.0.0-20190909003024-a7b16738d86b
 )
