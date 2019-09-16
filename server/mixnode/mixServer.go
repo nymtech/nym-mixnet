@@ -33,7 +33,7 @@ import (
 
 const (
 	metricsInterval  = time.Second
-	presenceInterval = 5 * time.Second
+	presenceInterval = 2 * time.Second
 
 	// Below should be moved to a config file once we have it
 	// logFileLocation can either point to some valid file to which all log data should be written
@@ -191,7 +191,7 @@ func (m *MixServer) send(packet []byte, address string) error {
 func (m *MixServer) run() {
 	defer m.listener.Close()
 
-	go m.startSendingMetrics()
+	// go m.startSendingMetrics()
 	go m.startSendingPresence()
 
 	go func() {
