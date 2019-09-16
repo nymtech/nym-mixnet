@@ -80,6 +80,7 @@ func cmdRun(args []string, usage string) {
 		pubC,
 		PkiDir,
 		providerInfo,
+		config.ClientConfig{},
 	)
 	if err != nil {
 		panic(err)
