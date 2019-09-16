@@ -192,7 +192,7 @@ func (m *MixServer) run() {
 	defer m.listener.Close()
 
 	// go m.startSendingMetrics()
-	go m.startSendingPresence()
+	// go m.startSendingPresence()
 
 	go func() {
 		m.log.Infof("Listening on %s", m.host+":"+m.port)
@@ -316,9 +316,9 @@ func NewMixServer(id string,
 		return nil, err
 	}
 
-	if err := helpers.RegisterMixNodePresence(mixServer.host+mixServer.port, mixServer.GetPublicKey(), layer); err != nil {
-		return nil, err
-	}
+	// if err := helpers.RegisterMixNodePresence(mixServer.host+mixServer.port, mixServer.GetPublicKey(), layer); err != nil {
+	// 	return nil, err
+	// }
 
 	addr, err := helpers.ResolveTCPAddress(mixServer.host, mixServer.port)
 

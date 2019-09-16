@@ -124,7 +124,7 @@ func (p *ProviderServer) run() {
 		p.listenForIncomingConnections()
 	}()
 
-	go p.startSendingPresence()
+	// go p.startSendingPresence()
 
 	p.Wait()
 }
@@ -504,9 +504,9 @@ func NewProviderServer(id string,
 		return nil, err
 	}
 
-	if err := helpers.RegisterMixProviderPresence(providerServer.host+providerServer.port, providerServer.GetPublicKey(), providerServer.convertRecordsToModelData()); err != nil {
-		return nil, err
-	}
+	// if err := helpers.RegisterMixProviderPresence(providerServer.host+providerServer.port, providerServer.GetPublicKey(), providerServer.convertRecordsToModelData()); err != nil {
+	// 	return nil, err
+	// }
 
 	addr, err := helpers.ResolveTCPAddress(providerServer.host, providerServer.port)
 	if err != nil {
