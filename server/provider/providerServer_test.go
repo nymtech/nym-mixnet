@@ -1,4 +1,4 @@
-// Copyright 2018 The Loopix-Messaging Authors
+// Copyright 2019 The Loopix-Messaging Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package server
+package provider
 
 import (
 	"errors"
@@ -26,55 +26,38 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/nymtech/loopix-messaging/config"
 	"github.com/nymtech/loopix-messaging/helpers"
-	"github.com/nymtech/loopix-messaging/node"
+	"github.com/nymtech/loopix-messaging/server/mixnode"
 	"github.com/nymtech/loopix-messaging/sphinx"
 	"github.com/stretchr/testify/assert"
 )
 
 //nolint: gochecknoglobals
 var (
-	mixServer      *MixServer
+	mixServer      *mixnode.MixServer
 	providerServer *ProviderServer
 )
 
-func createTestProvider() (*ProviderServer, error) {
-	priv, pub, err := sphinx.GenerateKeyPair()
+func TestMain(m *testing.M) {
+	var err error
+	mixServer, err = mixnode.CreateTestMixnode()
 	if err != nil {
-		return nil, err
+		fmt.Println(err)
+		panic(m)
 	}
-	node := node.NewMix(priv, pub)
-	provider := ProviderServer{host: "localhost", port: "9999", Mix: node}
-	provider.config = config.MixConfig{Id: provider.id,
-		Host:   provider.host,
-		Port:   provider.port,
-		PubKey: provider.GetPublicKey().Bytes(),
+
+	providerServer, err = CreateTestProvider()
+	if err != nil {
+		fmt.Println(err)
+		panic(m)
 	}
-	provider.assignedClients = make(map[string]ClientRecord)
-	return &provider, nil
+
+	code := m.Run()
+	clean()
+	os.Exit(code)
 }
 
-func createTestMixnode() (*MixServer, error) {
-	priv, pub, err := sphinx.GenerateKeyPair()
-	if err != nil {
-		return nil, err
-	}
-	node := node.NewMix(priv, pub)
-	mix := MixServer{host: "localhost", port: "9995", Mix: node}
-	mix.config = config.MixConfig{Id: mix.id,
-		Host:   mix.host,
-		Port:   mix.port,
-		PubKey: mix.GetPublicKey().Bytes(),
-	}
-	addr, err := helpers.ResolveTCPAddress(mix.host, mix.port)
-	if err != nil {
-		return nil, err
-	}
-
-	mix.listener, err = net.ListenTCP("tcp", addr)
-	if err != nil {
-		return nil, err
-	}
-	return &mix, nil
+func clean() {
+	os.RemoveAll("./inboxes")
 }
 
 func createFakeClientListener(host, port string) (*net.TCPListener, error) {
@@ -88,29 +71,6 @@ func createFakeClientListener(host, port string) (*net.TCPListener, error) {
 		return nil, err
 	}
 	return listener, nil
-}
-
-func clean() {
-	os.RemoveAll("./inboxes")
-}
-
-func TestMain(m *testing.M) {
-	var err error
-	mixServer, err = createTestMixnode()
-	if err != nil {
-		fmt.Println(err)
-		panic(m)
-	}
-
-	providerServer, err = createTestProvider()
-	if err != nil {
-		fmt.Println(err)
-		panic(m)
-	}
-
-	code := m.Run()
-	clean()
-	os.Exit(code)
 }
 
 func TestProviderServer_AuthenticateUser_Pass(t *testing.T) {
@@ -149,7 +109,6 @@ func createInbox(id string, t *testing.T) {
 }
 
 func createTestMessage(id string, t *testing.T) {
-
 	file, err := os.Create(filepath.Join("./inboxes", id, "TestMessage.txt"))
 	if err != nil {
 		t.Fatal(err)
@@ -159,7 +118,6 @@ func createTestMessage(id string, t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
 }
 
 func TestProviderServer_FetchMessages_FullInbox(t *testing.T) {
@@ -308,7 +266,7 @@ func TestProviderServer_HandleAssignRequest(t *testing.T) {
 
 func createTestPacket(t *testing.T) *sphinx.SphinxPacket {
 	path := config.E2EPath{IngressProvider: providerServer.config,
-		Mixes:          []config.MixConfig{mixServer.config},
+		Mixes:          []config.MixConfig{mixServer.GetConfig()},
 		EgressProvider: providerServer.config,
 	}
 	sphinxPacket, err := sphinx.PackForwardMessage(path, []float64{0.1, 0.2, 0.3}, "Hello world")

@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package server
+// Package mixserver implements the mix provider.
+package provider
 
 import (
 	"bytes"
@@ -25,10 +26,22 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/nymtech/loopix-messaging/config"
+	"github.com/nymtech/loopix-messaging/flags"
 	"github.com/nymtech/loopix-messaging/helpers"
+	"github.com/nymtech/loopix-messaging/logger"
 	"github.com/nymtech/loopix-messaging/networker"
 	"github.com/nymtech/loopix-messaging/node"
 	"github.com/nymtech/loopix-messaging/sphinx"
+	"github.com/sirupsen/logrus"
+)
+
+const (
+	// Below should be moved to a config file once we have it
+	// logFileLocation can either point to some valid file to which all log data should be written
+	// or if left an empty string, stdout will be used instead
+	defaultLogFileLocation = ""
+	// considering we are under heavy development and nowhere near production level, log EVERYTHING
+	defaultLogLevel = "trace"
 )
 
 // ProviderIt is the interface of a given Provider mix server
@@ -41,14 +54,14 @@ type ProviderIt interface {
 
 // ProviderServer is the data of a Provider mix server
 type ProviderServer struct {
-	id   string
-	host string
-	port string
 	*node.Mix
-	listener *net.TCPListener
-
+	id              string
+	host            string
+	port            string
+	listener        *net.TCPListener
 	assignedClients map[string]ClientRecord
 	config          config.MixConfig
+	log             *logrus.Logger
 }
 
 // ClientRecord holds identity and network data for clients.
@@ -81,7 +94,7 @@ func (p *ProviderServer) run() {
 	finish := make(chan bool)
 
 	go func() {
-		logLocal.Infof("Listening on %s", p.host+":"+p.port)
+		p.log.Infof("Listening on %s", p.host+":"+p.port)
 		p.listenForIncomingConnections()
 	}()
 
@@ -92,55 +105,45 @@ func (p *ProviderServer) run() {
 // unwrapping operation and checks whether the packet should be
 // forwarded or stored. If the processing was unsuccessful and error is returned.
 func (p *ProviderServer) receivedPacket(packet []byte) error {
-	logLocal.Infof("%s: Received new sphinx packet", p.id)
+	p.log.Infof("%s: Received new sphinx packet", p.id)
 
-	c := make(chan []byte)
-	cAdr := make(chan sphinx.Hop)
-	cFlag := make(chan []byte)
-	errCh := make(chan error)
-
-	go p.ProcessPacket(packet, c, cAdr, cFlag, errCh)
-	dePacket := <-c
-	nextHop := <-cAdr
-	flag := <-cFlag
-	err := <-errCh
-
-	if err != nil {
+	res := p.ProcessPacket(packet)
+	dePacket := res.PacketData()
+	nextHop := res.NextHop()
+	flag := res.Flag()
+	if err := res.Err(); err != nil {
 		return err
 	}
 
-	switch {
-	case bytes.Equal(flag, sphinx.RelayFlag):
-		err = p.forwardPacket(dePacket, nextHop.Address)
-		if err != nil {
+	switch flag {
+	case flags.RelayFlag:
+		if err := p.forwardPacket(dePacket, nextHop.Address); err != nil {
 			return err
 		}
-	case bytes.Equal(flag, sphinx.LastHopFlag):
+	case flags.LastHopFlag:
 		tmpMsgID := fmt.Sprintf("TMP_MESSAGE_%v", helpers.RandomString(8))
 		// err = p.storeMessage(dePacket, nextHop.Id, "TMP_MESSAGE_ID")
-		err = p.storeMessage(dePacket, nextHop.Id, tmpMsgID)
-
-		if err != nil {
+		if err := p.storeMessage(dePacket, nextHop.Id, tmpMsgID); err != nil {
 			return err
 		}
 	default:
-		logLocal.Info("Sphinx packet flag not recognised")
+		p.log.Info("Sphinx packet flag not recognised")
 	}
 
 	return nil
 }
 
 func (p *ProviderServer) forwardPacket(sphinxPacket []byte, address string) error {
-	packetBytes, err := config.WrapWithFlag(config.CommFlag, sphinxPacket)
+	packetBytes, err := config.WrapWithFlag(flags.CommFlag, sphinxPacket)
 	if err != nil {
 		return err
 	}
-	logLocal.Infof("%s: Going to forward the sphinx packet", p.id)
+	p.log.Infof("%s: Going to forward the sphinx packet", p.id)
 	err = p.send(packetBytes, address)
 	if err != nil {
 		return err
 	}
-	logLocal.Infof("%s: Forwarded sphinx packet", p.id)
+	p.log.Infof("%s: Forwarded sphinx packet", p.id)
 	return nil
 }
 
@@ -148,18 +151,18 @@ func (p *ProviderServer) forwardPacket(sphinxPacket []byte, address string) erro
 // and send the passed packet. If connection failed or
 // the packet could not be send, an error is returned
 func (p *ProviderServer) send(packet []byte, address string) error {
-	logLocal.Debugf("%s: Dialling", p.id)
+	p.log.Debugf("%s: Dialling", p.id)
 	conn, err := net.Dial("tcp", address)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	logLocal.Debugf("%s: Writing", p.id)
+	p.log.Debugf("%s: Writing", p.id)
 
 	if _, err := conn.Write(packet); err != nil {
 		return err
 	}
-	logLocal.Debugf("%s: Returning", p.id)
+	p.log.Debugf("%s: Returning", p.id)
 
 	return nil
 }
@@ -174,14 +177,14 @@ func (p *ProviderServer) listenForIncomingConnections() {
 		conn, err := p.listener.Accept()
 
 		if err != nil {
-			logLocal.WithError(err).Error(err)
+			p.log.Errorf("Error when listening for incoming connection: %v", err)
 		} else {
-			logLocal.Infof("%s: Received new connection from %s", p.id, conn.RemoteAddr())
+			p.log.Infof("%s: Received new connection from %s", p.id, conn.RemoteAddr())
 			errs := make(chan error, 1)
 			go p.handleConnection(conn, errs)
 			err = <-errs
 			if err != nil {
-				logLocal.WithError(err).Error(err)
+				p.log.Errorf("Error when listening for incoming connection: %v", err)
 			}
 		}
 	}
@@ -205,25 +208,25 @@ func (p *ProviderServer) handleConnection(conn net.Conn, errs chan<- error) {
 		errs <- err
 	}
 
-	switch {
-	case bytes.Equal(packet.Flag, config.AssigneFlag):
+	switch flags.PacketTypeFlagFromBytes(packet.Flag) {
+	case flags.AssignFlag:
 		err = p.handleAssignRequest(packet.Data)
 		if err != nil {
 			errs <- err
 		}
-	case bytes.Equal(packet.Flag, config.CommFlag):
+	case flags.CommFlag:
 		err = p.receivedPacket(packet.Data)
 		if err != nil {
 			errs <- err
 		}
-	case bytes.Equal(packet.Flag, config.PullFlag):
+	case flags.PullFlag:
 		err = p.handlePullRequest(packet.Data)
 		if err != nil {
 			errs <- err
 		}
 	default:
-		logLocal.Info(packet.Flag)
-		logLocal.Info("Packet flag not recognised. Packet dropped")
+		p.log.Info(packet.Flag)
+		p.log.Info("Packet flag not recognised. Packet dropped")
 		errs <- nil
 	}
 	errs <- nil
@@ -271,14 +274,14 @@ func (p *ProviderServer) registerNewClient(clientBytes []byte) ([]byte, string, 
 // it registers the client in the list of all registered clients and send
 // an authentication token back to the client.
 func (p *ProviderServer) handleAssignRequest(packet []byte) error {
-	logLocal.Info("Received assign request from the client")
+	p.log.Info("Received assign request from the client")
 
 	token, adr, err := p.registerNewClient(packet)
 	if err != nil {
 		return err
 	}
 
-	tokenBytes, err := config.WrapWithFlag(config.TokenFlag, token)
+	tokenBytes, err := config.WrapWithFlag(flags.TokenFlag, token)
 	if err != nil {
 		return err
 	}
@@ -300,7 +303,7 @@ func (p *ProviderServer) handlePullRequest(rqsBytes []byte) error {
 		return err
 	}
 
-	logLocal.Infof("Processing pull request: %s %s", request.ClientId, string(request.Token))
+	p.log.Infof("Processing pull request: %s %s", request.ClientId, string(request.Token))
 
 	if p.authenticateUser(request.ClientId, request.Token) {
 		signal, err := p.fetchMessages(request.ClientId)
@@ -309,14 +312,14 @@ func (p *ProviderServer) handlePullRequest(rqsBytes []byte) error {
 		}
 		switch signal {
 		case "NI":
-			logLocal.Info("Inbox does not exist. Sending signal to client.")
+			p.log.Info("Inbox does not exist. Sending signal to client.")
 		case "EI":
-			logLocal.Info("Inbox is empty. Sending info to the client.")
+			p.log.Info("Inbox is empty. Sending info to the client.")
 		case "SI":
-			logLocal.Info("All messages from the inbox successfully sent to the client.")
+			p.log.Info("All messages from the inbox successfully sent to the client.")
 		}
 	} else {
-		logLocal.Warning("Authentication went wrong")
+		p.log.Warn("Authentication went wrong")
 		return errors.New("authentication went wrong")
 	}
 	return nil
@@ -330,7 +333,7 @@ func (p *ProviderServer) authenticateUser(clientID string, clientToken []byte) b
 	if bytes.Equal(p.assignedClients[clientID].token, clientToken) {
 		return true
 	}
-	logLocal.Warningf("Non matching token: %s, %s", p.assignedClients[clientID].token, clientToken)
+	p.log.Warnf("Non matching token: %s, %s", p.assignedClients[clientID].token, clientToken)
 	return false
 }
 
@@ -366,9 +369,9 @@ func (p *ProviderServer) fetchMessages(clientID string) (string, error) {
 		}
 
 		address := p.assignedClients[clientID].host + ":" + p.assignedClients[clientID].port
-		logLocal.Infof("Found stored message for address %s", address)
-		logLocal.Infof("Messages data: %v", string(dat))
-		msgBytes, err := config.WrapWithFlag(config.CommFlag, dat)
+		p.log.Infof("Found stored message for address %s", address)
+		p.log.Infof("Messages data: %v", string(dat))
+		msgBytes, err := config.WrapWithFlag(flags.CommFlag, dat)
 		if err != nil {
 			return "", err
 		}
@@ -377,9 +380,9 @@ func (p *ProviderServer) fetchMessages(clientID string) (string, error) {
 			return "", err
 		}
 		if err := os.Remove(fullPath); err != nil {
-			logLocal.Errorf("Failed to remove %v: %v", f, err)
+			p.log.Errorf("Failed to remove %v: %v", f, err)
 		}
-		logLocal.Infof("Removed %v", fullPath)
+		p.log.Infof("Removed %v", fullPath)
 	}
 	return "SI", nil
 }
@@ -402,8 +405,8 @@ func (p *ProviderServer) storeMessage(message []byte, inboxID string, messageID 
 		return err
 	}
 
-	logLocal.Infof("Stored message for %s", inboxID)
-	logLocal.Infof("Stored message content: %v", string(message))
+	p.log.Infof("Stored message for %s", inboxID)
+	p.log.Infof("Stored message content: %v", string(message))
 	return nil
 }
 
@@ -417,8 +420,21 @@ func NewProviderServer(id string,
 	pubKey *sphinx.PublicKey,
 	pkiPath string,
 ) (*ProviderServer, error) {
+	baseLogger, err := logger.New(defaultLogFileLocation, defaultLogLevel, false)
+	if err != nil {
+		return nil, err
+	}
+
+	log := baseLogger.GetLogger(id)
+
 	node := node.NewMix(prvKey, pubKey)
-	providerServer := ProviderServer{id: id, host: host, port: port, Mix: node, listener: nil}
+	providerServer := ProviderServer{id: id,
+		host:     host,
+		port:     port,
+		Mix:      node,
+		listener: nil,
+		log:      log,
+	}
 	providerServer.config = config.MixConfig{Id: providerServer.id,
 		Host:   providerServer.host,
 		Port:   providerServer.port,
@@ -445,4 +461,27 @@ func NewProviderServer(id string,
 	}
 
 	return &providerServer, nil
+}
+
+func CreateTestProvider() (*ProviderServer, error) {
+	priv, pub, err := sphinx.GenerateKeyPair()
+	if err != nil {
+		return nil, err
+	}
+	baseDisabledLogger, err := logger.New(defaultLogFileLocation, defaultLogLevel, true)
+	if err != nil {
+		return nil, err
+	}
+	// this logger can be shared as it will be disabled anyway
+	disabledLog := baseDisabledLogger.GetLogger("test")
+
+	node := node.NewMix(priv, pub)
+	provider := ProviderServer{host: "localhost", port: "9999", Mix: node, log: disabledLog}
+	provider.config = config.MixConfig{Id: provider.id,
+		Host:   provider.host,
+		Port:   provider.port,
+		PubKey: provider.GetPublicKey().Bytes(),
+	}
+	provider.assignedClients = make(map[string]ClientRecord)
+	return &provider, nil
 }

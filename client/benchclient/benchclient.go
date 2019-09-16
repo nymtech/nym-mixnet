@@ -25,6 +25,7 @@ import (
 
 	"github.com/nymtech/loopix-messaging/client"
 	"github.com/nymtech/loopix-messaging/config"
+	"github.com/nymtech/loopix-messaging/flags"
 )
 
 const (
@@ -119,7 +120,7 @@ func (bc *BenchClient) RunBench() error {
 	client.ToggleRateCompliantCoverTraffic(false)
 	client.UpdateDesiredRateParameter(10000000.0)
 	// to reduce effect of writing to stdout
-	client.DisableLogging()
+	bc.DisableLogging()
 	// start underlying client
 	if err := bc.NetClient.Start(); err != nil {
 		return err
@@ -144,7 +145,7 @@ func (bc *BenchClient) pregeneratePacket(message string, recipient config.Client
 		return err
 	}
 
-	packetBytes, err := config.WrapWithFlag(config.CommFlag, sphinxPacket)
+	packetBytes, err := config.WrapWithFlag(flags.CommFlag, sphinxPacket)
 	if err != nil {
 		return err
 	}

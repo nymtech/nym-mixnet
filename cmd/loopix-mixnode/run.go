@@ -20,7 +20,7 @@ import (
 
 	"github.com/nymtech/loopix-messaging/helpers"
 	"github.com/nymtech/loopix-messaging/pki"
-	"github.com/nymtech/loopix-messaging/server"
+	"github.com/nymtech/loopix-messaging/server/mixnode"
 	"github.com/nymtech/loopix-messaging/sphinx"
 	"github.com/tav/golly/optparse"
 )
@@ -47,9 +47,8 @@ func cmdRun(args []string, usage string) {
 		os.Exit(1)
 	}
 
-	err := pki.EnsureDbExists(PkiDb)
-	if err != nil {
-		fmt.Println("PkiDb problem ")
+	if err := pki.EnsureDbExists(PkiDb); err != nil {
+		fmt.Fprintf(os.Stderr, "PkiDb problem: %v ", err)
 		panic(err)
 	}
 
@@ -67,18 +66,16 @@ func cmdRun(args []string, usage string) {
 		panic(err)
 	}
 
-	mixServer, err := server.NewMixServer(*id, *host, *port, pubM, privM, PkiDb, *layer)
+	mixServer, err := mixnode.NewMixServer(*id, *host, *port, pubM, privM, PkiDb, *layer)
 	if err != nil {
 		panic(err)
 	}
 
-	err = mixServer.Start()
-	if err != nil {
+	if err := mixServer.Start(); err != nil {
 		panic(err)
 	}
 
-	wait := make(chan struct{})
-	<-wait
+	mixServer.Wait()
 }
 
 func newOpts(command string, usage string) *optparse.Parser {
