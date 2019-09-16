@@ -33,11 +33,6 @@ import (
 	"golang.org/x/crypto/curve25519"
 )
 
-// // Yet another case of the global logger
-// // While I wish we could completely get rid of all global loggers, in case of sphinx package that is difficult
-// // without heavily modifying this code, which I will eventually do, basically log errors at higher level;
-// var logLocal = logging.PackageLogger()
-
 const (
 	// K TODO: document padding-related Sphinx parameter
 	K            = 16

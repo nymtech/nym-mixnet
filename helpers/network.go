@@ -94,11 +94,6 @@ func RegisterPresence(host string, publicKey *sphinx.PublicKey, layer int) error
 	_ = resp
 	// TODO: properly parse it, etc.
 
-	// fmt.Println("response Status:", resp.Status)
-	// fmt.Println("response Headers:", resp.Header)
-	// body, _ := ioutil.ReadAll(resp.Body)
-	// fmt.Println("response Body:", string(body))
-
 	return nil
 }
 
@@ -116,11 +111,6 @@ func SendMixMetrics(metrics map[string]uint) error {
 	}
 	_ = resp
 	// TODO: properly parse it, etc.
-
-	// fmt.Println("response Status:", resp.Status)
-	// fmt.Println("response Headers:", resp.Header)
-	// body, _ := ioutil.ReadAll(resp.Body)
-	// fmt.Println("response Body:", string(body))
 
 	return nil
 }
