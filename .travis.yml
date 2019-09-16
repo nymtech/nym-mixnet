@@ -1,0 +1,31 @@
+language: go
+
+go: 
+  - "1.12"
+
+env:
+- GO111MODULE=on
+
+script: 
+  - go test -v ./... -race -coverprofile=cover.out.tmp -covermode=atomic
+
+after_success:
+  - cat cover.out.tmp | grep -v ".pb.go" > cover.out
+  - bash <(curl https://codecov.io/bash)
+
+git:
+  depth: 1
+
+notifications:
+  email: 
+    recipients:
+      - dave@nymtech.net
+      - andrew@nymtech.net
+    on_success: change  # always|never|change
+    on_failure: always
+  webhooks:
+      urls:
+          - "https://scalar.vector.im/api/neb/services/hooks/dHJhdmlzLWNpLyU0MGZ1dHVyZWNoaW1wJTNBbWF0cml4Lm9yZy8lMjFwUEVlaHVoZFlxTGVqU1VGSVIlM0FtYXRyaXgub3Jn"
+      on_success: change  # always|never|change
+      on_failure: always
+      on_start: never

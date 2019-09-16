@@ -20,14 +20,37 @@
 package pki
 
 import (
-	"github.com/jmoiron/sqlx"
-	_ "github.com/mattn/go-sqlite3"
-
 	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/jmoiron/sqlx"
+	// Blank import so that go-sqlite3 is registered before package init
+	// https://golang.org/doc/effective_go.html#blank_import
+	_ "github.com/mattn/go-sqlite3"
 )
+
+// EnsureDbExists sets up the PKI database if it doesn't exist yet.
+func EnsureDbExists(pkiDb string) error {
+	db, err := OpenDatabase(pkiDb, "sqlite3")
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	params := make(map[string]string)
+	params["Id"] = "TEXT"
+	params["Typ"] = "TEXT"
+	params["Config"] = "BLOB"
+
+	err = createTable(db, "Pki", params)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
 
 // OpenDatabase opens a connection with a specified database.
 // OpenDatabase returns the database object and an error.
@@ -43,17 +66,17 @@ func OpenDatabase(dataSourceName, dbDriver string) (*sqlx.DB, error) {
 	return db, err
 }
 
-// CreateTable creates a new table defined by a given name and specified
-// column fields. CreateTable returns an error if a table could not be
+// createTable creates a new table defined by a given name and specified
+// column fields. createTable returns an error if a table could not be
 // correctly created or when an SQL injection attacks was detected.
-func CreateTable(db *sqlx.DB, tableName string, params map[string]string) error {
+func createTable(db *sqlx.DB, tableName string, params map[string]string) error {
 	paramsAndTypes := make([]string, 0, len(params))
 
 	for key := range params {
 		paramsAndTypes = append(paramsAndTypes, key+" "+params[key])
 	}
 
-	paramsText := "idx INTEGER PRIMARY KEY, " + strings.Join(paramsAndTypes[:], ", ")
+	paramsText := "idx INTEGER PRIMARY KEY, " + strings.Join(paramsAndTypes, ", ")
 	err := detectSQLInjection(tableName, paramsText)
 	if err != nil {
 		return err
@@ -86,6 +109,10 @@ func InsertIntoTable(db *sqlx.DB, tableName string, id, typ string, config []byt
 		return err
 	}
 
+	// FIXME: TODO:
+	// Clear possible SQL injection. However the db driver does not allow for variadic table names
+	// Should we perhaps have a set of prepared statements with predefined table names considering rather
+	// static database schema?
 	query := "INSERT INTO " + tableName + " (Id, Typ, Config) VALUES (?, ?, ?)"
 	stmt, err := db.Prepare(query)
 	if err != nil {
@@ -108,6 +135,9 @@ func QueryDatabase(db *sqlx.DB, tableName string, condition string) (*sqlx.Rows,
 	if err != nil {
 		return nil, err
 	}
+
+	// FIXME: TODO:
+	// identical issue as to 'InsertIntoTable'
 	query := fmt.Sprintf("SELECT * FROM %s WHERE Typ = ?", tableName)
 	rows, err := db.Queryx(query, condition)
 
@@ -122,6 +152,8 @@ func QueryDatabase(db *sqlx.DB, tableName string, condition string) (*sqlx.Rows,
 // If rowExists will become a public function, it should have SQL injection detection implemented.
 func rowExists(db *sqlx.DB, query string, args ...interface{}) (bool, error) {
 	var exists bool
+	// TODO: is there a way to check in code if this is actually only run in unit tests?
+	// If it's run in tests only, why is it not in the _test.go file?
 	query = fmt.Sprintf("SELECT exists (%s)", query)
 	err := db.QueryRow(query, args...).Scan(&exists)
 	if err != nil && err != sql.ErrNoRows {
@@ -133,6 +165,8 @@ func rowExists(db *sqlx.DB, query string, args ...interface{}) (bool, error) {
 // detectSQLInjection checks whether the value passed to the query might allow for
 // SQL injection attacks by checking for ' and ; characters. If the error is detected
 // detectSQLInjection returns an error
+// TODO: we shouldn't use any such functions ourselves I think.
+// We should rather use the driver's implementations
 func detectSQLInjection(values ...string) error {
 	for _, v := range values {
 		if strings.ContainsAny(v, "'") || strings.ContainsAny(v, ";") {

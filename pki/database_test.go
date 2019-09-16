@@ -29,14 +29,13 @@ const (
 	testDatabase = "./TESTDATABASE.DB"
 )
 
-var dbDir string
+//nolint: gochecknoglobals
 var db *sqlx.DB
 
 func Setup() (*sqlx.DB, error) {
-
 	Clean()
-
-	db, err := sqlx.Connect("sqlite3", testDatabase)
+	var err error
+	db, err = sqlx.Connect("sqlite3", testDatabase)
 	if err != nil {
 		return nil, err
 	}
@@ -89,13 +88,15 @@ func TestMain(m *testing.M) {
 func TestCreateTable(t *testing.T) {
 
 	params := map[string]string{"Id": "TEXT", "Typ": "TEXT", "Config": "BLOB"}
-	err := CreateTable(db, "TestTable", params)
+	err := createTable(db, "TestTable", params)
 	if err != nil {
 		t.Error(err)
 	}
 
 	var exists bool
-	err = db.QueryRow("SELECT CASE WHEN exists (SELECT * from sqlite_master WHERE type = 'table' AND name = 'TestTable') then 1 else 0 end").Scan(&exists)
+	err = db.QueryRow("SELECT CASE WHEN exists " +
+		"(SELECT * from sqlite_master WHERE type = 'table' AND name = 'TestTable')" +
+		" then 1 else 0 end").Scan(&exists)
 	if err != nil && err != sql.ErrNoRows {
 		panic(fmt.Sprintf("Error while checking if table exists %v \n", err))
 	}
@@ -103,10 +104,10 @@ func TestCreateTable(t *testing.T) {
 }
 
 func TestCreateTable_SQLInjection(t *testing.T) {
-	err := CreateTable(db, "TestTable;", nil)
+	err := createTable(db, "TestTable;", nil)
 	assert.EqualError(t, errors.New("detected possible SQL injection"), err.Error())
 
-	err = CreateTable(db, "TestTable'", nil)
+	err = createTable(db, "TestTable'", nil)
 	assert.EqualError(t, errors.New("detected possible SQL injection"), err.Error())
 }
 
@@ -152,7 +153,10 @@ func TestInsertIntoTable(t *testing.T) {
 		t.Error(err)
 	}
 
-	exists, err := rowExists(db, "SELECT * FROM TableXX WHERE Id=$1 AND Typ=$2 AND Config=$3", "TestInsertId", "TestInsertTyp", []byte("TestInsertBytes"))
+	exists, err := rowExists(db,
+		"SELECT * FROM TableXX WHERE Id=$1 AND Typ=$2 AND Config=$3", "TestInsertId", "TestInsertTyp",
+		[]byte("TestInsertBytes"),
+	)
 	if err != nil {
 		t.Error(err)
 	}

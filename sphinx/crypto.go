@@ -17,15 +17,12 @@ package sphinx
 import (
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/elliptic"
 	"crypto/hmac"
-	"crypto/rand"
 	"crypto/sha256"
-
-	"math/big"
 )
 
-func AES_CTR(key, plaintext []byte) ([]byte, error) {
+// AesCtr returns AES XOR ciphertext in counter mode for the given key and plaintext
+func AesCtr(key, plaintext []byte) ([]byte, error) {
 
 	ciphertext := make([]byte, len(plaintext))
 
@@ -45,72 +42,33 @@ func AES_CTR(key, plaintext []byte) ([]byte, error) {
 	return ciphertext, nil
 }
 
-func hash(arg []byte) []byte {
-
+func hash(arg []byte) ([]byte, error) {
 	h := sha256.New()
-	h.Write(arg)
-
-	return h.Sum(nil)
+	if _, err := h.Write(arg); err != nil {
+		return nil, err
+	}
+	return h.Sum(nil), nil
 }
 
-func Hmac(key, message []byte) []byte {
+// Hmac computes a hash-based message authentication code for a given key and message.
+// Returns a byte array containing the MAC checksum.
+func Hmac(key, message []byte) ([]byte, error) {
 	mac := hmac.New(sha256.New, key)
-	mac.Write(message)
-	return mac.Sum(nil)
+	if _, err := mac.Write(message); err != nil {
+		return nil, err
+	}
+	return mac.Sum(nil), nil
 }
 
-func GenerateKeyPair() ([]byte, []byte, error) {
-	priv, x, y, err := elliptic.GenerateKey(elliptic.P224(), rand.Reader)
-
+// KDF returns the hash of K for a given key
+func KDF(key []byte) ([]byte, error) {
+	b, err := hash(key)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-
-	return elliptic.Marshal(elliptic.P224(), x, y), priv, nil
+	return b[:K], nil
 }
 
-func KDF(key []byte) []byte {
-	return hash(key)[:K]
-}
-
-func bytesToBigNum(curve elliptic.Curve, value []byte) *big.Int {
-	nBig := new(big.Int)
-	nBig.SetBytes(value)
-
-	return new(big.Int).Mod(nBig, curve.Params().P)
-}
-
-func randomBigInt(curve *elliptic.CurveParams) (big.Int, error) {
-	nBig, err := rand.Int(rand.Reader, curve.Params().P)
-	if err != nil {
-		return big.Int{}, err
-	}
-	return *nBig, nil
-}
-
-func expo(base []byte, exp []big.Int) []byte {
-	x := exp[0]
-	for _, val := range exp[1:] {
-		x = *big.NewInt(0).Mul(&x, &val)
-	}
-
-	baseX, baseY := elliptic.Unmarshal(elliptic.P224(), base)
-	resultX, resultY := curve.Params().ScalarMult(baseX, baseY, x.Bytes())
-	return elliptic.Marshal(curve, resultX, resultY)
-}
-
-func expoGroupBase(curve elliptic.Curve, exp []big.Int) []byte {
-	x := exp[0]
-
-	for _, val := range exp[1:] {
-		x = *big.NewInt(0).Mul(&x, &val)
-	}
-
-	resultX, resultY := curve.Params().ScalarBaseMult(x.Bytes())
-	return elliptic.Marshal(curve, resultX, resultY)
-
-}
-
-func computeMac(key, data []byte) []byte {
+func computeMac(key, data []byte) ([]byte, error) {
 	return Hmac(key, data)
 }

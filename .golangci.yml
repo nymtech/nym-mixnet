@@ -1,0 +1,69 @@
+run:
+  concurrency: 6
+  deadline: 1m
+  issues-exit-code: 1
+  tests: true
+  skip-dirs:
+    - vendor$
+    - build$
+  # skip-files:
+    # -
+linters-settings:
+  govet:
+    check-shadowing: true
+  golint:
+    # minimal confidence for issues, default is 0.8
+    min-confidence: 0
+  gocyclo:
+    min-complexity: 20
+  maligned:
+    suggest-new: true
+  dupl:
+    threshold: 100
+  goconst:
+    min-len: 3
+    min-occurrences: 3
+  depguard:
+    list-type: whitelist
+    include-go-root: false
+    packages:
+      - github.com/nymtech/loopix-messaging
+      - github.com/golang/protobuf/proto
+      - github.com/jmoiron/sqlx
+      - github.com/stretchr/testify/assert
+      - github.com/tav/golly/optparse
+      - github.com/sirupsen/logrus
+      - github.com/mattn/go-sqlite3
+      - golang.org/x/crypto/curve25519
+
+  misspell:
+    locale: UK
+    # ignore-words:
+    #   - foo
+  lll:
+    line-length: 120
+  unused:
+    check-exported: false
+  unparam:
+    check-exported: false
+  nakedret:
+    # make an issue if func has more lines of code than this setting and it has naked returns; default is 30
+    max-func-lines: 30
+  prealloc:
+    # XXX: we don't recommend using this linter before doing performance profiling.
+    # For most programs usage of prealloc will be a premature optimization.
+    simple: true
+    range-loops: true # Report preallocation suggestions on range loops, true by default
+    for-loops: false # Report preallocation suggestions on for loops, false by default
+  gocritic:
+    disabled-checks:
+      - captLocal
+
+linters:
+  enable-all: true
+  disable-all: false
+  # disable:
+  #   - maligned
+  #   - prealloc
+  #   - gochecknoglobals
+  fast: false

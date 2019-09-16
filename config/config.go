@@ -1,4 +1,4 @@
-// Copyright 2018 The Loopix-Messaging Authors
+// Copyright 2018-2019 The Loopix-Messaging Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,32 +21,34 @@ package config
 
 import (
 	"github.com/golang/protobuf/proto"
+	"github.com/nymtech/loopix-messaging/flags"
 )
 
-var (
-	// TODO: perhaps move it elsewhere?
-	AssigneFlag = []byte("\xa2")
-	CommFlag    = []byte("\xc6")
-	TokenFlag   = []byte("\xa9")
-	PullFlag    = []byte("\xff")
+const (
+	DirectoryServerBaseURL                = "http://localhost:8080/"
+	DirectoryServerHealthcheckURL         = "http://localhost:8080/api/healthcheck"
+	DirectoryServerMetricsURL             = "http://localhost:8080/api/metrics/mixes"
+	DirectoryServerPkiURL                 = "http://localhost:8080/api/nodes"
+	DirectoryServerMixPresenceURL         = "http://localhost:8080/api/presence/mixnodes"
+	DirectoryServerMixProviderPresenceURL = "http://localhost:8080/api/presence/mixproviders"
+	DirectoryServerTopology               = "http://localhost:8080/api/presence/topology"
 )
 
-func NewMixConfig(mixId, host, port string, pubKey []byte) MixConfig {
-	MixConfig := MixConfig{Id: mixId, Host: host, Port: port, PubKey: pubKey}
-	return MixConfig
+// NewMixConfig constructor
+func NewMixConfig(mixID, host, port string, pubKey []byte) MixConfig {
+	return MixConfig{Id: mixID, Host: host, Port: port, PubKey: pubKey}
 }
 
-func NewClientConfig(clientId, host, port string, pubKey []byte, providerInfo MixConfig) ClientConfig {
-	client := ClientConfig{Id: clientId, Host: host, Port: port, PubKey: pubKey, Provider: &providerInfo}
+// NewClientConfig constructor
+func NewClientConfig(clientID, host, port string, pubKey []byte, providerInfo MixConfig) ClientConfig {
+	client := ClientConfig{Id: clientID, Host: host, Port: port, PubKey: pubKey, Provider: &providerInfo}
 	return client
 }
 
-/*
-	WrapWithFlag packs the given byte information together with a specified flag into the
-	packet.
-*/
-func WrapWithFlag(flag []byte, data []byte) ([]byte, error) {
-	m := GeneralPacket{Flag: flag, Data: data}
+// WrapWithFlag packs the given byte information together with a specified flag into the
+// packet.
+func WrapWithFlag(flag flags.PacketTypeFlag, data []byte) ([]byte, error) {
+	m := GeneralPacket{Flag: flag.Bytes(), Data: data}
 	mBytes, err := proto.Marshal(&m)
 	if err != nil {
 		return nil, err
@@ -54,6 +56,7 @@ func WrapWithFlag(flag []byte, data []byte) ([]byte, error) {
 	return mBytes, nil
 }
 
+// E2EPath holds end to end path data for an entire route, prior to Sphinx header encryption
 type E2EPath struct {
 	IngressProvider MixConfig
 	Mixes           []MixConfig
@@ -61,6 +64,7 @@ type E2EPath struct {
 	Recipient       ClientConfig
 }
 
+// Len adds 3 to the mix path. TODO: why? Check this with Ania.
 func (p *E2EPath) Len() int {
 	return 3 + len(p.Mixes)
 }
