@@ -123,7 +123,7 @@ func (p *BenchProvider) receivedPacket(packet []byte) error {
 
 	if flag == flags.LastHopFlag {
 		if nextHop.Id == "BenchmarkClientRecipient" {
-			msgContent := string(dePacket[37:])
+			msgContent := string(dePacket[38:])
 			p.receivedMessages = append(p.receivedMessages, timestampedMessage{timestamp: time.Now(), content: msgContent})
 			p.receivedMessagesCount++
 			if p.receivedMessagesCount == p.numMessages {
