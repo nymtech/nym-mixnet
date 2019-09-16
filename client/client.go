@@ -402,7 +402,10 @@ func (c *NetClient) processPacket(packet []byte) ([]byte, error) {
 
 	// c.log.Debugf(" Processing packet")
 	// c.log.Tracef("Removing first 37 bytes of the message")
+	if len(packet) > 38 {
 	return packet[38:], nil
+}
+	return packet, nil
 }
 
 // SendRegisterMessageToProvider allows the client to register with the selected provider.
