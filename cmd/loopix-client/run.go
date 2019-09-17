@@ -18,17 +18,14 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/nymtech/loopix-messaging/client"
 	"github.com/nymtech/loopix-messaging/config"
-	"github.com/nymtech/loopix-messaging/pki"
+	"github.com/nymtech/loopix-messaging/helpers"
 	"github.com/nymtech/loopix-messaging/sphinx"
 	"github.com/tav/golly/optparse"
 )
 
 const (
-	// PkiDb is the location of the database file, relative to the project root. TODO: move this to homedir.
-	PkiDb             = "pki/database.db"
 	defaultHost       = "localhost"
 	defaultID         = "Client1"
 	defaultPort       = "9999"
@@ -43,25 +40,12 @@ func cmdRun(args []string, usage string) {
 	providerID := opts.Flags("--provider").Label("PROVIDER").String("Id of the provider to connect to", defaultProviderID)
 	demo := opts.Flags("--demo").Label("DEMO").Bool("Should the client be run in demo mode")
 
+	_ = providerID
+
 	params := opts.Parse(args)
 	if len(params) != 0 {
 		opts.PrintUsage()
 		os.Exit(1)
-	}
-
-	db, err := pki.OpenDatabase(PkiDb, "sqlite3")
-	if err != nil {
-		panic(err)
-	}
-	row := db.QueryRow("SELECT Config FROM Pki WHERE Id = ? AND Typ = ?", providerID, "Provider")
-
-	var results []byte
-	if err := row.Scan(&results); err != nil {
-		panic(err)
-	}
-	var providerInfo config.MixConfig
-	if err := proto.Unmarshal(results, &providerInfo); err != nil {
-		panic(err)
 	}
 
 	privC1 := sphinx.BytesToPrivateKey([]byte{66, 32, 162, 223, 15, 199, 170, 43, 68, 239, 37, 97, 73, 113, 106,
@@ -78,11 +62,28 @@ func cmdRun(args []string, usage string) {
 	var pubC *sphinx.PublicKey
 	var demoRecipient config.ClientConfig
 
+	// nasty hack to make demo work
+	var providerInfo config.MixConfig
+	if *demo {
+		initialTopology, err := helpers.GetNetworkTopology()
+		if err != nil {
+			os.Exit(1)
+		}
+		for _, v := range initialTopology.MixProviderNodes {
+			// get the first entry
+			providerInfo, err = helpers.ProviderPresenceToConfig(v)
+			if err != nil {
+				os.Exit(1)
+			}
+			break
+		}
+	}
+
 	switch *id {
 	case "Client1":
 		pubC = pubC1
 		privC = privC1
-		if *demo == true {
+		if *demo {
 			demoRecipient = config.ClientConfig{
 				Id:       "Client2",
 				Host:     "localhost",
@@ -108,7 +109,7 @@ func cmdRun(args []string, usage string) {
 		os.Exit(-1)
 	}
 
-	client, err := client.NewClient(*id, *host, *port, privC, pubC, PkiDb, providerInfo, demoRecipient)
+	client, err := client.NewClient(*id, *host, *port, privC, pubC, demoRecipient)
 	if err != nil {
 		panic(err)
 	}

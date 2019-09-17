@@ -15,11 +15,9 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/nymtech/loopix-messaging/helpers"
-	"github.com/nymtech/loopix-messaging/pki"
 	"github.com/nymtech/loopix-messaging/server/provider"
 	"github.com/nymtech/loopix-messaging/sphinx"
 	"github.com/tav/golly/optparse"
@@ -45,12 +43,6 @@ func cmdRun(args []string, usage string) {
 		os.Exit(1)
 	}
 
-	err := pki.EnsureDbExists(PkiDb)
-	if err != nil {
-		fmt.Println("PkiDb problem ")
-		panic(err)
-	}
-
 	ip, err := helpers.GetLocalIP()
 	if err != nil {
 		panic(err)
@@ -65,7 +57,7 @@ func cmdRun(args []string, usage string) {
 		panic(err)
 	}
 
-	providerServer, err := provider.NewProviderServer(*id, *host, *port, pubP, privP, PkiDb)
+	providerServer, err := provider.NewProviderServer(*id, *host, *port, pubP, privP)
 	if err != nil {
 		panic(err)
 	}

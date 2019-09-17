@@ -35,7 +35,7 @@ linters-settings:
       - github.com/sirupsen/logrus
       - github.com/mattn/go-sqlite3
       - golang.org/x/crypto/curve25519
-
+      - github.com/nymtech/directory-server/models
   misspell:
     locale: UK
     # ignore-words:

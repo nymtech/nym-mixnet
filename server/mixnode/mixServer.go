@@ -192,7 +192,7 @@ func (m *MixServer) run() {
 	defer m.listener.Close()
 
 	// go m.startSendingMetrics()
-	// go m.startSendingPresence()
+	go m.startSendingPresence()
 
 	go func() {
 		m.log.Infof("Listening on %s", m.host+":"+m.port)
@@ -220,7 +220,7 @@ func (m *MixServer) startSendingPresence() {
 	for {
 		select {
 		case <-ticker.C:
-			if err := helpers.RegisterMixNodePresence(m.id, m.GetPublicKey(), m.layer); err != nil {
+			if err := helpers.RegisterMixNodePresence(net.JoinHostPort(m.host, m.port), m.GetPublicKey(), m.layer); err != nil {
 				m.log.Errorf("Failed to register presence: %v", err)
 			}
 		case <-m.haltedCh:
@@ -274,13 +274,11 @@ func (m *MixServer) handleConnection(conn net.Conn, errs chan<- error) {
 
 // NewMixServer constructor
 // TODO: Identical case to 'NewClient'
-// TODO: remove pkiPath once it becomes completely replaced with the directory server
 func NewMixServer(id string,
 	host string,
 	port string,
 	prvKey *sphinx.PrivateKey,
 	pubKey *sphinx.PublicKey,
-	pkiPath string,
 	layer int,
 ) (*MixServer, error) {
 
@@ -307,18 +305,12 @@ func NewMixServer(id string,
 		PubKey: mixServer.GetPublicKey().Bytes(),
 	}
 
-	configBytes, err := proto.Marshal(&mixServer.config)
-	if err != nil {
+	if err := helpers.RegisterMixNodePresence(net.JoinHostPort(mixServer.host, mixServer.port),
+		mixServer.GetPublicKey(),
+		layer,
+	); err != nil {
 		return nil, err
 	}
-
-	if err := helpers.AddToDatabase(pkiPath, "Pki", mixServer.id, "Mix", configBytes); err != nil {
-		return nil, err
-	}
-
-	// if err := helpers.RegisterMixNodePresence(mixServer.host+mixServer.port, mixServer.GetPublicKey(), layer); err != nil {
-	// 	return nil, err
-	// }
 
 	addr, err := helpers.ResolveTCPAddress(mixServer.host, mixServer.port)
 

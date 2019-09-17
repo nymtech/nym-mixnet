@@ -124,7 +124,7 @@ func (p *ProviderServer) run() {
 		p.listenForIncomingConnections()
 	}()
 
-	// go p.startSendingPresence()
+	go p.startSendingPresence()
 
 	p.Wait()
 }
@@ -133,7 +133,7 @@ func (p *ProviderServer) convertRecordsToModelData() []models.RegisteredClient {
 	registeredClients := make([]models.RegisteredClient, 0, len(p.assignedClients))
 	for _, entry := range p.assignedClients {
 		registeredClients = append(registeredClients, models.RegisteredClient{
-			Host:   entry.host + ":" + entry.port,
+			Host:   net.JoinHostPort(entry.host, entry.port),
 			PubKey: base64.StdEncoding.EncodeToString(entry.pubKey),
 		})
 	}
@@ -145,7 +145,10 @@ func (p *ProviderServer) startSendingPresence() {
 	for {
 		select {
 		case <-ticker.C:
-			if err := helpers.RegisterMixProviderPresence(p.host+p.port, p.GetPublicKey(), p.convertRecordsToModelData()); err != nil {
+			if err := helpers.RegisterMixProviderPresence(p.host+":"+p.port,
+				p.GetPublicKey(),
+				p.convertRecordsToModelData(),
+			); err != nil {
 				p.log.Errorf("Failed to register presence: %v", err)
 			}
 		case <-p.haltedCh:
@@ -471,7 +474,6 @@ func NewProviderServer(id string,
 	port string,
 	prvKey *sphinx.PrivateKey,
 	pubKey *sphinx.PublicKey,
-	pkiPath string,
 ) (*ProviderServer, error) {
 	baseLogger, err := logger.New(defaultLogFileLocation, defaultLogLevel, false)
 	if err != nil {
@@ -495,12 +497,10 @@ func NewProviderServer(id string,
 		PubKey: providerServer.GetPublicKey().Bytes()}
 	providerServer.assignedClients = make(map[string]ClientRecord)
 
-	configBytes, err := proto.Marshal(&providerServer.config)
-	if err != nil {
-		return nil, err
-	}
-	err = helpers.AddToDatabase(pkiPath, "Pki", providerServer.id, "Provider", configBytes)
-	if err != nil {
+	if err := helpers.RegisterMixProviderPresence(net.JoinHostPort(providerServer.host, providerServer.port),
+		providerServer.GetPublicKey(),
+		providerServer.convertRecordsToModelData(),
+	); err != nil {
 		return nil, err
 	}
 
