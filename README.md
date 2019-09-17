@@ -47,6 +47,7 @@ To simulate 2 clients that can message each other, run:
 ```shell
 ./scripts/run_client1.sh
 ```
+
 Then in another terminal:
 
 ```shell
