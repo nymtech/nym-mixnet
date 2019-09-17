@@ -20,7 +20,7 @@ import (
 
 	"github.com/nymtech/loopix-messaging/client"
 	"github.com/nymtech/loopix-messaging/config"
-	"github.com/nymtech/loopix-messaging/helpers"
+	"github.com/nymtech/loopix-messaging/helpers/topology"
 	"github.com/nymtech/loopix-messaging/sphinx"
 	"github.com/tav/golly/optparse"
 )
@@ -65,13 +65,13 @@ func cmdRun(args []string, usage string) {
 	// nasty hack to make demo work
 	var providerInfo config.MixConfig
 	if *demo {
-		initialTopology, err := helpers.GetNetworkTopology()
+		initialTopology, err := topology.GetNetworkTopology()
 		if err != nil {
 			os.Exit(1)
 		}
 		for _, v := range initialTopology.MixProviderNodes {
 			// get the first entry
-			providerInfo, err = helpers.ProviderPresenceToConfig(v)
+			providerInfo, err = topology.ProviderPresenceToConfig(v)
 			if err != nil {
 				os.Exit(1)
 			}

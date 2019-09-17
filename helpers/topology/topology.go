@@ -1,4 +1,4 @@
-// Copyright 2018-2019 The Loopix-Messaging Authors
+// Copyright 2019 The Loopix-Messaging Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,23 +13,55 @@
 // limitations under the License.
 
 /*
-	Package helpers implements all useful functions which are used in the code of anonymous messaging system.
+	Package topology implements all useful topology-related functions
+	which are used in the code of anonymous messaging system.
 */
 
-package helpers
+package topology
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"errors"
+	"io/ioutil"
 	"net"
+	"net/http"
 
 	"github.com/nymtech/directory-server/models"
 	"github.com/nymtech/loopix-messaging/config"
 )
 
-// GetMixesPKI returns PKI data for mix nodes.
-func GetMixesPKI(mixPresence map[string]models.MixNodePresence) ([]config.MixConfig, error) {
-	mixes := make([]config.MixConfig, 0, len(mixPresence))
+// MixPresence defines map containing presence information of all mix nodes in given topology.
+type MixPresence map[string]models.MixNodePresence
+
+// MixPresence defines map containing presence information of all providers in given topology.
+type ProviderPresence map[string]models.MixProviderPresence
+
+// LayeredMixes defines map of list of mix nodes corresponding to particular layer in given topology.
+type LayeredMixes map[uint][]config.MixConfig
+
+func GetNetworkTopology() (*models.Topology, error) {
+	resp, err := http.Get(config.DirectoryServerTopology)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	model := &models.Topology{}
+	if err := json.Unmarshal(body, model); err != nil {
+		return nil, err
+	}
+
+	return model, nil
+}
+
+// GetMixesPKI returns PKI data for mix nodes, grouped by layer
+func GetMixesPKI(mixPresence MixPresence) (LayeredMixes, error) {
+	mixes := make(LayeredMixes)
 	for k, v := range mixPresence {
 		b, err := base64.StdEncoding.DecodeString(v.PubKey)
 		if err != nil {
@@ -39,16 +71,20 @@ func GetMixesPKI(mixPresence map[string]models.MixNodePresence) ([]config.MixCon
 		if err != nil {
 			continue
 		}
-
-		mixes = append(mixes, config.MixConfig{
+		newMixEntry := config.MixConfig{
 			Id:     k,
 			Host:   host,
 			Port:   port,
 			PubKey: b,
 			Layer:  uint64(v.Layer),
-		})
+		}
+		if layerMixes, ok := mixes[v.Layer]; ok {
+			extendedLayer := append(layerMixes, newMixEntry)
+			mixes[v.Layer] = extendedLayer
+		} else {
+			mixes[v.Layer] = []config.MixConfig{newMixEntry}
+		}
 	}
-
 	return mixes, nil
 }
 
@@ -62,7 +98,7 @@ func ProviderPresenceToConfig(presence models.MixProviderPresence) (config.MixCo
 		return config.MixConfig{}, err
 	}
 
-	return config.NewMixConfig(presence.Host, host, port, b), nil
+	return config.NewMixConfig(presence.Host, host, port, b, config.ProviderLayer), nil
 }
 
 func RegisteredClientToConfig(client models.RegisteredClient) (config.ClientConfig, error) {
@@ -83,7 +119,7 @@ func RegisteredClientToConfig(client models.RegisteredClient) (config.ClientConf
 }
 
 // GetClientPKI returns a map of the current client PKI from the PKI database
-func GetClientPKI(providerPresence map[string]models.MixProviderPresence) ([]config.ClientConfig, error) {
+func GetClientPKI(providerPresence ProviderPresence) ([]config.ClientConfig, error) {
 	var clientsNum int = 0
 	for _, v := range providerPresence {
 		clientsNum += len(v.RegisteredClients)

@@ -32,11 +32,15 @@ const (
 	DirectoryServerMixPresenceURL         = "http://localhost:8080/api/presence/mixnodes"
 	DirectoryServerMixProviderPresenceURL = "http://localhost:8080/api/presence/mixproviders"
 	DirectoryServerTopology               = "http://localhost:8080/api/presence/topology"
+
+	// TODO: somehow split mixConfig to distinguish providers and mixnodes?
+	// But then we would have to deal with nasty interfaces and protobuf issues...
+	ProviderLayer = 1000000
 )
 
 // NewMixConfig constructor
-func NewMixConfig(mixID, host, port string, pubKey []byte) MixConfig {
-	return MixConfig{Id: mixID, Host: host, Port: port, PubKey: pubKey}
+func NewMixConfig(mixID, host, port string, pubKey []byte, layer uint) MixConfig {
+	return MixConfig{Id: mixID, Host: host, Port: port, PubKey: pubKey, Layer: uint64(layer)}
 }
 
 // NewClientConfig constructor
