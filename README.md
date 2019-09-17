@@ -33,13 +33,14 @@ This removes all log files, local provider inboxes, and database.
 
 ## Usage
 
-To run the network, i.e., mixnodes and providers run
+To run the network, i.e., mixnodes and providers run:
 
 ```shell
 ./scripts/run_network.sh
 ```
 
-This spins up 3 mixnodes and 1 provider.
+This spins up 3 mixnodes and 1 provider. You can pass arguments to the script
+(e.g. `./scripts/run_network.sh 6` if you want to run 6 mixnodes instead of 3. 
 
 To simulate 2 clients that can message each other, run:
 
