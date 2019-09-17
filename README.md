@@ -11,6 +11,12 @@ To build and test the code you need:
 
 * Go 1.12 or later
 
+To build the code:
+
+```shell
+make
+```
+
 To perform the unit tests run:
 
 ```shell
@@ -23,7 +29,7 @@ Before first fresh run of the system run:
 ./scripts/clean.sh
 ```
 
-This removes all log files and database.
+This removes all log files, local provider inboxes, and database.
 
 ## Usage
 
@@ -33,15 +39,19 @@ To run the network, i.e., mixnodes and providers run
 ./scripts/run_network.sh
 ```
 
-This spins up 3 mixnodes and 1 provider. To change the number of mixnodes to 5, 
-do:
+This spins up 3 mixnodes and 1 provider.
+
+To simulate 2 clients that can message each other, run:
 
 ```shell
-./scripts/run_network.sh 5
+./scripts/run_client1.sh
 ```
-
-To simulate the clients run
+Then in another terminal:
 
 ```shell
-./scripts/run_clients.sh
+./scripts/run_client2.sh
 ```
+
+You can enter messages in each of the client terminals. Hitting `<enter>` will cause the message to send to the other client. 
+
+Client1 shows only messages being sent and received, so it doesn't scroll as actively and annoyingly. Client2 has a lot more log messages in it: this is not as nice to use from a human perspective, but it shows all the drop traffic, cover traffic, and real messages being sent, so you get a much better feel for what's going on. 
