@@ -725,7 +725,6 @@ func NewTestClient(id string,
 	port string,
 	prvKey *sphinx.PrivateKey,
 	pubKey *sphinx.PublicKey,
-	pkiDir string,
 	provider config.MixConfig,
 ) (*NetClient, error) {
 	baseDisabledLogger, err := logger.New(defaultLogFileLocation, defaultLogLevel, true)
