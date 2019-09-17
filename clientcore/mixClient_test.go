@@ -15,40 +15,47 @@
 package clientcore
 
 import (
-	"github.com/nymtech/loopix-messaging/config"
-	"github.com/nymtech/loopix-messaging/logger"
-	sphinx "github.com/nymtech/loopix-messaging/sphinx"
-
-	"github.com/stretchr/testify/assert"
-
 	"errors"
 	"fmt"
 	"os"
 	"reflect"
 	"strconv"
 	"testing"
+
+	"github.com/nymtech/loopix-messaging/config"
+	"github.com/nymtech/loopix-messaging/logger"
+	sphinx "github.com/nymtech/loopix-messaging/sphinx"
+	"github.com/stretchr/testify/assert"
 )
 
 // I guess in the case of a test file, globals are fine
 //nolint: gochecknoglobals
 var (
 	client *CryptoClient
-	mixes  []config.MixConfig
+	mixes  map[uint][]config.MixConfig
 )
 
 func Setup() error {
+	maxLayers := 3
+
 	baseDisabledLogger, err := logger.New("", "panic", true)
 	if err != nil {
 		return err
 	}
 	disabledLog := baseDisabledLogger.GetLogger("test")
-
+	mixes = make(map[uint][]config.MixConfig)
 	for i := 0; i < 10; i++ {
+		layer := uint(i%maxLayers + 1)
 		_, pub, err := sphinx.GenerateKeyPair()
 		if err != nil {
 			return err
 		}
-		mixes = append(mixes, config.NewMixConfig(fmt.Sprintf("Mix%d", i), "localhost", strconv.Itoa(3330+i), pub.Bytes()))
+		newMix := config.NewMixConfig(fmt.Sprintf("Mix%d", i), "localhost", strconv.Itoa(3330+i), pub.Bytes(), layer)
+		if currentMixes, ok := mixes[layer]; ok {
+			newMixes := append(currentMixes, newMix)
+			mixes[layer] = newMixes
+		}
+		mixes[layer] = []config.MixConfig{newMix}
 	}
 
 	// Create a mixClient
@@ -69,11 +76,21 @@ func Setup() error {
 		return err
 	}
 
-	m1 := config.MixConfig{Id: "Mix1", Host: "localhost", Port: "3330", PubKey: pub1.Bytes()}
-	m2 := config.MixConfig{Id: "Mix2", Host: "localhost", Port: "3331", PubKey: pub2.Bytes()}
+	_, pub3, err := sphinx.GenerateKeyPair()
+	if err != nil {
+		return err
+	}
+
+	m1 := config.MixConfig{Id: "Mix1", Host: "localhost", Port: "3330", PubKey: pub1.Bytes(), Layer: 1}
+	m2 := config.MixConfig{Id: "Mix2", Host: "localhost", Port: "3331", PubKey: pub2.Bytes(), Layer: 2}
+	m3 := config.MixConfig{Id: "Mix3", Host: "localhost", Port: "3332", PubKey: pub3.Bytes(), Layer: 3}
 
 	client.Network = NetworkPKI{}
-	client.Network.Mixes = []config.MixConfig{m1, m2}
+	client.Network.Mixes = map[uint][]config.MixConfig{
+		1: []config.MixConfig{m1},
+		2: []config.MixConfig{m2},
+		3: []config.MixConfig{m3},
+	}
 
 	return nil
 }
@@ -144,15 +161,18 @@ func TestCryptoClient_GenerateDelaySequence_Fail(t *testing.T) {
 }
 
 func Test_GetRandomMixSequence_TooFewMixes(t *testing.T) {
-	sequence, err := client.getRandomMixSequence(mixes, 20)
-	assert.Nil(t, err)
+	_, err := client.getRandomMixSequence(mixes, 20)
+	assert.Error(t, err)
 
-	assert.Equal(t,
-		10,
-		len(sequence),
-		"When the given length is larger than the number of active nodes, the path should be "+
-			"the sequence of all active mixes",
-	)
+	// Original assertion:
+	// assert.Equal(t,
+	// 	10,
+	// 	len(sequence),
+	// 	"When the given length is larger than the number of active nodes, the path should be "+
+	// 		"the sequence of all active mixes",
+	// )
+	// I disagree with this, for example there might be no active nodes on layer 2. Then no traffic should
+	// be able to go through the network, should it?
 }
 
 func Test_GetRandomMixSequence_MoreMixes(t *testing.T) {
@@ -171,11 +191,11 @@ func Test_GetRandomMixSequence_MoreMixes(t *testing.T) {
 }
 
 func Test_GetRandomMixSequence_FailEmptyList(t *testing.T) {
-	_, err := client.getRandomMixSequence([]config.MixConfig{}, 6)
-	assert.EqualError(t, errors.New("cannot take a mix sequence from an empty list"), err.Error(), "")
+	_, err := client.getRandomMixSequence(map[uint][]config.MixConfig{}, 6)
+	assert.EqualError(t, ErrInvalidMixes, err.Error(), "")
 }
 
 func Test_GetRandomMixSequence_FailNonList(t *testing.T) {
 	_, err := client.getRandomMixSequence(nil, 6)
-	assert.EqualError(t, errors.New("cannot take a mix sequence from an empty list"), err.Error(), "")
+	assert.EqualError(t, ErrInvalidMixes, err.Error(), "")
 }

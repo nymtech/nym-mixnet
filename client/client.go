@@ -262,9 +262,29 @@ func (c *NetClient) resolveAddressAndStartListening() error {
 	return nil
 }
 
+func (c *NetClient) checkTopology() error {
+	if c.Network.ShouldUpdate() {
+		newTopology, err := helpers.GetNetworkTopology()
+		if err != nil {
+			c.log.Errorf("error while reading network topology: %v", err)
+			return err
+		}
+		if err := c.ReadInNetworkFromTopology(newTopology); err != nil {
+			c.log.Errorf("error while trying to update topology: %v", err)
+			return err
+		}
+	}
+	return nil
+}
+
 // SendMessage responsible for sending a real message. Takes as input the message string
 // and the public information about the destination.
 func (c *NetClient) SendMessage(message string, recipient config.ClientConfig) error {
+	// before we send a message, ensure our topology is up to date
+	if err := c.checkTopology(); err != nil {
+		c.log.Errorf("error in updating topology: %v", err)
+		return err
+	}
 	packet, err := c.encodeMessage(message, recipient)
 	if err != nil {
 		c.log.Errorf("Error in sending message - encode message returned error: %v", err)
@@ -347,7 +367,7 @@ func (c *NetClient) handleConnection(conn net.Conn) {
 
 	reqLen, err := conn.Read(buff)
 	if err != nil {
-		c.log.Errorf("Error while reading incoming connection: %v", err)
+		c.log.Errorf("error while reading incoming connection: %v", err)
 		panic(err)
 	}
 	var packet config.GeneralPacket
@@ -643,17 +663,16 @@ func (c *NetClient) ReadInNetworkFromTopology(topology *models.Topology) error {
 
 	mixes, err := helpers.GetMixesPKI(topology.MixNodes)
 	if err != nil {
-		c.log.Errorf("Error while reading mixes from PKI: %v", err)
+		c.log.Errorf("error while reading mixes from PKI: %v", err)
 		return err
 	}
-	c.Network.Mixes = mixes
-
 	clients, err := helpers.GetClientPKI(topology.MixProviderNodes)
 	if err != nil {
-		c.log.Errorf("Error while reading clients from PKI: %v", err)
+		c.log.Errorf("error while reading clients from PKI: %v", err)
 		return err
 	}
-	c.Network.Clients = clients
+
+	c.Network.UpdateNetwork(mixes, clients)
 
 	return nil
 }

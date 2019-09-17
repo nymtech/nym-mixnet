@@ -27,9 +27,9 @@ import (
 	"github.com/nymtech/loopix-messaging/config"
 )
 
-// GetMixesPKI returns PKI data for mix nodes.
-func GetMixesPKI(mixPresence map[string]models.MixNodePresence) ([]config.MixConfig, error) {
-	mixes := make([]config.MixConfig, 0, len(mixPresence))
+// GetMixesPKI returns PKI data for mix nodes, grouped by layer
+func GetMixesPKI(mixPresence map[string]models.MixNodePresence) (map[uint][]config.MixConfig, error) {
+	mixes := make(map[uint][]config.MixConfig)
 	for k, v := range mixPresence {
 		b, err := base64.StdEncoding.DecodeString(v.PubKey)
 		if err != nil {
@@ -39,16 +39,20 @@ func GetMixesPKI(mixPresence map[string]models.MixNodePresence) ([]config.MixCon
 		if err != nil {
 			continue
 		}
-
-		mixes = append(mixes, config.MixConfig{
+		newMixEntry := config.MixConfig{
 			Id:     k,
 			Host:   host,
 			Port:   port,
 			PubKey: b,
 			Layer:  uint64(v.Layer),
-		})
+		}
+		if layerMixes, ok := mixes[v.Layer]; ok {
+			extendedLayer := append(layerMixes, newMixEntry)
+			mixes[v.Layer] = extendedLayer
+		} else {
+			mixes[v.Layer] = []config.MixConfig{newMixEntry}
+		}
 	}
-
 	return mixes, nil
 }
 
@@ -62,7 +66,7 @@ func ProviderPresenceToConfig(presence models.MixProviderPresence) (config.MixCo
 		return config.MixConfig{}, err
 	}
 
-	return config.NewMixConfig(presence.Host, host, port, b), nil
+	return config.NewMixConfig(presence.Host, host, port, b, config.ProviderLayer), nil
 }
 
 func RegisteredClientToConfig(client models.RegisteredClient) (config.ClientConfig, error) {
