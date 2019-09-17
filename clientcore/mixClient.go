@@ -27,6 +27,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/nymtech/loopix-messaging/config"
 	"github.com/nymtech/loopix-messaging/helpers"
+	"github.com/nymtech/loopix-messaging/helpers/topology"
 	"github.com/nymtech/loopix-messaging/sphinx"
 	"github.com/sirupsen/logrus"
 )
@@ -44,11 +45,11 @@ var (
 // This allows public-key encryption to happen.
 type NetworkPKI struct {
 	lastUpdated time.Time
-	Mixes       map[uint][]config.MixConfig
+	Mixes       topology.LayeredMixes
 	Clients     []config.ClientConfig
 }
 
-func (n *NetworkPKI) UpdateNetwork(newMixes map[uint][]config.MixConfig, newClients []config.ClientConfig) {
+func (n *NetworkPKI) UpdateNetwork(newMixes topology.LayeredMixes, newClients []config.ClientConfig) {
 	n.Mixes = newMixes
 	n.Clients = newClients
 	n.lastUpdated = time.Now()
@@ -90,19 +91,19 @@ func (c *CryptoClient) createSphinxPacket(message string, recipient config.Clien
 
 	path, err := c.buildPath(recipient)
 	if err != nil {
-		c.log.Errorf("Error in CreateSphinxPacket - generating random path failed: %v", err)
+		c.log.Errorf("error in CreateSphinxPacket - generating random path failed: %v", err)
 		return nil, err
 	}
 
 	delays, err := c.generateDelaySequence(desiredRateParameter, path.Len())
 	if err != nil {
-		c.log.Errorf("Error in CreateSphinxPacket - generating sequence of delays failed: %v", err)
+		c.log.Errorf("error in CreateSphinxPacket - generating sequence of delays failed: %v", err)
 		return nil, err
 	}
 
 	sphinxPacket, err := sphinx.PackForwardMessage(path, delays, message)
 	if err != nil {
-		c.log.Errorf("Error in CreateSphinxPacket - the pack procedure failed: %v", err)
+		c.log.Errorf("error in CreateSphinxPacket - the pack procedure failed: %v", err)
 		return nil, err
 	}
 
@@ -136,7 +137,7 @@ func (c *CryptoClient) buildPath(recipient config.ClientConfig) (config.E2EPath,
 // getRandomMixSequence generates a random sequence of given length from all possible mixes.
 // If the list of all active mixes is empty or the given length is larger than the set of active mixes,
 // an error is returned.
-func (c *CryptoClient) getRandomMixSequence(mixes map[uint][]config.MixConfig, length int) ([]config.MixConfig, error) {
+func (c *CryptoClient) getRandomMixSequence(mixes topology.LayeredMixes, length int) ([]config.MixConfig, error) {
 	if mixes == nil || len(mixes) < length {
 		return nil, ErrInvalidMixes
 	}
@@ -146,7 +147,7 @@ func (c *CryptoClient) getRandomMixSequence(mixes map[uint][]config.MixConfig, l
 		if layerMixes, ok := mixes[uint(i)]; ok {
 			mixSequence[i-1] = helpers.RandomMix(layerMixes)
 		} else {
-			return nil, fmt.Errorf("No valid mixes for layer: %v", i)
+			return nil, fmt.Errorf("no valid mixes for layer: %v", i)
 		}
 	}
 

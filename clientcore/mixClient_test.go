@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/nymtech/loopix-messaging/config"
+	"github.com/nymtech/loopix-messaging/helpers/topology"
 	"github.com/nymtech/loopix-messaging/logger"
 	sphinx "github.com/nymtech/loopix-messaging/sphinx"
 	"github.com/stretchr/testify/assert"
@@ -32,7 +33,7 @@ import (
 //nolint: gochecknoglobals
 var (
 	client *CryptoClient
-	mixes  map[uint][]config.MixConfig
+	mixes  topology.LayeredMixes
 )
 
 func Setup() error {
@@ -43,7 +44,7 @@ func Setup() error {
 		return err
 	}
 	disabledLog := baseDisabledLogger.GetLogger("test")
-	mixes = make(map[uint][]config.MixConfig)
+	mixes = make(topology.LayeredMixes)
 	for i := 0; i < 10; i++ {
 		layer := uint(i%maxLayers + 1)
 		_, pub, err := sphinx.GenerateKeyPair()
@@ -86,7 +87,7 @@ func Setup() error {
 	m3 := config.MixConfig{Id: "Mix3", Host: "localhost", Port: "3332", PubKey: pub3.Bytes(), Layer: 3}
 
 	client.Network = NetworkPKI{}
-	client.Network.Mixes = map[uint][]config.MixConfig{
+	client.Network.Mixes = topology.LayeredMixes{
 		1: []config.MixConfig{m1},
 		2: []config.MixConfig{m2},
 		3: []config.MixConfig{m3},
@@ -191,7 +192,7 @@ func Test_GetRandomMixSequence_MoreMixes(t *testing.T) {
 }
 
 func Test_GetRandomMixSequence_FailEmptyList(t *testing.T) {
-	_, err := client.getRandomMixSequence(map[uint][]config.MixConfig{}, 6)
+	_, err := client.getRandomMixSequence(topology.LayeredMixes{}, 6)
 	assert.EqualError(t, ErrInvalidMixes, err.Error(), "")
 }
 

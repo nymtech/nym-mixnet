@@ -36,6 +36,7 @@ import (
 	"github.com/nymtech/loopix-messaging/config"
 	"github.com/nymtech/loopix-messaging/flags"
 	"github.com/nymtech/loopix-messaging/helpers"
+	"github.com/nymtech/loopix-messaging/helpers/topology"
 	"github.com/nymtech/loopix-messaging/logger"
 	"github.com/nymtech/loopix-messaging/networker"
 	"github.com/nymtech/loopix-messaging/sphinx"
@@ -194,7 +195,7 @@ func (c *NetClient) Start() error {
 	c.outQueue = make(chan []byte)
 	c.registrationDone = make(chan bool)
 
-	initialTopology, err := helpers.GetNetworkTopology()
+	initialTopology, err := topology.GetNetworkTopology()
 	if err := c.ReadInNetworkFromTopology(initialTopology); err != nil {
 		return err
 	}
@@ -264,7 +265,7 @@ func (c *NetClient) resolveAddressAndStartListening() error {
 
 func (c *NetClient) checkTopology() error {
 	if c.Network.ShouldUpdate() {
-		newTopology, err := helpers.GetNetworkTopology()
+		newTopology, err := topology.GetNetworkTopology()
 		if err != nil {
 			c.log.Errorf("error while reading network topology: %v", err)
 			return err
@@ -658,15 +659,15 @@ func (c *NetClient) turnOnDropCoverTraffic() {
 // from the topology and stores them locally. In case
 // the connection or fetching data from the PKI went wrong,
 // an error is returned.
-func (c *NetClient) ReadInNetworkFromTopology(topology *models.Topology) error {
+func (c *NetClient) ReadInNetworkFromTopology(topologyData *models.Topology) error {
 	c.log.Debugf("Reading network information from the PKI")
 
-	mixes, err := helpers.GetMixesPKI(topology.MixNodes)
+	mixes, err := topology.GetMixesPKI(topologyData.MixNodes)
 	if err != nil {
 		c.log.Errorf("error while reading mixes from PKI: %v", err)
 		return err
 	}
-	clients, err := helpers.GetClientPKI(topology.MixProviderNodes)
+	clients, err := topology.GetClientPKI(topologyData.MixProviderNodes)
 	if err != nil {
 		c.log.Errorf("error while reading clients from PKI: %v", err)
 		return err
@@ -681,14 +682,14 @@ func (c *NetClient) ReadInNetworkFromTopology(topology *models.Topology) error {
 // But for now just get the first provider on the list
 func providerFromTopology(initialTopology *models.Topology) (config.MixConfig, error) {
 	if initialTopology == nil || initialTopology.MixProviderNodes == nil || len(initialTopology.MixProviderNodes) == 0 {
-		return config.MixConfig{}, errors.New("Invalid topology")
+		return config.MixConfig{}, errors.New("invalid topology")
 	}
 
 	for _, v := range initialTopology.MixProviderNodes {
 		// get the first entry
-		return helpers.ProviderPresenceToConfig(v)
+		return topology.ProviderPresenceToConfig(v)
 	}
-	return config.MixConfig{}, errors.New("Unknown state")
+	return config.MixConfig{}, errors.New("unknown state")
 }
 
 // NewClient constructor function to create an new client object.

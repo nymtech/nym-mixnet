@@ -23,7 +23,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"io/ioutil"
 	"net"
 	"net/http"
 
@@ -136,23 +135,4 @@ func RegisterMixProviderPresence(host string, publicKey *sphinx.PublicKey, clien
 	// TODO: properly parse it, etc.
 
 	return nil
-}
-
-func GetNetworkTopology() (*models.Topology, error) {
-	resp, err := http.Get(config.DirectoryServerTopology)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	model := &models.Topology{}
-	if err := json.Unmarshal(body, model); err != nil {
-		return nil, err
-	}
-
-	return model, nil
 }
