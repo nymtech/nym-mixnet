@@ -20,6 +20,7 @@ package client
 import (
 	"bufio"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"math"
@@ -30,6 +31,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/nymtech/directory-server/models"
 	"github.com/nymtech/loopix-messaging/clientcore"
 	"github.com/nymtech/loopix-messaging/config"
 	"github.com/nymtech/loopix-messaging/flags"
@@ -78,7 +80,7 @@ type Client interface {
 
 	Start() error
 	SendMessage(message string, recipient config.ClientConfig) error
-	ReadInNetworkFromPKI(pkiName string) error
+	ReadInNetworkFromTopology(pkiName string) error
 }
 
 // NetClient is a queuing TCP network client for the mixnet.
@@ -88,7 +90,6 @@ type NetClient struct {
 	host             string
 	port             string
 	listener         *net.TCPListener
-	pkiDir           string
 	config           config.ClientConfig
 	token            []byte
 	outQueue         chan []byte
@@ -182,7 +183,7 @@ func (c *NetClient) startInputRoutine() {
 	}
 }
 
-// Start reads the network and users information from the PKI database
+// Start reads the network and users information from the topology
 // and starts the listening server. Returns an error
 // signalling whenever any operation was unsuccessful.
 func (c *NetClient) Start() error {
@@ -193,7 +194,17 @@ func (c *NetClient) Start() error {
 	c.outQueue = make(chan []byte)
 	c.registrationDone = make(chan bool)
 
-	err := c.ReadInNetworkFromPKI(c.pkiDir)
+	initialTopology, err := helpers.GetNetworkTopology()
+	if err := c.ReadInNetworkFromTopology(initialTopology); err != nil {
+		return err
+	}
+
+	provider, err := providerFromTopology(initialTopology)
+	if err != nil {
+		return err
+	}
+	c.Provider = provider
+
 	if err != nil {
 		c.log.Errorf("Error during reading in network PKI: %v", err)
 		return err
@@ -623,29 +634,42 @@ func (c *NetClient) turnOnDropCoverTraffic() {
 	}()
 }
 
-// ReadInNetworkFromPKI reads in the public information about active mixes
-// from the PKI database and stores them locally. In case
+// ReadInNetworkFromTopology reads in the public information about active mixes
+// from the topology and stores them locally. In case
 // the connection or fetching data from the PKI went wrong,
 // an error is returned.
-func (c *NetClient) ReadInNetworkFromPKI(pkiName string) error {
-	c.log.Debugf("Reading network information from the PKI: %s", pkiName)
+func (c *NetClient) ReadInNetworkFromTopology(topology *models.Topology) error {
+	c.log.Debugf("Reading network information from the PKI")
 
-	mixes, err := helpers.GetMixesPKI(pkiName)
+	mixes, err := helpers.GetMixesPKI(topology.MixNodes)
 	if err != nil {
 		c.log.Errorf("Error while reading mixes from PKI: %v", err)
 		return err
 	}
 	c.Network.Mixes = mixes
 
-	clients, err := helpers.GetClientPKI(pkiName)
+	clients, err := helpers.GetClientPKI(topology.MixProviderNodes)
 	if err != nil {
 		c.log.Errorf("Error while reading clients from PKI: %v", err)
 		return err
 	}
 	c.Network.Clients = clients
 
-	c.log.Debugf("Network information uploaded")
 	return nil
+}
+
+// TODO: make it variable, perhaps choose provider with least number of clients? or by preference?
+// But for now just get the first provider on the list
+func providerFromTopology(initialTopology *models.Topology) (config.MixConfig, error) {
+	if initialTopology == nil || initialTopology.MixProviderNodes == nil || len(initialTopology.MixProviderNodes) == 0 {
+		return config.MixConfig{}, errors.New("Invalid topology")
+	}
+
+	for _, v := range initialTopology.MixProviderNodes {
+		// get the first entry
+		return helpers.ProviderPresenceToConfig(v)
+	}
+	return config.MixConfig{}, errors.New("Unknown state")
 }
 
 // NewClient constructor function to create an new client object.
@@ -658,8 +682,6 @@ func NewClient(id string,
 	port string,
 	prvKey *sphinx.PrivateKey,
 	pubKey *sphinx.PublicKey,
-	pkiDir string,
-	provider config.MixConfig,
 	demoRecipient config.ClientConfig,
 ) (*NetClient, error) {
 
@@ -670,7 +692,7 @@ func NewClient(id string,
 
 	core := clientcore.NewCryptoClient(prvKey,
 		pubKey,
-		provider,
+		config.MixConfig{},
 		clientcore.NetworkPKI{},
 		baseLogger.GetLogger("cryptoClient "+id),
 	)
@@ -681,7 +703,6 @@ func NewClient(id string,
 		host:          host,
 		port:          port,
 		CryptoClient:  core,
-		pkiDir:        pkiDir,
 		haltedCh:      make(chan struct{}),
 		log:           log,
 		demoRecipient: demoRecipient,
@@ -691,16 +712,6 @@ func NewClient(id string,
 		Port:     c.port,
 		PubKey:   c.GetPublicKey().Bytes(),
 		Provider: &c.Provider,
-	}
-
-	configBytes, err := proto.Marshal(&c.config)
-
-	if err != nil {
-		return nil, err
-	}
-	err = helpers.AddToDatabase(pkiDir, "Pki", c.id, "Client", configBytes)
-	if err != nil {
-		return nil, err
 	}
 
 	return &c, nil
@@ -714,7 +725,6 @@ func NewTestClient(id string,
 	port string,
 	prvKey *sphinx.PrivateKey,
 	pubKey *sphinx.PublicKey,
-	pkiDir string,
 	provider config.MixConfig,
 ) (*NetClient, error) {
 	baseDisabledLogger, err := logger.New(defaultLogFileLocation, defaultLogLevel, true)
@@ -729,7 +739,6 @@ func NewTestClient(id string,
 		host:         host,
 		port:         port,
 		CryptoClient: core,
-		pkiDir:       pkiDir,
 		log:          disabledLog,
 	}
 	c.config = config.ClientConfig{Id: c.id,

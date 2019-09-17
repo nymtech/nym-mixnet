@@ -19,90 +19,90 @@
 package helpers
 
 import (
-	"github.com/golang/protobuf/proto"
+	"encoding/base64"
+	"errors"
+	"net"
+
+	"github.com/nymtech/directory-server/models"
 	"github.com/nymtech/loopix-messaging/config"
-	"github.com/nymtech/loopix-messaging/pki"
 )
 
-///////////////////////////////
-// The below will be removed once we get rid of .db file with pki
-///////////////////////////////
-
-// AddToDatabase adds a record to the PKI database into a given table.
-func AddToDatabase(pkiPath string, tableName, id, typ string, config []byte) error {
-	db, err := pki.OpenDatabase(pkiPath, "sqlite3")
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
-	err = pki.InsertIntoTable(db, tableName, id, typ, config)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 // GetMixesPKI returns PKI data for mix nodes.
-func GetMixesPKI(pkiDir string) ([]config.MixConfig, error) {
-	var mixes []config.MixConfig
-
-	db, err := pki.OpenDatabase(pkiDir, "sqlite3")
-	if err != nil {
-		return nil, err
-	}
-
-	recordsMixes, err := pki.QueryDatabase(db, "Pki", "Mix")
-	if err != nil {
-		return nil, err
-	}
-
-	for recordsMixes.Next() {
-		result := make(map[string]interface{})
-		err := recordsMixes.MapScan(result)
+func GetMixesPKI(mixPresence map[string]models.MixNodePresence) ([]config.MixConfig, error) {
+	mixes := make([]config.MixConfig, 0, len(mixPresence))
+	for k, v := range mixPresence {
+		b, err := base64.StdEncoding.DecodeString(v.PubKey)
 		if err != nil {
-			return nil, err
+			continue
+		}
+		host, port, err := net.SplitHostPort(v.Host) // TODO: do we want to split them?
+		if err != nil {
+			continue
 		}
 
-		var mixConfig config.MixConfig
-		err = proto.Unmarshal(result["Config"].([]byte), &mixConfig)
-		if err != nil {
-			return nil, err
-		}
-		mixes = append(mixes, mixConfig)
+		mixes = append(mixes, config.MixConfig{
+			Id:     k,
+			Host:   host,
+			Port:   port,
+			PubKey: b,
+			Layer:  uint64(v.Layer),
+		})
 	}
 
 	return mixes, nil
 }
 
+func ProviderPresenceToConfig(presence models.MixProviderPresence) (config.MixConfig, error) {
+	b, err := base64.StdEncoding.DecodeString(presence.PubKey)
+	if err != nil {
+		return config.MixConfig{}, errors.New("invalid provider presence")
+	}
+	host, port, err := net.SplitHostPort(presence.Host) // TODO: do we want to split them?
+	if err != nil {
+		return config.MixConfig{}, err
+	}
+
+	return config.NewMixConfig(presence.Host, host, port, b), nil
+}
+
+func RegisteredClientToConfig(client models.RegisteredClient) (config.ClientConfig, error) {
+	b, err := base64.StdEncoding.DecodeString(client.PubKey)
+	if err != nil {
+		return config.ClientConfig{}, errors.New("invalid client information")
+	}
+	host, port, err := net.SplitHostPort(client.Host) // TODO: do we want to split them?
+	if err != nil {
+		return config.ClientConfig{}, errors.New("invalid client information")
+	}
+	return config.ClientConfig{
+		Id:     client.PubKey,
+		Host:   host,
+		Port:   port,
+		PubKey: b,
+	}, nil
+}
+
 // GetClientPKI returns a map of the current client PKI from the PKI database
-func GetClientPKI(pkiDir string) ([]config.ClientConfig, error) {
-	var clients []config.ClientConfig
-
-	db, err := pki.OpenDatabase(pkiDir, "sqlite3")
-	if err != nil {
-		return nil, err
+func GetClientPKI(providerPresence map[string]models.MixProviderPresence) ([]config.ClientConfig, error) {
+	var clientsNum int = 0
+	for _, v := range providerPresence {
+		clientsNum += len(v.RegisteredClients)
 	}
 
-	recordsClients, err := pki.QueryDatabase(db, "Pki", "Client")
-	if err != nil {
-		return nil, err
-	}
-	for recordsClients.Next() {
-		result := make(map[string]interface{})
-		err := recordsClients.MapScan(result)
-
+	clients := make([]config.ClientConfig, 0, clientsNum)
+	for _, provider := range providerPresence {
+		providerCfg, err := ProviderPresenceToConfig(provider)
 		if err != nil {
-			return nil, err
+			continue
 		}
-
-		var clientConfig config.ClientConfig
-		err = proto.Unmarshal(result["Config"].([]byte), &clientConfig)
-		if err != nil {
-			return nil, err
+		for _, client := range provider.RegisteredClients {
+			clientCfg, err := RegisteredClientToConfig(client)
+			if err != nil {
+				continue
+			}
+			clientCfg.Provider = &providerCfg
+			clients = append(clients, clientCfg)
 		}
-
-		clients = append(clients, clientConfig)
 	}
 	return clients, nil
 }
