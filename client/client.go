@@ -87,18 +87,17 @@ type Client interface {
 // NetClient is a queuing TCP network client for the mixnet.
 type NetClient struct {
 	*clientcore.CryptoClient
-	id               string
-	host             string
-	port             string
-	listener         *net.TCPListener
-	config           config.ClientConfig
-	token            []byte
-	outQueue         chan []byte
-	registrationDone chan bool
-	haltedCh         chan struct{}
-	haltOnce         sync.Once
-	log              *logrus.Logger
-	demoRecipient    config.ClientConfig
+	id            string
+	host          string
+	port          string
+	listener      *net.TCPListener
+	config        config.ClientConfig
+	token         []byte
+	outQueue      chan []byte
+	haltedCh      chan struct{}
+	haltOnce      sync.Once
+	log           *logrus.Logger
+	demoRecipient config.ClientConfig
 }
 
 // OutQueue returns a reference to the client's outQueue. It's a queue
@@ -188,12 +187,8 @@ func (c *NetClient) startInputRoutine() {
 // and starts the listening server. Returns an error
 // signalling whenever any operation was unsuccessful.
 func (c *NetClient) Start() error {
-	if err := c.resolveAddressAndStartListening(); err != nil {
-		return err
-	}
 
 	c.outQueue = make(chan []byte)
-	c.registrationDone = make(chan bool)
 
 	initialTopology, err := topology.GetNetworkTopology()
 	if err := c.ReadInNetworkFromTopology(initialTopology); err != nil {
@@ -206,27 +201,18 @@ func (c *NetClient) Start() error {
 	}
 	c.Provider = provider
 
-	if err != nil {
-		c.log.Errorf("Error during reading in network PKI: %v", err)
-		return err
-	}
-
 	go func() {
 		for {
-			select {
-			case <-c.registrationDone:
-				return
-			default:
-				err = c.sendRegisterMessageToProvider()
-				if err != nil {
-					c.log.Errorf("Error during registration to provider: %v", err)
-				}
+			if err := c.sendRegisterMessageToProvider(); err != nil {
+				c.log.Errorf("Error during registration to provider: %v", err)
 				time.Sleep(5 * time.Second)
+			} else {
+				c.log.Debug("Registration done!")
+				return
 			}
 		}
 	}()
 
-	go c.startListenerInNewRoutine()
 	go c.startInputRoutine()
 	return nil
 }
@@ -248,19 +234,6 @@ func (c *NetClient) halt() {
 	// close any listeners, free resources, etc
 
 	close(c.haltedCh)
-}
-
-func (c *NetClient) resolveAddressAndStartListening() error {
-	addr, err := helpers.ResolveTCPAddress(c.host, c.port)
-	if err != nil {
-		return err
-	}
-
-	c.listener, err = net.ListenTCP("tcp", addr)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func (c *NetClient) checkTopology() error {
@@ -315,116 +288,41 @@ func (c *NetClient) encodeMessage(message string, recipient config.ClientConfig)
 // Send opens a connection with selected network address
 // and send the passed packet. If connection failed or
 // the packet could not be send, an error is returned
-func (c *NetClient) send(packet []byte, host string, port string) error {
+// Otherwise it returns the response sent by server
+func (c *NetClient) send(packet []byte, host string, port string) (config.ProviderResponse, error) {
 
 	conn, err := net.Dial("tcp", host+":"+port)
 
 	if err != nil {
 		c.log.Errorf("Error in send - dial returned an error: %v", err)
-		return err
+		return config.ProviderResponse{}, err
 	}
 	defer conn.Close()
 
-	_, err = conn.Write(packet)
-	return err
-}
-
-// run opens the listener to start listening on clients host and port
-func (c *NetClient) startListenerInNewRoutine() {
-	defer c.listener.Close()
-
-	go func() {
-		c.log.Infof("Listening on address %s", c.host+":"+c.port)
-		c.listenForIncomingConnections()
-	}()
-
-	c.Wait()
-}
-
-// ListenForIncomingConnections responsible for running the listening process of the server;
-// The clients listener accepts incoming connections and
-// passes the incoming packets to the packet handler.
-// If the connection could not be accepted an error
-// is logged into the log files, but the function is not stopped
-func (c *NetClient) listenForIncomingConnections() {
-	for {
-		conn, err := c.listener.Accept()
-
-		if err != nil {
-			c.log.Errorf("Could not accept connection: %v", err)
-		} else {
-			go c.handleConnection(conn)
-		}
+	if _, err := conn.Write(packet); err != nil {
+		c.log.Errorf("Failed to write to connection: %v", err)
+		return config.ProviderResponse{}, err
 	}
-}
 
-// HandleConnection handles the received packets; it checks the flag of the
-// packet and schedules a corresponding process function;
-// The potential errors are logged into the log files.
-func (c *NetClient) handleConnection(conn net.Conn) {
-
-	buff := make([]byte, 1024)
-	defer conn.Close()
-
-	reqLen, err := conn.Read(buff)
+	buff, err := ioutil.ReadAll(conn)
 	if err != nil {
-		c.log.Errorf("error while reading incoming connection: %v", err)
-		panic(err)
-	}
-	var packet config.GeneralPacket
-	err = proto.Unmarshal(buff[:reqLen], &packet)
-	if err != nil {
-		c.log.Errorf("Error in unmarshal incoming packet: %v", err)
+		c.log.Errorf("Failed to read response: %v", err)
+		return config.ProviderResponse{}, err
 	}
 
-	switch flags.PacketTypeFlagFromBytes(packet.Flag) {
-	case flags.TokenFlag:
-		c.registerToken(packet.Data)
-		go func() {
-			err := c.controlOutQueue()
-			if err != nil {
-				c.log.Panicf("Error in the controller of the outgoing packets queue. Possible security threat.: %v", err)
-			}
-		}()
-
-		if loopCoverTrafficEnabled {
-			c.turnOnLoopCoverTraffic()
-		}
-
-		if dropCoverTrafficEnabled {
-			c.turnOnDropCoverTraffic()
-		}
-
-		if controlMessageFetchingEnabled {
-			go func() {
-				c.controlMessagingFetching()
-			}()
-		}
-
-	case flags.CommFlag:
-		packetData, err := c.processPacket(packet.Data)
-		if err != nil {
-			c.log.Errorf("Error in processing received packet: %v", err)
-		}
-		packetDataStr := string(packetData)
-		switch packetDataStr {
-		case loopLoad:
-			c.log.Debugf("Received loop cover message %v", packetDataStr)
-		case dummyLoad:
-			c.log.Debugf("Received drop cover message %v", packetDataStr)
-		default:
-			c.log.Infof("Received new message: %v", packetDataStr)
-		}
-	default:
-		c.log.Warnf("Packet flag not recognised. Packet dropped.")
+	var resPacket config.ProviderResponse
+	if err = proto.Unmarshal(buff, &resPacket); err != nil {
+		c.log.Errorf("Error while unmarshalling received packet: %v", err)
+		return config.ProviderResponse{}, err
 	}
+
+	return resPacket, nil
 }
 
 // RegisterToken stores the authentication token received from the provider
 func (c *NetClient) registerToken(token []byte) {
 	c.token = token
-	c.log.Debugf(" Registered token %s", c.token)
-	c.registrationDone <- true
+	c.log.Debugf("Registered token %s", c.token)
 }
 
 // ProcessPacket processes the received sphinx packet and returns the
@@ -444,7 +342,6 @@ func (c *NetClient) processPacket(packet []byte) ([]byte, error) {
 // The client sends a special assignment packet, with its public information, to the provider
 // or returns an error.
 func (c *NetClient) sendRegisterMessageToProvider() error {
-
 	c.log.Debugf("Sending request to provider to register")
 
 	confBytes, err := proto.Marshal(&c.config)
@@ -459,10 +356,37 @@ func (c *NetClient) sendRegisterMessageToProvider() error {
 		return err
 	}
 
-	err = c.send(pktBytes, c.Provider.Host, c.Provider.Port)
+	response, err := c.send(pktBytes, c.Provider.Host, c.Provider.Port)
 	if err != nil {
 		c.log.Errorf("Error in register provider - send registration packet returned an error: %v", err)
 		return err
+	}
+
+	packets, err := config.UnmarshalProviderResponse(response)
+	if err != nil || len(packets) != 1 {
+		c.log.Errorf("error in register provider - failed to unmarshal response: %v", err)
+	}
+
+	c.registerToken(packets[0].Data)
+	go func() {
+		err := c.controlOutQueue()
+		if err != nil {
+			c.log.Fatalf("Error in the controller of the outgoing packets queue. Possible security threat.: %v", err)
+		}
+	}()
+
+	if loopCoverTrafficEnabled {
+		c.turnOnLoopCoverTraffic()
+	}
+
+	if dropCoverTrafficEnabled {
+		c.turnOnDropCoverTraffic()
+	}
+
+	if controlMessageFetchingEnabled {
+		go func() {
+			c.controlMessagingFetching()
+		}()
 	}
 	return nil
 }
@@ -484,9 +408,29 @@ func (c *NetClient) getMessagesFromProvider() error {
 		return err
 	}
 
-	err = c.send(pktBytes, c.Provider.Host, c.Provider.Port)
+	response, err := c.send(pktBytes, c.Provider.Host, c.Provider.Port)
 	if err != nil {
 		return err
+	}
+
+	packets, err := config.UnmarshalProviderResponse(response)
+	if err != nil {
+		c.log.Errorf("error in register provider - failed to unmarshal response: %v", err)
+	}
+	for _, packet := range packets {
+		packetData, err := c.processPacket(packet.Data)
+		if err != nil {
+			c.log.Errorf("Error in processing received packet: %v", err)
+		}
+		packetDataStr := string(packetData)
+		switch packetDataStr {
+		case loopLoad:
+			c.log.Debugf("Received loop cover message %v", packetDataStr)
+		case dummyLoad:
+			c.log.Debugf("Received drop cover message %v", packetDataStr)
+		default:
+			c.log.Infof("Received new message: %v", packetDataStr)
+		}
 	}
 
 	return nil
@@ -500,20 +444,24 @@ func (c *NetClient) controlOutQueue() error {
 	for {
 		select {
 		case realPacket := <-c.outQueue:
-			if err := c.send(realPacket, c.Provider.Host, c.Provider.Port); err != nil {
+			response, err := c.send(realPacket, c.Provider.Host, c.Provider.Port)
+			if err != nil {
 				c.log.Errorf("Could not send real packet: %v", err)
 			}
 			c.log.Debugf("Real packet was sent")
+			c.log.Debugf("Received response: %v", response)
 		default:
 			if rateCompliantCoverMessagesEnabled {
 				dummyPacket, err := c.createDropCoverMessage()
 				if err != nil {
 					return err
 				}
-				if err := c.send(dummyPacket, c.Provider.Host, c.Provider.Port); err != nil {
+				response, err := c.send(dummyPacket, c.Provider.Host, c.Provider.Port)
+				if err != nil {
 					c.log.Errorf("Could not send dummy packet: %v", err)
 				}
-				// c.log.Infof("OutQueue empty. Dummy packet sent.")
+				c.log.Debugf("Dummy packet was sent")
+				c.log.Debugf("Received response: %v", response)
 			}
 		}
 		err := delayBeforeContinue(desiredRateParameter)
@@ -561,6 +509,9 @@ func (c *NetClient) createDropCoverMessage() ([]byte, error) {
 // getRandomRecipient picks a random client from the list of all available clients (stored by the client).
 // getRandomRecipient returns the selected client public configuration and an error
 func (c *NetClient) getRandomRecipient(slice []config.ClientConfig) (config.ClientConfig, error) {
+	if len(slice) == 0 {
+		return config.ClientConfig{}, errors.New("invalid client config slice provided")
+	}
 	randIdx, err := rand.Int(rand.Reader, big.NewInt(int64(len(slice))))
 	if err != nil {
 		return config.ClientConfig{}, err
@@ -593,11 +544,14 @@ func (c *NetClient) runLoopCoverTrafficStream() error {
 		if err != nil {
 			return err
 		}
-		if err := c.send(loopPacket, c.Provider.Host, c.Provider.Port); err != nil {
+		response, err := c.send(loopPacket, c.Provider.Host, c.Provider.Port)
+		if err != nil {
 			c.log.Errorf("Could not send loop cover traffic message: %v", err)
 			return err
 		}
 		c.log.Debugf("Loop message sent")
+		c.log.Debugf("Received response: %v", response)
+
 		if err := delayBeforeContinue(loopRate); err != nil {
 			return err
 		}
@@ -615,11 +569,14 @@ func (c *NetClient) runDropCoverTrafficStream() error {
 		if err != nil {
 			return err
 		}
-		if err := c.send(dropPacket, c.Provider.Host, c.Provider.Port); err != nil {
+		response, err := c.send(dropPacket, c.Provider.Host, c.Provider.Port)
+		if err != nil {
 			c.log.Errorf("Could not send loop drop cover traffic message: %v", err)
 			return err
 		}
 		c.log.Debugf("Drop packet sent")
+		c.log.Debugf("Received response: %v", response)
+
 		if err := delayBeforeContinue(dropRate); err != nil {
 			return err
 		}
