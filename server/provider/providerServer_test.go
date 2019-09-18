@@ -119,46 +119,6 @@ func createTestMessage(id string, t *testing.T) {
 	}
 }
 
-// func TestProviderServer_FetchMessages_FullInbox(t *testing.T) {
-// 	clientListener, err := createFakeClientListener("localhost", "9999")
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	defer clientListener.Close()
-
-// 	providerServer.assignedClients["FakeClient"] = ClientRecord{"FakeClient",
-// 		"localhost",
-// 		"9999",
-// 		[]byte("FakePublicKey"),
-// 		[]byte("TestToken")}
-
-// 	createInbox("FakeClient", t)
-// 	createTestMessage("FakeClient", t)
-
-// 	signal, err := providerServer.fetchMessages("FakeClient")
-// 	if err != nil {
-// 		t.Error(err)
-// 	}
-// 	assert.Equal(t, "SI", signal, " For inbox containing messages the signal should be SI")
-// }
-
-// func TestProviderServer_FetchMessages_EmptyInbox(t *testing.T) {
-// 	createInbox("EmptyInbox", t)
-// 	signal, err := providerServer.fetchMessages("EmptyInbox")
-// 	if err != nil {
-// 		t.Error(err)
-// 	}
-// 	assert.Equal(t, "EI", signal, " For an empty inbox id the function should return signal EI")
-// }
-
-// func TestProviderServer_FetchMessages_NoInbox(t *testing.T) {
-// 	signal, err := providerServer.fetchMessages("NonExistingInbox")
-// 	if err != nil {
-// 		t.Error(err)
-// 	}
-// 	assert.Equal(t, "NI", signal, " For a non-existing inbox id the function should return signal NI")
-// }
-
 func TestProviderServer_StoreMessage(t *testing.T) {
 
 	inboxID := "ClientInbox"
@@ -188,80 +148,6 @@ func TestProviderServer_StoreMessage(t *testing.T) {
 	assert.Equal(t, message, dat, "Messages should be the same")
 
 }
-
-// func TestProviderServer_HandlePullRequest_Pass(t *testing.T) {
-// 	testPullRequest := config.PullRequest{ClientId: "PassTestId", Token: []byte("TestToken")}
-// 	providerServer.assignedClients["PassTestId"] = ClientRecord{id: "TestId",
-// 		host:   "localhost",
-// 		port:   "1111",
-// 		pubKey: nil,
-// 		token:  []byte("TestToken"),
-// 	}
-// 	bTestPullRequest, err := proto.Marshal(&testPullRequest)
-// 	if err != nil {
-// 		t.Error(err)
-// 	}
-// 	err = providerServer.handlePullRequest(bTestPullRequest)
-// 	if err != nil {
-// 		t.Error(err)
-// 	}
-// }
-
-// func TestProviderServer_HandlePullRequest_Fail(t *testing.T) {
-// 	testPullRequest := config.PullRequest{ClientId: "FailTestId", Token: []byte("TestToken")}
-// 	providerServer.assignedClients = map[string]ClientRecord{}
-// 	bTestPullRequest, err := proto.Marshal(&testPullRequest)
-// 	if err != nil {
-// 		t.Error(err)
-// 	}
-// 	err = providerServer.handlePullRequest(bTestPullRequest)
-// 	assert.EqualError(t,
-// 		errors.New("authentication went wrong"),
-// 		err.Error(),
-// 		"HandlePullRequest should return an error if authentication failed",
-// 	)
-// }
-
-// func TestProviderServer_RegisterNewClient(t *testing.T) {
-// 	newClient := config.ClientConfig{Id: "NewClient", Host: "localhost", Port: "9998", PubKey: nil}
-// 	bNewClient, err := proto.Marshal(&newClient)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	token, addr, err := providerServer.registerNewClient(bNewClient)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	assert.Equal(t, "localhost:9998", addr, "Returned address should be the same as registered client address")
-// 	shaRes, err := helpers.SHA256([]byte("TMP_Token" + "NewClient"))
-// 	assert.Nil(t, err)
-// 	assert.Equal(t, shaRes, token, "Returned token should be equal to the hash of clients id")
-
-// 	path := fmt.Sprintf("./inboxes/%s", "NewClient")
-// 	exists, err := helpers.DirExists(path)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	assert.True(t, exists, "When a new client is registered an inbox should be created")
-// }
-
-// func TestProviderServer_HandleAssignRequest(t *testing.T) {
-// 	clientListener, err := createFakeClientListener("localhost", "9999")
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	defer clientListener.Close()
-
-// 	newClient := config.ClientConfig{Id: "ClientXYZ", Host: "localhost", Port: "9999", PubKey: nil}
-// 	bNewClient, err := proto.Marshal(&newClient)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	err = providerServer.handleAssignRequest(bNewClient)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// }
 
 func createTestPacket(t *testing.T) *sphinx.SphinxPacket {
 	path := config.E2EPath{IngressProvider: providerServer.config,
