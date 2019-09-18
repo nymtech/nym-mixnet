@@ -50,7 +50,7 @@ func cmdRun(args []string, usage string) {
 		panic(err)
 	}
 
-	if host != &ip {
+	if host == nil || len(*host) < 7 {
 		host = &ip
 	}
 
