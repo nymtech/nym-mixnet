@@ -3,7 +3,6 @@
 /loopix-messaging
 /pki/TESTDATABASE.DB
 /pki/database.db
-/vendor/
 .vscode
 /cmd/loopix-client/loopix-client
 /cmd/loopix-mixnode/loopix-mixnode
