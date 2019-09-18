@@ -80,6 +80,7 @@ func (m *metrics) reset() {
 	m.Lock()
 	defer m.Unlock()
 	m.sentMessages = make(map[string]uint)
+	m.receivedMessages = 0
 }
 
 func (m *metrics) addMessage(hopAddress string) {
