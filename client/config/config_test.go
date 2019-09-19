@@ -216,6 +216,7 @@ func TestLoadFile(t *testing.T) {
 	assert.NotNil(t, fullCfg)
 	assert.Nil(t, err)
 
+	// write it by just marshalling the values
 	b, err := toml.Marshal(fullCfg)
 	assert.Nil(t, err)
 
@@ -225,7 +226,35 @@ func TestLoadFile(t *testing.T) {
 	assert.Nil(t, err)
 
 	outFilePath := filepath.Join(tmpDir, outFile)
-	ioutil.WriteFile(outFilePath, b, 0600)
+	assert.Nil(t, ioutil.WriteFile(outFilePath, b, 0644))
+
+	loadedCfg, err := LoadFile(outFilePath)
+	assert.Nil(t, err)
+	assert.Equal(t, fullCfg, loadedCfg)
+}
+
+func TestWriteConfig(t *testing.T) {
+	someID := "foo"
+	fullCfg, err := DefaultConfig(someID)
+	assert.NotNil(t, fullCfg)
+	assert.Nil(t, err)
+
+	outFile := "testCfg.toml"
+
+	tmpDir, err := ioutil.TempDir("", "")
+	assert.Nil(t, err)
+	outFilePath := filepath.Join(tmpDir, outFile)
+
+	fullCfg.Client.HomeDirectory = "/foomp/.loopix"
+	fullCfg.Client.DirectoryServerTopologyEndpoint = "localhost:8080"
+
+	// set some nondefault values
+	fullCfg.Logging.Disable = true
+	fullCfg.Logging.Level = "panic"
+
+	fullCfg.Debug.FetchMessageRate = 42.0
+
+	assert.Nil(t, WriteConfigFile(outFilePath, fullCfg))
 
 	loadedCfg, err := LoadFile(outFilePath)
 	assert.Nil(t, err)

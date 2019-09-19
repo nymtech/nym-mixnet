@@ -17,11 +17,9 @@ package config
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
-	"github.com/BurntSushi/toml"
 	"github.com/sirupsen/logrus"
 )
 
@@ -71,24 +69,28 @@ func DefaultConfigPath(clientID string) (string, error) {
 // Client is the Loopix Client configuration.
 type Client struct {
 	// HomeDirectory specifies absolute path to the home loopix Clients directory.
-	// It is expected to use default value and hence .toml file should not define this field.
-	HomeDirectory string
+	// It is expected to use default value and hence .toml file should not redefine this field.
+	HomeDirectory string `toml:"loopix_home_directory"`
 
 	// ID specifies the human readable ID of this particular client.
 	// If not provided base64 interpretation of public key is used instead.
-	ID string
+	ID string `toml:"id"`
 
 	// DirectoryServerTopologyEndpoint specifies URL to the topology endpoint of the directory server.
-	DirectoryServerTopologyEndpoint string
+	DirectoryServerTopologyEndpoint string `toml:"directory_server_topology"`
 
 	// PrivateKey specifies path to file containing private key.
-	PrivateKey string
+	PrivateKey string `toml:"priv_key_file"`
 
 	// PublicKey specifies path to file containing public key.
 	// TODO: we could actually get rid of public key file completely, as it can be inferred from the private key alone
 	// But I guess having an explicit public key file could be convenient?
 	// To say, for example, share it with somebody else.
-	PublicKey string
+	PublicKey string `toml:"pub_key_file"`
+
+	// ProviderID specifies ID of the provider to which the client should send messages.
+	// If initially omitted, a random provider will be chosen from the available topology.
+	ProviderID string `toml:"provider_id"`
 }
 
 // DefaultClientConfig returns default Client config for provided clientID.
@@ -155,13 +157,13 @@ func (cfg *Client) validateAndApplyDefaults() error {
 // Logging is the Loopix Client logging configuration.
 type Logging struct {
 	// Disable disables logging entirely.
-	Disable bool
+	Disable bool `toml:"disable"`
 
 	// File specifies the log file, if omitted stdout will be used.
-	File string
+	File string `toml:"file"`
 
 	// Level specifies the log level.
-	Level string
+	Level string `toml:"level"`
 }
 
 func (cfg *Logging) validate() error {
@@ -187,20 +189,20 @@ type Debug struct {
 	// The value is the parameter of an exponential distribution, and is the reciprocal of the
 	// expected value of the exponential distribution.
 	// If set to a negative value, the loop cover traffic stream will be disabled.
-	LoopCoverTrafficRate float64
+	LoopCoverTrafficRate float64 `toml:"loop_cover_traffic_rate"`
 
 	// DropCoverTrafficRate defines the rate at which clients are sending drop cover packets
 	// to randomly selected users in the network in the drop cover traffic stream.
 	// The value is the parameter of an exponential distribution, and is the reciprocal of the
 	// expected value of the exponential distribution.
 	// If set to a negative value, the drop cover traffic stream will be disabled.
-	DropCoverTrafficRate float64
+	DropCoverTrafficRate float64 `toml:"drop_cover_traffic_rate"`
 
 	// FetchMessageRate defines the rate at which clients are querying the providers for received packets.
 	// The value is the parameter of an exponential distribution, and is the reciprocal of the
 	// expected value of the exponential distribution.
 	// If set to a negative value, client will never try to fetch its messages.
-	FetchMessageRate float64
+	FetchMessageRate float64 `toml:"fetch_message_rate"`
 
 	// MessageSendingRate defines the rate at which clients are sending their real traffic to providers.
 	// If no real packets are available and cover traffic is enabled,
@@ -208,13 +210,13 @@ type Debug struct {
 	// The value is the parameter of an exponential distribution, and is the reciprocal of the
 	// expected value of the exponential distribution.
 	// If set to a negative value, client will never try to send real traffic data.
-	MessageSendingRate float64
+	MessageSendingRate float64 `toml:"message_sending_rate "`
 
 	// RateCompliantCoverMessagesDisabled specifies whether drop cover messages should be sent
 	// to respect MessageSendingRate. In the case of it being disabled and not having enough real traffic
 	// waiting to be sent the actual sending rate is going be lower than the desired value
 	// thus decreasing the anonymity.
-	RateCompliantCoverMessagesDisabled bool
+	RateCompliantCoverMessagesDisabled bool `toml:"rate_compliant_cover_messages_disabled"`
 }
 
 func (dCfg *Debug) applyDefaults() {
@@ -245,10 +247,9 @@ func DefaultDebugConfig() *Debug {
 
 // Config is the top level Loopix Client configuration.
 type Config struct {
-	Client  *Client
-	Logging *Logging
-
-	Debug *Debug
+	Client  *Client  `toml:"client"`
+	Logging *Logging `toml:"logging"`
+	Debug   *Debug   `toml:"debug"`
 }
 
 // DefaultConfig returns full default config for given clientID
@@ -287,37 +288,4 @@ func (cfg *Config) validateAndApplyDefaults() error {
 	}
 
 	return nil
-}
-
-// LoadBinary loads, parses and validates the provided buffer b (as a config)
-// and returns the Config.
-func LoadBinary(b []byte) (*Config, error) {
-	cfg := new(Config)
-	_, err := toml.Decode(string(b), cfg)
-	if err != nil {
-		return nil, err
-	}
-	if err := cfg.validateAndApplyDefaults(); err != nil {
-		return nil, err
-	}
-
-	return cfg, nil
-}
-
-// LoadFile loads, parses and validates the provided file and returns the Config.
-func LoadFile(f string) (*Config, error) {
-	b, err := ioutil.ReadFile(filepath.Clean(f))
-	if err != nil {
-		return nil, err
-	}
-	return LoadBinary(b)
-}
-
-// helper function to make config creation independent of root dir
-// adapted from the tendermint code
-func rootify(path, root string) string {
-	if filepath.IsAbs(path) {
-		return path
-	}
-	return filepath.Join(root, path)
 }
