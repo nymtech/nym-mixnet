@@ -22,6 +22,11 @@ message GeneralPacket {
     bytes Data = 2;
 }
 
+message ProviderResponse {
+    uint64 NumberOfPackets = 1;
+    repeated bytes Packets = 2;
+}
+
 message PullRequest {
     string ClientId = 1;
     bytes Token = 2;

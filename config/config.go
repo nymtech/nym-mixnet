@@ -25,13 +25,13 @@ import (
 )
 
 const (
-	DirectoryServerBaseURL                = "http://localhost:8080/"
-	DirectoryServerHealthcheckURL         = "http://localhost:8080/api/healthcheck"
-	DirectoryServerMetricsURL             = "http://localhost:8080/api/metrics/mixes"
-	DirectoryServerPkiURL                 = "http://localhost:8080/api/nodes"
-	DirectoryServerMixPresenceURL         = "http://localhost:8080/api/presence/mixnodes"
-	DirectoryServerMixProviderPresenceURL = "http://localhost:8080/api/presence/mixproviders"
-	DirectoryServerTopology               = "http://localhost:8080/api/presence/topology"
+	DirectoryServerBaseURL                = "http://directory.nymtech.net:8080/"
+	DirectoryServerHealthcheckURL         = "http://directory.nymtech.net:8080/api/healthcheck"
+	DirectoryServerMetricsURL             = "http://directory.nymtech.net:8080/api/metrics/mixes"
+	DirectoryServerPkiURL                 = "http://directory.nymtech.net:8080/api/nodes"
+	DirectoryServerMixPresenceURL         = "http://directory.nymtech.net:8080/api/presence/mixnodes"
+	DirectoryServerMixProviderPresenceURL = "http://directory.nymtech.net:8080/api/presence/mixproviders"
+	DirectoryServerTopology               = "http://directory.nymtech.net:8080/api/presence/topology"
 
 	// TODO: somehow split mixConfig to distinguish providers and mixnodes?
 	// But then we would have to deal with nasty interfaces and protobuf issues...
@@ -71,4 +71,14 @@ type E2EPath struct {
 // Len adds 3 to the mix path. TODO: why? Check this with Ania.
 func (p *E2EPath) Len() int {
 	return 3 + len(p.Mixes)
+}
+
+func UnmarshalProviderResponse(resp ProviderResponse) ([]GeneralPacket, error) {
+	packets := make([]GeneralPacket, resp.NumberOfPackets)
+	for i, packet := range resp.Packets {
+		if err := proto.Unmarshal(packet, &packets[i]); err != nil {
+			return nil, err
+		}
+	}
+	return packets, nil
 }

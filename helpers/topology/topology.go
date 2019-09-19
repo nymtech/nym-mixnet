@@ -40,6 +40,11 @@ type ProviderPresence map[string]models.MixProviderPresence
 // LayeredMixes defines map of list of mix nodes corresponding to particular layer in given topology.
 type LayeredMixes map[uint][]config.MixConfig
 
+const (
+	DefaultClientHost = "0.0.0.0"
+	DefaultClientPort = "42"
+)
+
 func GetNetworkTopology() (*models.Topology, error) {
 	resp, err := http.Get(config.DirectoryServerTopology)
 	if err != nil {
@@ -106,14 +111,11 @@ func RegisteredClientToConfig(client models.RegisteredClient) (config.ClientConf
 	if err != nil {
 		return config.ClientConfig{}, errors.New("invalid client information")
 	}
-	host, port, err := net.SplitHostPort(client.Host) // TODO: do we want to split them?
-	if err != nil {
-		return config.ClientConfig{}, errors.New("invalid client information")
-	}
+
 	return config.ClientConfig{
 		Id:     client.PubKey,
-		Host:   host,
-		Port:   port,
+		Host:   DefaultClientHost,
+		Port:   DefaultClientPort,
 		PubKey: b,
 	}, nil
 }

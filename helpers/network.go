@@ -23,6 +23,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 
@@ -79,9 +81,9 @@ func GetLocalIP() (string, error) {
 }
 
 // RegisterMixNodePresence registers server presence at the directory server.
-func RegisterMixNodePresence(host string, publicKey *sphinx.PublicKey, layer int) error {
+func RegisterMixNodePresence(publicKey *sphinx.PublicKey, layer int) error {
 	b64Key := base64.StdEncoding.EncodeToString(publicKey.Bytes())
-	values := map[string]interface{}{"host": host, "pubKey": b64Key, "layer": layer}
+	values := map[string]interface{}{"pubKey": b64Key, "layer": layer}
 	jsonValue, err := json.Marshal(values)
 	if err != nil {
 		return err
@@ -95,12 +97,19 @@ func RegisterMixNodePresence(host string, publicKey *sphinx.PublicKey, layer int
 	_ = resp
 	// TODO: properly parse it, etc.
 
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(body))
+	_ = resp
 	return nil
 }
 
 // SendMixMetrics sends the mixnode related packet metrics to the directory server.
-func SendMixMetrics(metrics map[string]uint) error {
-	jsonValue, err := json.Marshal(metrics)
+func SendMixMetrics(metric models.MixMetric) error {
+	values := map[string]interface{}{"sent": metric.Sent, "pubKey": metric.PubKey, "received": metric.Received}
+	jsonValue, err := json.Marshal(values)
 	if err != nil {
 		return err
 	}
@@ -111,16 +120,21 @@ func SendMixMetrics(metrics map[string]uint) error {
 	}
 	defer resp.Body.Close()
 
-	_ = resp
+	// body, err := ioutil.ReadAll(resp.Body)
+	// if err != nil {
+	// 	return err
+	// }
+	// fmt.Println(string(body))
+	// _ = resp
 	// TODO: properly parse it, etc.
 
 	return nil
 }
 
 // RegisterMixProviderPresence registers server presence at the directory server.
-func RegisterMixProviderPresence(host string, publicKey *sphinx.PublicKey, clients []models.RegisteredClient) error {
+func RegisterMixProviderPresence(publicKey *sphinx.PublicKey, clients []models.RegisteredClient) error {
 	b64Key := base64.StdEncoding.EncodeToString(publicKey.Bytes())
-	values := map[string]interface{}{"host": host, "pubKey": b64Key, "registeredClients": clients}
+	values := map[string]interface{}{"pubKey": b64Key, "registeredClients": clients}
 	jsonValue, err := json.Marshal(values)
 	if err != nil {
 		return err
