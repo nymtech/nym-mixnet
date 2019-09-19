@@ -14,7 +14,10 @@
 
 package main
 
-import "github.com/tav/golly/optparse"
+import (
+	cmd "github.com/nymtech/loopix-messaging/cmd/loopix-client/commands"
+	"github.com/tav/golly/optparse"
+)
 
 func main() {
 	var logo = `
@@ -27,7 +30,8 @@ func main() {
 		  
 		  `
 	cmds := map[string]func([]string, string){
-		"run": cmdRun,
+		"run":  cmd.RunCmd,
+		"init": cmd.InitCmd,
 	}
 	info := map[string]string{
 		"run": "Run a persistent Loopix client process",

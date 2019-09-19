@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package commands
 
 import (
 	"fmt"
@@ -32,7 +32,7 @@ const (
 	defaultProviderID = "Provider"
 )
 
-func cmdRun(args []string, usage string) {
+func RunCmd(args []string, usage string) {
 	opts := newOpts("run [OPTIONS]", usage)
 	id := opts.Flags("--id").Label("ID").String("Id of the loopix-client we want to run", defaultID)
 	host := opts.Flags("--host").Label("HOST").String("The host on which the loopix-client is running", defaultHost)

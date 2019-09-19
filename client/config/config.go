@@ -73,7 +73,7 @@ type Client struct {
 	HomeDirectory string `toml:"loopix_home_directory"`
 
 	// ID specifies the human readable ID of this particular client.
-	// If not provided base64 interpretation of public key is used instead.
+	// If not provided a random id will be generated instead.
 	ID string `toml:"id"`
 
 	// DirectoryServerTopologyEndpoint specifies URL to the topology endpoint of the directory server.

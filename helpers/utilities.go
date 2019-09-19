@@ -40,6 +40,17 @@ func DirExists(path string) (bool, error) {
 	return false, err
 }
 
+// EnsureDir checks whether a directory exists at the given path. If not, it will be created.
+func EnsureDir(dir string, mode os.FileMode) error {
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		err := os.MkdirAll(dir, mode)
+		if err != nil {
+			return fmt.Errorf("Could not create directory %v. %v", dir, err)
+		}
+	}
+	return nil
+}
+
 func ToPEMFile(o encoding.BinaryMarshaler, f, pemType string) error {
 	b, err := o.MarshalBinary()
 	if err != nil {
