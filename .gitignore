@@ -21,3 +21,4 @@
 /build/loopix-client
 /build/loopix-mixnode
 /build/loopix-provider
+/scripts/deploy_network.sh
