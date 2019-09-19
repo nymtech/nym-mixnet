@@ -3,6 +3,7 @@ package sphinx
 import (
 	"crypto/rand"
 	"crypto/subtle"
+	"errors"
 	"io"
 
 	"golang.org/x/crypto/curve25519"
@@ -30,6 +31,38 @@ type PrivateKey struct {
 
 type PublicKey struct {
 	bytes [PublicKeySize]byte
+}
+
+// MarshalBinary is an implementation of a method on the
+// BinaryMarshaler interface defined in https://golang.org/pkg/encoding/
+func (pk *PrivateKey) MarshalBinary() ([]byte, error) {
+	return pk.Bytes(), nil
+}
+
+// UnmarshalBinary is an implementation of a method on the
+// BinaryUnmarshaler interface defined in https://golang.org/pkg/encoding/
+func (pk *PrivateKey) UnmarshalBinary(data []byte) error {
+	if data == nil || len(data) != PrivateKeySize {
+		return errors.New("invalid private key data")
+	}
+	copy(pk.bytes[:], data)
+	return nil
+}
+
+// MarshalBinary is an implementation of a method on the
+// BinaryMarshaler interface defined in https://golang.org/pkg/encoding/
+func (pub *PublicKey) MarshalBinary() ([]byte, error) {
+	return pub.Bytes(), nil
+}
+
+// UnmarshalBinary is an implementation of a method on the
+// BinaryUnmarshaler interface defined in https://golang.org/pkg/encoding/
+func (pub *PublicKey) UnmarshalBinary(data []byte) error {
+	if data == nil || len(data) != PublicKeySize {
+		return errors.New("invalid public key data")
+	}
+	copy(pub.bytes[:], data)
+	return nil
 }
 
 func BytesToFieldElement(b []byte) *FieldElement {
