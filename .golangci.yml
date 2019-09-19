@@ -36,6 +36,8 @@ linters-settings:
       - github.com/mattn/go-sqlite3
       - golang.org/x/crypto/curve25519
       - github.com/nymtech/directory-server/models
+      - github.com/BurntSushi/toml
+      - github.com/pelletier/go-toml
   misspell:
     locale: UK
     # ignore-words:
