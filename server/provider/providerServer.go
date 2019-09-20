@@ -133,7 +133,6 @@ func (p *ProviderServer) convertRecordsToModelData() []models.RegisteredClient {
 	registeredClients := make([]models.RegisteredClient, 0, len(p.assignedClients))
 	for _, entry := range p.assignedClients {
 		registeredClients = append(registeredClients, models.RegisteredClient{
-			ID:     entry.id,
 			PubKey: base64.StdEncoding.EncodeToString(entry.pubKey),
 		})
 	}
@@ -177,8 +176,7 @@ func (p *ProviderServer) receivedPacket(packet []byte) error {
 		}
 	case flags.LastHopFlag:
 		tmpMsgID := fmt.Sprintf("TMP_MESSAGE_%v", helpers.RandomString(8))
-		// err = p.storeMessage(dePacket, nextHop.Id, "TMP_MESSAGE_ID")
-		if err := p.storeMessage(dePacket, nextHop.Id, tmpMsgID); err != nil {
+		if err := p.storeMessage(dePacket, fmt.Sprintf("%x", nextHop.PubKey), tmpMsgID); err != nil {
 			return err
 		}
 	default:
@@ -328,20 +326,21 @@ func (p *ProviderServer) registerNewClient(clientBytes []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	clientID := fmt.Sprintf("%x", clientConf.PubKey)
 
-	token, err := helpers.SHA256([]byte("TMP_Token" + clientConf.Id))
+	token, err := helpers.SHA256([]byte("TMP_Token" + clientID))
 	if err != nil {
 		return nil, err
 	}
-	record := ClientRecord{id: clientConf.Id,
+	record := ClientRecord{id: clientID,
 		host:   clientConf.Host,
 		port:   clientConf.Port,
 		pubKey: clientConf.PubKey,
 		token:  token,
 	}
-	p.assignedClients[clientConf.Id] = record
+	p.assignedClients[clientID] = record
 
-	path := fmt.Sprintf("./inboxes/%s", clientConf.Id)
+	path := fmt.Sprintf("./inboxes/%s", clientID)
 	exists, err := helpers.DirExists(path)
 	if err != nil {
 		return nil, err
@@ -379,10 +378,11 @@ func (p *ProviderServer) handlePullRequest(rqsBytes []byte) ([][]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	clientID := fmt.Sprintf("%x", request.ClientPublicKey)
 
-	p.log.Infof("Processing pull request: %s %s", request.ClientID, string(request.Token))
-	if p.authenticateUser(request.ClientID, request.ClientPublicKey, request.Token) {
-		signal, messagesBytes, err := p.fetchMessages(request.ClientID)
+	p.log.Infof("Processing pull request: %s %s", clientID, string(request.Token))
+	if p.authenticateUser(request.ClientPublicKey, request.Token) {
+		signal, messagesBytes, err := p.fetchMessages(clientID)
 		if err != nil {
 			return nil, err
 		}
@@ -404,8 +404,8 @@ func (p *ProviderServer) handlePullRequest(rqsBytes []byte) ([][]byte, error) {
 // AuthenticateUser compares the authentication token received from the client with
 // the one stored by the provider. If tokens are the same, it returns true
 // and false otherwise.
-func (p *ProviderServer) authenticateUser(clientID string, clientKey, clientToken []byte) bool {
-
+func (p *ProviderServer) authenticateUser(clientKey, clientToken []byte) bool {
+	clientID := fmt.Sprintf("%x", clientKey)
 	if bytes.Equal(p.assignedClients[clientID].token, clientToken) &&
 		bytes.Equal(p.assignedClients[clientID].pubKey, clientKey) {
 		// && signature check on message to make sure client actually owns this ID
@@ -447,8 +447,7 @@ func (p *ProviderServer) fetchMessages(clientID string) (string, [][]byte, error
 			return "", nil, err
 		}
 
-		address := p.assignedClients[clientID].host + ":" + p.assignedClients[clientID].port
-		p.log.Infof("Found stored message for address %s", address)
+		p.log.Infof("Found stored message for %s", clientID)
 		p.log.Infof("Messages data: %v", string(dat))
 		msgBytes, err := config.WrapWithFlag(flags.CommFlag, dat)
 		if err != nil {
