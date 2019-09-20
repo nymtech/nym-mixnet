@@ -74,19 +74,19 @@ func createFakeClientListener(host, port string) (*net.TCPListener, error) {
 
 func TestProviderServer_AuthenticateUser_Pass(t *testing.T) {
 	testToken := []byte("AuthenticationToken")
-	record := ClientRecord{id: "Alice", host: "localhost", port: "1111", pubKey: nil, token: testToken}
+	record := ClientRecord{id: "Alice", host: "localhost", port: "1111", pubKey: []byte{}, token: testToken}
 	providerServer.assignedClients["Alice"] = record
 	assert.True(t,
-		providerServer.authenticateUser("Alice", []byte("AuthenticationToken")),
+		providerServer.authenticateUser("Alice", []byte("AuthenticationToken"), []byte{}),
 		" Authentication should be successful",
 	)
 }
 
 func TestProviderServer_AuthenticateUser_Fail(t *testing.T) {
-	record := ClientRecord{id: "Alice", host: "localhost", port: "1111", pubKey: nil, token: []byte("AuthenticationToken")}
+	record := ClientRecord{id: "Alice", host: "localhost", port: "1111", pubKey: []byte{}, token: []byte("AuthenticationToken")}
 	providerServer.assignedClients["Alice"] = record
 	assert.False(t,
-		providerServer.authenticateUser("Alice", []byte("WrongAuthToken")),
+		providerServer.authenticateUser("Alice", []byte("WrongAuthToken"), []byte{}),
 		" Authentication should not be successful",
 	)
 }

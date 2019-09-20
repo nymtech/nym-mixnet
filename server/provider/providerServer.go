@@ -133,6 +133,7 @@ func (p *ProviderServer) convertRecordsToModelData() []models.RegisteredClient {
 	registeredClients := make([]models.RegisteredClient, 0, len(p.assignedClients))
 	for _, entry := range p.assignedClients {
 		registeredClients = append(registeredClients, models.RegisteredClient{
+			ID:     entry.id,
 			PubKey: base64.StdEncoding.EncodeToString(entry.pubKey),
 		})
 	}
@@ -380,7 +381,7 @@ func (p *ProviderServer) handlePullRequest(rqsBytes []byte) ([][]byte, error) {
 	}
 
 	p.log.Infof("Processing pull request: %s %s", request.ClientID, string(request.Token))
-	if p.authenticateUser(request.ClientID, request.Token) {
+	if p.authenticateUser(request.ClientID, request.ClientPublicKey, request.Token) {
 		signal, messagesBytes, err := p.fetchMessages(request.ClientID)
 		if err != nil {
 			return nil, err
@@ -403,9 +404,11 @@ func (p *ProviderServer) handlePullRequest(rqsBytes []byte) ([][]byte, error) {
 // AuthenticateUser compares the authentication token received from the client with
 // the one stored by the provider. If tokens are the same, it returns true
 // and false otherwise.
-func (p *ProviderServer) authenticateUser(clientID string, clientToken []byte) bool {
+func (p *ProviderServer) authenticateUser(clientID string, clientKey, clientToken []byte) bool {
 
-	if bytes.Equal(p.assignedClients[clientID].token, clientToken) {
+	if bytes.Equal(p.assignedClients[clientID].token, clientToken) &&
+		bytes.Equal(p.assignedClients[clientID].pubKey, clientKey) {
+		// && signature check on message to make sure client actually owns this ID
 		return true
 	}
 	p.log.Warnf("Non matching token: %s, %s", p.assignedClients[clientID].token, clientToken)
