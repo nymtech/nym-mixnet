@@ -130,7 +130,7 @@ func (c *NetClient) Start() error {
 	c.log.Info("Obtained valid network topology")
 
 	c.startTraffic()
-	go c.startInputRoutine(initialTopology)
+	go c.startInputRoutine()
 	return nil
 }
 
@@ -189,14 +189,9 @@ func shouldStopInput(msg string) bool {
 	return false
 }
 
-func (c *NetClient) startInputRoutine(initialTopology *models.Topology) {
+func (c *NetClient) startInputRoutine() {
 
-	clients, err := topology.GetClientPKI(initialTopology.MixProviderNodes)
-	if err != nil {
-		c.log.Fatalf("Could not read clients from topology: %v", err)
-	}
-
-	choosableClients, choosableOptions := makeChoosables(clients)
+	choosableClients, choosableOptions := makeChoosables(c.Network.Clients)
 
 	var chosenClientOption string
 	prompt := &survey.Select{
