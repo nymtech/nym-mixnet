@@ -176,7 +176,7 @@ func (p *ProviderServer) receivedPacket(packet []byte) error {
 		}
 	case flags.LastHopFlag:
 		tmpMsgID := fmt.Sprintf("TMP_MESSAGE_%v", helpers.RandomString(8))
-		if err := p.storeMessage(dePacket, fmt.Sprintf("%x", nextHop.PubKey), tmpMsgID); err != nil {
+		if err := p.storeMessage(dePacket, nextHop.Id, tmpMsgID); err != nil {
 			return err
 		}
 	default:
