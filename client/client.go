@@ -26,6 +26,7 @@ import (
 	"math"
 	"math/big"
 	"net"
+	"os"
 	"sync"
 	"time"
 
@@ -432,6 +433,7 @@ func (c *NetClient) getMessagesFromProvider() error {
 		case dummyLoad:
 			c.log.Debugf("Received drop cover message %v", packetDataStr)
 		default:
+			fmt.Fprintf(os.Stdout, "\nReceived: %s\n?> ", packetDataStr) // print to stdout regardless of logging location
 			c.log.Infof("Received new message: %v", packetDataStr)
 		}
 	}
