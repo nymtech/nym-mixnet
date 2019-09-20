@@ -18,7 +18,6 @@
 package client
 
 import (
-	"bufio"
 	"crypto/rand"
 	"errors"
 	"fmt"
@@ -26,14 +25,15 @@ import (
 	"math"
 	"math/big"
 	"net"
-	"os"
 	"sync"
 	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/nymtech/directory-server/models"
+	clientConfig "github.com/nymtech/loopix-messaging/client/config"
 	"github.com/nymtech/loopix-messaging/clientcore"
 	"github.com/nymtech/loopix-messaging/config"
+	"github.com/nymtech/loopix-messaging/constants"
 	"github.com/nymtech/loopix-messaging/flags"
 	"github.com/nymtech/loopix-messaging/helpers"
 	"github.com/nymtech/loopix-messaging/helpers/topology"
@@ -43,33 +43,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// TODO: we need to deal with all those globals
-//nolint: gochecknoglobals
-var (
-	loopCoverTrafficEnabled           = true
-	dropCoverTrafficEnabled           = true
-	controlMessageFetchingEnabled     = true
-	rateCompliantCoverMessagesEnabled = true
-	// FIXME: temporarily moved to variable to make it possible to override it by bench client
-	// the parameter of the exponential distribution which defines the rate of sending by client
-	// the desiredRateParameter is the reciprocal of the expected value of the exponential distribution
-	desiredRateParameter = 5.0
-)
-
 const (
-	loopRate = 0.1
-	dropRate = 0.1
-	// the rate at which clients are querying the provider for received packets. fetchRate value is the
-	// parameter of an exponential distribution, and is the reciprocal of the expected value of the exp. distribution
-	fetchRate = 5
-
-	// Below should be moved to a config file once we have it
-	// logFileLocation can either point to some valid file to which all log data should be written
-	// or if left an empty string, stdout will be used instead
-	defaultLogFileLocation = ""
-	// considering we are under heavy development and nowhere near production level, log EVERYTHING
-	defaultLogLevel = "trace"
-
 	dummyLoad = "DummyPayloadMessage"
 	loopLoad  = "LoopCoverMessage"
 )
@@ -87,17 +61,14 @@ type Client interface {
 // NetClient is a queuing TCP network client for the mixnet.
 type NetClient struct {
 	*clientcore.CryptoClient
-	id            string
-	host          string
-	port          string
-	listener      *net.TCPListener
-	config        config.ClientConfig
-	token         []byte
-	outQueue      chan []byte
-	haltedCh      chan struct{}
-	haltOnce      sync.Once
-	log           *logrus.Logger
-	demoRecipient config.ClientConfig
+	// TODO: somehow rename or completely remove config.ClientConfig because it's waaaay too confusing right now
+	cfg      *clientConfig.Config
+	config   config.ClientConfig
+	token    []byte // TODO: combine with the 'Provider' field considering it's provider specific
+	outQueue chan []byte
+	haltedCh chan struct{}
+	haltOnce sync.Once
+	log      *logrus.Logger
 }
 
 // OutQueue returns a reference to the client's outQueue. It's a queue
@@ -106,81 +77,20 @@ func (c *NetClient) OutQueue() chan<- []byte {
 	return c.outQueue
 }
 
-// ToggleRateCompliantCoverTraffic enables or disables rate compliant cover
-// traffic.
-func ToggleRateCompliantCoverTraffic(b bool) {
-	if !b {
-		fmt.Println("Rate compliant cover messages are disabled")
-	} else {
-		fmt.Println("Rate compliant cover messages are enabled")
-	}
-	rateCompliantCoverMessagesEnabled = b
-}
-
-// ToggleLoopCoverTraffic enables or disables loop cover traffic.
-func ToggleLoopCoverTraffic(b bool) {
-	if !b {
-		fmt.Println("Loop cover traffic is disabled")
-	} else {
-		fmt.Println("Loop cover traffic is enabled")
-	}
-	loopCoverTrafficEnabled = b
-}
-
-// ToggleDropCoverTraffic enables or disables cover traffic.
-func ToggleDropCoverTraffic(b bool) {
-	if !b {
-		fmt.Println("Drop cover traffic is disabled")
-	} else {
-		fmt.Println("Drop cover traffic is enabled")
-	}
-	dropCoverTrafficEnabled = b
-}
-
-// ToggleControlMessageFetching enables or disables control message fetching.
-func ToggleControlMessageFetching(b bool) {
-	if !b {
-		fmt.Println("Control message fetching is disabled")
-	} else {
-		fmt.Println("Control message fetching is enabled")
-	}
-	controlMessageFetchingEnabled = b
-}
-
-// UpdateDesiredRateParameter sets the desired rate parameter.
-func UpdateDesiredRateParameter(r float64) {
-	fmt.Printf("Updating desired rate parameter to %v\n", r)
-	desiredRateParameter = r
-}
-
-func (c *NetClient) DisableLogging() {
-	c.log.Warn("Disabling logging")
-	c.log.Out = ioutil.Discard
-}
-
-func (c *NetClient) ChangeLoggingLevel(levelStr string) {
-	level, err := logrus.ParseLevel(levelStr)
-	if err != nil {
-		c.log.Errorf("Failed to parse passed logging level '%v': %v", levelStr, err)
-	}
-	c.log.Infof("Changing logging level to %v", level.String())
-	c.log.SetLevel(level)
-}
-
 func (c *NetClient) startInputRoutine() {
-	reader := bufio.NewReader(os.Stdin)
+	// reader := bufio.NewReader(os.Stdin)
 
-	for {
-		input, err := reader.ReadString('\n')
-		if err != nil {
-			c.log.Errorf("Failed to read user input: %v", err)
-		}
-		input = input[:len(input)-1]
-		c.log.Infof("Sending: %v to %v", input, c.demoRecipient.GetId())
-		if err := c.SendMessage(input, c.demoRecipient); err != nil {
-			c.log.Errorf("Failed to send %v to %v: %v", input, c.demoRecipient.GetId(), err)
-		}
-	}
+	// for {
+	// 	input, err := reader.ReadString('\n')
+	// 	if err != nil {
+	// 		c.log.Errorf("Failed to read user input: %v", err)
+	// 	}
+	// 	input = input[:len(input)-1]
+	// 	c.log.Infof("Sending: %v to %v", input, c.demoRecipient.GetId())
+	// 	if err := c.SendMessage(input, c.demoRecipient); err != nil {
+	// 		c.log.Errorf("Failed to send %v to %v: %v", input, c.demoRecipient.GetId(), err)
+	// 	}
+	// }
 }
 
 // Start reads the network and users information from the topology
@@ -375,15 +285,15 @@ func (c *NetClient) sendRegisterMessageToProvider() error {
 		}
 	}()
 
-	if loopCoverTrafficEnabled {
+	if c.cfg.Debug.LoopCoverTrafficRate > 0.0 {
 		c.turnOnLoopCoverTraffic()
 	}
 
-	if dropCoverTrafficEnabled {
+	if c.cfg.Debug.DropCoverTrafficRate > 0.0 {
 		c.turnOnDropCoverTraffic()
 	}
 
-	if controlMessageFetchingEnabled {
+	if c.cfg.Debug.FetchMessageRate > 0.0 {
 		go func() {
 			c.controlMessagingFetching()
 		}()
@@ -451,7 +361,7 @@ func (c *NetClient) controlOutQueue() error {
 			c.log.Debugf("Real packet was sent")
 			c.log.Debugf("Received response: %v", response)
 		default:
-			if rateCompliantCoverMessagesEnabled {
+			if !c.cfg.Debug.RateCompliantCoverMessagesDisabled {
 				dummyPacket, err := c.createDropCoverMessage()
 				if err != nil {
 					return err
@@ -464,7 +374,7 @@ func (c *NetClient) controlOutQueue() error {
 				c.log.Debugf("Received response: %v", response)
 			}
 		}
-		err := delayBeforeContinue(desiredRateParameter)
+		err := delayBeforeContinue(c.cfg.Debug.MessageSendingRate)
 		if err != nil {
 			return err
 		}
@@ -480,7 +390,7 @@ func (c *NetClient) controlMessagingFetching() {
 			continue
 		}
 		// c.log.Infof("Sent request to provider to fetch messages")
-		err := delayBeforeContinue(fetchRate)
+		err := delayBeforeContinue(c.cfg.Debug.FetchMessageRate)
 		if err != nil {
 			c.log.Errorf("Error in ControlMessagingFetching - generating random exp. value failed: %v", err)
 		}
@@ -552,7 +462,7 @@ func (c *NetClient) runLoopCoverTrafficStream() error {
 		c.log.Debugf("Loop message sent")
 		c.log.Debugf("Received response: %v", response)
 
-		if err := delayBeforeContinue(loopRate); err != nil {
+		if err := delayBeforeContinue(c.cfg.Debug.LoopCoverTrafficRate); err != nil {
 			return err
 		}
 	}
@@ -577,7 +487,7 @@ func (c *NetClient) runDropCoverTrafficStream() error {
 		c.log.Debugf("Drop packet sent")
 		c.log.Debugf("Received response: %v", response)
 
-		if err := delayBeforeContinue(dropRate); err != nil {
+		if err := delayBeforeContinue(c.cfg.Debug.DropCoverTrafficRate); err != nil {
 			return err
 		}
 	}
@@ -651,42 +561,43 @@ func providerFromTopology(initialTopology *models.Topology) (config.MixConfig, e
 
 // NewClient constructor function to create an new client object.
 // Returns a new client object or an error, if occurred.
-// TODO: temporarily just split the function signature in multiple lines to make the lines shorter,
-// however, we should perhaps pass some struct instead like 'clientConfig'
-// that would encapsulate all the parameters?
-func NewClient(id string,
-	host string,
-	port string,
-	prvKey *sphinx.PrivateKey,
-	pubKey *sphinx.PublicKey,
-	demoRecipient config.ClientConfig,
-) (*NetClient, error) {
+func NewClient(cfg *clientConfig.Config) (*NetClient, error) {
 
-	baseLogger, err := logger.New(defaultLogFileLocation, defaultLogLevel, false)
+	baseLogger, err := logger.New(cfg.Logging.File, cfg.Logging.Level, cfg.Logging.Disable)
 	if err != nil {
 		return nil, err
+	}
+
+	prvKey := new(sphinx.PrivateKey)
+	pubKey := new(sphinx.PublicKey)
+	if err := helpers.FromPEMFile(prvKey, cfg.Client.PrivateKeyFile(), constants.PrivateKeyPEMType); err != nil {
+		return nil, fmt.Errorf("Failed to load the private key: %v", err)
+	}
+
+	if err := helpers.FromPEMFile(pubKey, cfg.Client.PublicKeyFile(), constants.PublicKeyPEMType); err != nil {
+		return nil, fmt.Errorf("Failed to load the public key: %v", err)
 	}
 
 	core := clientcore.NewCryptoClient(prvKey,
 		pubKey,
 		config.MixConfig{},
 		clientcore.NetworkPKI{},
-		baseLogger.GetLogger("cryptoClient "+id),
+		baseLogger.GetLogger("cryptoClient "+cfg.Client.ID),
 	)
 
-	log := baseLogger.GetLogger(id)
+	log := baseLogger.GetLogger(cfg.Client.ID)
 
-	c := NetClient{id: id,
-		host:          host,
-		port:          port,
-		CryptoClient:  core,
-		haltedCh:      make(chan struct{}),
-		log:           log,
-		demoRecipient: demoRecipient,
+	c := NetClient{CryptoClient: core,
+		cfg:      cfg,
+		haltedCh: make(chan struct{}),
+		log:      log,
 	}
-	c.config = config.ClientConfig{Id: c.id,
-		Host:     c.host,
-		Port:     c.port,
+
+	c.log.Infof("Logging level set to %v", c.cfg.Logging.Level)
+
+	c.config = config.ClientConfig{Id: c.cfg.Client.ID,
+		Host:     "", // TODO: remove
+		Port:     "", // TODO: remove
 		PubKey:   c.GetPublicKey().Bytes(),
 		Provider: &c.Provider,
 	}
@@ -697,30 +608,28 @@ func NewClient(id string,
 // NewTestClient constructs a client object, which can be used for testing. The object contains the crypto core
 // and the top-level of client, but does not involve networking and starting a listener.
 // TODO: similar issue as with 'NewClient' - need to create some config struct with the parameters
-func NewTestClient(id string,
-	host string,
-	port string,
-	prvKey *sphinx.PrivateKey,
-	pubKey *sphinx.PublicKey,
-	provider config.MixConfig,
-) (*NetClient, error) {
-	baseDisabledLogger, err := logger.New(defaultLogFileLocation, defaultLogLevel, true)
+func NewTestClient(cfg *clientConfig.Config, prvKey *sphinx.PrivateKey, pubKey *sphinx.PublicKey) (*NetClient, error) {
+	baseDisabledLogger, err := logger.New(cfg.Logging.File, cfg.Logging.Level, cfg.Logging.Disable)
 	if err != nil {
 		return nil, err
 	}
 	// this logger can be shared as it will be disabled anyway
 	disabledLog := baseDisabledLogger.GetLogger("test")
 
-	core := clientcore.NewCryptoClient(prvKey, pubKey, provider, clientcore.NetworkPKI{}, disabledLog)
-	c := NetClient{id: id,
-		host:         host,
-		port:         port,
-		CryptoClient: core,
-		log:          disabledLog,
+	core := clientcore.NewCryptoClient(prvKey,
+		pubKey,
+		config.MixConfig{},
+		clientcore.NetworkPKI{},
+		disabledLog,
+	)
+
+	c := NetClient{CryptoClient: core,
+		haltedCh: make(chan struct{}),
+		log:      disabledLog,
 	}
-	c.config = config.ClientConfig{Id: c.id,
-		Host:     c.host,
-		Port:     c.port,
+	c.config = config.ClientConfig{Id: c.cfg.Client.ID,
+		Host:     "", // TODO: remove
+		Port:     "", // TODO: remove
 		PubKey:   c.GetPublicKey().Bytes(),
 		Provider: &c.Provider,
 	}
