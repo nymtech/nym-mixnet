@@ -28,6 +28,8 @@ message ProviderResponse {
 }
 
 message PullRequest {
-    string ClientId = 1;
+    string ClientID = 1;
     bytes Token = 2;
+    bytes ClientPublicKey = 3;
+    // TODO: also signature on entire request to prove knowledge of associated private key and hence the ID
 }

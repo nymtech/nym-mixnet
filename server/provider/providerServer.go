@@ -379,9 +379,9 @@ func (p *ProviderServer) handlePullRequest(rqsBytes []byte) ([][]byte, error) {
 		return nil, err
 	}
 
-	p.log.Infof("Processing pull request: %s %s", request.ClientId, string(request.Token))
-	if p.authenticateUser(request.ClientId, request.Token) {
-		signal, messagesBytes, err := p.fetchMessages(request.ClientId)
+	p.log.Infof("Processing pull request: %s %s", request.ClientID, string(request.Token))
+	if p.authenticateUser(request.ClientID, request.Token) {
+		signal, messagesBytes, err := p.fetchMessages(request.ClientID)
 		if err != nil {
 			return nil, err
 		}

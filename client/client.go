@@ -395,7 +395,7 @@ func (c *NetClient) sendRegisterMessageToProvider() error {
 // provider. The client sends a pull packet to the provider, along with
 // the authentication token. An error is returned if occurred.
 func (c *NetClient) getMessagesFromProvider() error {
-	pullRqs := config.PullRequest{ClientId: c.id, Token: c.token}
+	pullRqs := config.PullRequest{ClientID: c.cfg.Client.ID, ClientPublicKey: c.GetPublicKey().Bytes(), Token: c.token}
 	pullRqsBytes, err := proto.Marshal(&pullRqs)
 	if err != nil {
 		c.log.Errorf("Error in register provider - marshal of pull request returned an error: %v", err)
