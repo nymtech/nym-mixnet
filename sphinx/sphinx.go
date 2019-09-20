@@ -127,7 +127,7 @@ func encapsulateHeader(headerInitials []HeaderInitials,
 ) (Header, error) {
 	finalHop := RoutingInfo{NextHop: &Hop{Id: destination.Id,
 		Address: destination.Host + ":" + destination.Port,
-		PubKey:  []byte{},
+		PubKey:  destination.PubKey, // I think like we should include it?
 	}, RoutingCommands: &commands[len(commands)-1],
 		NextHopMetaData: []byte{},
 		Mac:             []byte{},
