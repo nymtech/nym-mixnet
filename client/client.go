@@ -88,28 +88,48 @@ func (c *NetClient) Start() error {
 	c.outQueue = make(chan []byte)
 
 	initialTopology, err := topology.GetNetworkTopology()
+	if err != nil {
+		return err
+	}
 	if err := c.ReadInNetworkFromTopology(initialTopology); err != nil {
 		return err
 	}
 
+	// provider, err := topology.ProviderPresenceToConfig(initialTopology.MixProviderNodes[c.cfg.Client.ProviderID])
 	provider, err := providerFromTopology(initialTopology)
 	if err != nil {
 		return err
 	}
 	c.Provider = provider
 
-	go func() {
-		for {
-			if err := c.sendRegisterMessageToProvider(); err != nil {
-				c.log.Errorf("Error during registration to provider: %v", err)
-				time.Sleep(5 * time.Second)
-			} else {
-				c.log.Debug("Registration done!")
-				return
-			}
+	for {
+		if err := c.sendRegisterMessageToProvider(); err != nil {
+			c.log.Errorf("Error during registration to provider: %v", err)
+			time.Sleep(5 * time.Second)
+		} else {
+			c.log.Debug("Registration done!")
+			break
 		}
-	}()
+	}
 
+	// before we start traffic, we must wait until registration of some client reaches directory server
+	for {
+		initialTopology, err := topology.GetNetworkTopology()
+		if err != nil {
+			return err
+		}
+		if err := c.ReadInNetworkFromTopology(initialTopology); err != nil {
+			return err
+		}
+		if len(c.Network.Clients) > 0 {
+			break
+		}
+		c.log.Debug("No registered clients available. Waiting for a second before retrying.")
+		time.Sleep(time.Second)
+	}
+	c.log.Info("Obtained valid network topology")
+
+	c.startTraffic()
 	go c.startInputRoutine(initialTopology)
 	return nil
 }
@@ -133,10 +153,11 @@ func (c *NetClient) halt() {
 	close(c.haltedCh)
 }
 
-
 func toChoosable(client config.ClientConfig) string {
 	b64Key := base64.StdEncoding.EncodeToString(client.PubKey)
-	return fmt.Sprintf("[ INSERT CLIENT NAME ]\t-\t%s", b64Key)
+	// while normally it's unsafe to directly index string, it's safe here
+	// as id is guaranteed to only hold ascii characters due to being hex encoding of the key
+	return fmt.Sprintf("ID: %x...\t-\tPubKey:%s", client.PubKey[:8], b64Key)
 }
 
 func makeChoosables(clients []config.ClientConfig) (map[string]config.ClientConfig, []string) {
@@ -175,17 +196,7 @@ func (c *NetClient) startInputRoutine(initialTopology *models.Topology) {
 		c.log.Fatalf("Could not read clients from topology: %v", err)
 	}
 
-	var choosableClients map[string]config.ClientConfig
-	var choosableOptions []string
-	for {
-		choosableClients, choosableOptions = makeChoosables(clients)
-		if len(choosableClients) > 0 && len(choosableOptions) > 0 {
-			break
-		} else {
-			c.log.Infof("No clients available. Waiting for 5s to try again")
-			time.Sleep(time.Second * 5)
-		}
-	}
+	choosableClients, choosableOptions := makeChoosables(clients)
 
 	var chosenClientOption string
 	prompt := &survey.Select{
@@ -200,7 +211,6 @@ func (c *NetClient) startInputRoutine(initialTopology *models.Topology) {
 	}
 
 	chosenClient := choosableClients[chosenClientOption]
-	fmt.Println("you chose", chosenClientOption, chosenClient)
 
 	for {
 		select {
@@ -210,7 +220,7 @@ func (c *NetClient) startInputRoutine(initialTopology *models.Topology) {
 		}
 		messageToSend := ""
 		prompt := &survey.Input{
-			Message: fmt.Sprintf("Type in a message to send to %v", "[ INSERT CLIENT NAME ]"),
+			Message: fmt.Sprintf("Type in a message to send to %x...", chosenClient.GetPubKey()[:8]),
 		}
 		if err := survey.AskOne(prompt, &messageToSend); err == terminal.InterruptErr {
 			// we got an interrupt so we're killing whole client
@@ -225,7 +235,7 @@ func (c *NetClient) startInputRoutine(initialTopology *models.Topology) {
 
 		c.log.Infof("Sending: %v to %v", messageToSend, chosenClient.GetId())
 		if err := c.SendMessage(messageToSend, chosenClient); err != nil {
-			c.log.Errorf("Failed to send %v to %v: %v", messageToSend, chosenClient.GetId(), err)
+			c.log.Errorf("Failed to send %v to %x...: %v", messageToSend, chosenClient.GetPubKey()[:8], err)
 		}
 	}
 }
@@ -332,6 +342,29 @@ func (c *NetClient) processPacket(packet []byte) ([]byte, error) {
 	return packet, nil
 }
 
+func (c *NetClient) startTraffic() {
+	go func() {
+		err := c.controlOutQueue()
+		if err != nil {
+			c.log.Fatalf("Error in the controller of the outgoing packets queue. Possible security threat.: %v", err)
+		}
+	}()
+
+	if c.cfg.Debug.LoopCoverTrafficRate > 0.0 {
+		c.turnOnLoopCoverTraffic()
+	}
+
+	if c.cfg.Debug.DropCoverTrafficRate > 0.0 {
+		c.turnOnDropCoverTraffic()
+	}
+
+	if c.cfg.Debug.FetchMessageRate > 0.0 {
+		go func() {
+			c.controlMessagingFetching()
+		}()
+	}
+}
+
 // SendRegisterMessageToProvider allows the client to register with the selected provider.
 // The client sends a special assignment packet, with its public information, to the provider
 // or returns an error.
@@ -362,26 +395,7 @@ func (c *NetClient) sendRegisterMessageToProvider() error {
 	}
 
 	c.registerToken(packets[0].Data)
-	go func() {
-		err := c.controlOutQueue()
-		if err != nil {
-			c.log.Fatalf("Error in the controller of the outgoing packets queue. Possible security threat.: %v", err)
-		}
-	}()
 
-	if c.cfg.Debug.LoopCoverTrafficRate > 0.0 {
-		c.turnOnLoopCoverTraffic()
-	}
-
-	if c.cfg.Debug.DropCoverTrafficRate > 0.0 {
-		c.turnOnDropCoverTraffic()
-	}
-
-	if c.cfg.Debug.FetchMessageRate > 0.0 {
-		go func() {
-			c.controlMessagingFetching()
-		}()
-	}
 	return nil
 }
 
@@ -389,7 +403,7 @@ func (c *NetClient) sendRegisterMessageToProvider() error {
 // provider. The client sends a pull packet to the provider, along with
 // the authentication token. An error is returned if occurred.
 func (c *NetClient) getMessagesFromProvider() error {
-	pullRqs := config.PullRequest{ClientID: c.cfg.Client.ID, ClientPublicKey: c.GetPublicKey().Bytes(), Token: c.token}
+	pullRqs := config.PullRequest{ClientPublicKey: c.GetPublicKey().Bytes(), Token: c.token}
 	pullRqsBytes, err := proto.Marshal(&pullRqs)
 	if err != nil {
 		c.log.Errorf("Error in register provider - marshal of pull request returned an error: %v", err)
@@ -679,7 +693,11 @@ func NewClient(cfg *clientConfig.Config) (*NetClient, error) {
 
 	c.log.Infof("Logging level set to %v", c.cfg.Logging.Level)
 
-	c.config = config.ClientConfig{Id: c.cfg.Client.ID,
+	ID := fmt.Sprintf("%x", c.GetPublicKey().Bytes())
+	b64Key := base64.StdEncoding.EncodeToString(c.GetPublicKey().Bytes())
+	c.log.Infof("Our full ID is: %v\nOur Public Key is: %v", ID, b64Key)
+
+	c.config = config.ClientConfig{Id: ID,
 		Host:     "", // TODO: remove
 		Port:     "", // TODO: remove
 		PubKey:   c.GetPublicKey().Bytes(),
