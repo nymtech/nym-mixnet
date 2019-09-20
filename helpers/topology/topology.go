@@ -113,7 +113,7 @@ func RegisteredClientToConfig(client models.RegisteredClient) (config.ClientConf
 	}
 
 	return config.ClientConfig{
-		Id:     client.PubKey,
+		Id:     client.ID,
 		Host:   DefaultClientHost,
 		Port:   DefaultClientPort,
 		PubKey: b,
