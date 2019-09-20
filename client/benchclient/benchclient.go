@@ -113,15 +113,6 @@ func (bc *BenchClient) RunBench() error {
 	defer bc.Shutdown()
 	fmt.Println("starting bench client")
 
-	// ignore all loopix requirements about cover traffic, etc. and just blast the system with messages
-	client.ToggleControlMessageFetching(false)
-	client.ToggleDropCoverTraffic(false)
-	client.ToggleLoopCoverTraffic(false)
-	client.ToggleRateCompliantCoverTraffic(false)
-	client.UpdateDesiredRateParameter(10000000.0)
-	// to reduce effect of writing to stdout
-	bc.DisableLogging()
-	// start underlying client
 	if err := bc.NetClient.Start(); err != nil {
 		return err
 	}

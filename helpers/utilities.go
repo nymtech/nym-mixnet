@@ -40,6 +40,17 @@ func DirExists(path string) (bool, error) {
 	return false, err
 }
 
+// EnsureDir checks whether a directory exists at the given path. If not, it will be created.
+func EnsureDir(dir string, mode os.FileMode) error {
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		err := os.MkdirAll(dir, mode)
+		if err != nil {
+			return fmt.Errorf("Could not create directory %v. %v", dir, err)
+		}
+	}
+	return nil
+}
+
 func ToPEMFile(o encoding.BinaryMarshaler, f, pemType string) error {
 	b, err := o.MarshalBinary()
 	if err != nil {
@@ -56,13 +67,13 @@ func FromPEMFile(o encoding.BinaryUnmarshaler, f, pemType string) error {
 	if buf, err := ioutil.ReadFile(filepath.Clean(f)); err == nil {
 		blk, rest := pem.Decode(buf)
 		if len(rest) != 0 {
-			return fmt.Errorf("trailing garbage after PEM encoded secret key")
+			return fmt.Errorf("trailing garbage after PEM encoded key")
 		}
 		if blk.Type != pemType {
 			return fmt.Errorf("invalid PEM Type: '%v'", blk.Type)
 		}
 		if o.UnmarshalBinary(blk.Bytes) != nil {
-			return errors.New("failed to read secret key from PEM file")
+			return errors.New("failed to read key from PEM file")
 		}
 	} else if !os.IsNotExist(err) {
 		return err

@@ -28,6 +28,6 @@ message ProviderResponse {
 }
 
 message PullRequest {
-    string ClientId = 1;
-    bytes Token = 2;
+    bytes Token = 1;
+    bytes ClientPublicKey = 2;
 }

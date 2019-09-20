@@ -23,6 +23,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -113,7 +114,7 @@ func RegisteredClientToConfig(client models.RegisteredClient) (config.ClientConf
 	}
 
 	return config.ClientConfig{
-		Id:     client.PubKey,
+		Id:     fmt.Sprintf("%x", b),
 		Host:   DefaultClientHost,
 		Port:   DefaultClientPort,
 		PubKey: b,

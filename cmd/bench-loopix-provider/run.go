@@ -15,10 +15,6 @@
 package main
 
 import (
-	"os"
-
-	"github.com/nymtech/loopix-messaging/server/provider"
-	"github.com/nymtech/loopix-messaging/sphinx"
 	"github.com/tav/golly/optparse"
 )
 
@@ -30,43 +26,45 @@ const (
 
 //nolint: lll
 func cmdRun(args []string, usage string) {
-	opts := newOpts("run [OPTIONS]", usage)
-	port := opts.Flags("--port").Label("PORT").String("Port on which loopix-provider listens", defaultBenchmarkProviderPort)
-	numMessages := opts.Flags("--num").Label("NUMMESSAGES").Int("Number of benchmark messages to send", 0)
+	panic("The benchmark provider is not yet adjusted to work with the remote directory server")
 
-	params := opts.Parse(args)
-	if len(params) != 0 {
-		opts.PrintUsage()
-		os.Exit(1)
-	}
+	// opts := newOpts("run [OPTIONS]", usage)
+	// port := opts.Flags("--port").Label("PORT").String("Port on which loopix-provider listens", defaultBenchmarkProviderPort)
+	// numMessages := opts.Flags("--num").Label("NUMMESSAGES").Int("Number of benchmark messages to send", 0)
 
-	// have constant keys to simplify the procedure so that pki/database would not need to be reset every run
-	privP := sphinx.BytesToPrivateKey([]byte{191, 43, 90, 175, 50, 224, 156, 22, 204, 173, 87, 255, 64, 152, 17,
-		30, 48, 162, 36, 95, 57, 34, 187, 183, 203, 215, 25, 172, 55, 199, 211, 59})
-	pubP := sphinx.BytesToPublicKey([]byte{17, 170, 15, 150, 155, 75, 240, 66, 54, 100, 131, 127, 193, 10,
-		133, 32, 62, 155, 9, 46, 200, 55, 60, 125, 223, 76, 170, 167, 100, 34, 176, 117})
+	// params := opts.Parse(args)
+	// if len(params) != 0 {
+	// 	opts.PrintUsage()
+	// 	os.Exit(1)
+	// }
 
-	baseProviderServer, err := provider.NewProviderServer(defaultBenchmarkProviderID,
-		defaultBenchmarkProviderHost,
-		*port,
-		privP,
-		pubP,
-	)
-	if err != nil {
-		panic(err)
-	}
+	// // have constant keys to simplify the procedure so that pki/database would not need to be reset every run
+	// privP := sphinx.BytesToPrivateKey([]byte{191, 43, 90, 175, 50, 224, 156, 22, 204, 173, 87, 255, 64, 152, 17,
+	// 	30, 48, 162, 36, 95, 57, 34, 187, 183, 203, 215, 25, 172, 55, 199, 211, 59})
+	// pubP := sphinx.BytesToPublicKey([]byte{17, 170, 15, 150, 155, 75, 240, 66, 54, 100, 131, 127, 193, 10,
+	// 	133, 32, 62, 155, 9, 46, 200, 55, 60, 125, 223, 76, 170, 167, 100, 34, 176, 117})
 
-	benchmarkProviderServer, err := provider.NewBenchProvider(baseProviderServer, *numMessages)
-	if err != nil {
-		panic(err)
-	}
+	// baseProviderServer, err := provider.NewProviderServer(defaultBenchmarkProviderID,
+	// 	defaultBenchmarkProviderHost,
+	// 	*port,
+	// 	privP,
+	// 	pubP,
+	// )
+	// if err != nil {
+	// 	panic(err)
+	// }
 
-	provider.DisableLogging()
+	// benchmarkProviderServer, err := provider.NewBenchProvider(baseProviderServer, *numMessages)
+	// if err != nil {
+	// 	panic(err)
+	// }
 
-	err = benchmarkProviderServer.RunBench()
-	if err != nil {
-		panic(err)
-	}
+	// provider.DisableLogging()
+
+	// err = benchmarkProviderServer.RunBench()
+	// if err != nil {
+	// 	panic(err)
+	// }
 }
 
 func newOpts(command string, usage string) *optparse.Parser {

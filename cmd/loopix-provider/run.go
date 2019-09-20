@@ -26,7 +26,7 @@ import (
 const (
 	defaultHost = "localhost"
 	defaultID   = "Provider"
-	defaultPort = "6666"
+	defaultPort = "1789"
 )
 
 func cmdRun(args []string, usage string) {
