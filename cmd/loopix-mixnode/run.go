@@ -28,7 +28,7 @@ const (
 	PkiDb        = "pki/database.db"
 	defaultHost  = "localhost"
 	defaultID    = "Mix1"
-	defaultPort  = "6666"
+	defaultPort  = "1789"
 	defaultLayer = -1
 )
 
