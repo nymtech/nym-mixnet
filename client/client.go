@@ -19,6 +19,7 @@ package client
 
 import (
 	"crypto/rand"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -28,6 +29,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/AlecAivazis/survey/v2"
+	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/golang/protobuf/proto"
 	"github.com/nymtech/directory-server/models"
 	clientConfig "github.com/nymtech/loopix-messaging/client/config"
@@ -77,22 +80,6 @@ func (c *NetClient) OutQueue() chan<- []byte {
 	return c.outQueue
 }
 
-func (c *NetClient) startInputRoutine() {
-	// reader := bufio.NewReader(os.Stdin)
-
-	// for {
-	// 	input, err := reader.ReadString('\n')
-	// 	if err != nil {
-	// 		c.log.Errorf("Failed to read user input: %v", err)
-	// 	}
-	// 	input = input[:len(input)-1]
-	// 	c.log.Infof("Sending: %v to %v", input, c.demoRecipient.GetId())
-	// 	if err := c.SendMessage(input, c.demoRecipient); err != nil {
-	// 		c.log.Errorf("Failed to send %v to %v: %v", input, c.demoRecipient.GetId(), err)
-	// 	}
-	// }
-}
-
 // Start reads the network and users information from the topology
 // and starts the listening server. Returns an error
 // signalling whenever any operation was unsuccessful.
@@ -123,7 +110,7 @@ func (c *NetClient) Start() error {
 		}
 	}()
 
-	go c.startInputRoutine()
+	go c.startInputRoutine(initialTopology)
 	return nil
 }
 
@@ -144,6 +131,103 @@ func (c *NetClient) halt() {
 	// close any listeners, free resources, etc
 
 	close(c.haltedCh)
+}
+
+
+func toChoosable(client config.ClientConfig) string {
+	b64Key := base64.StdEncoding.EncodeToString(client.PubKey)
+	return fmt.Sprintf("[ INSERT CLIENT NAME ]\t-\t%s", b64Key)
+}
+
+func makeChoosables(clients []config.ClientConfig) (map[string]config.ClientConfig, []string) {
+	choosableClients := make(map[string]config.ClientConfig)
+	options := make([]string, len(clients))
+	for i, client := range clients {
+		choosableClient := toChoosable(client)
+		options[i] = choosableClient
+		choosableClients[choosableClient] = client // basically a mapping from the string back to original struct
+	}
+	return choosableClients, options
+}
+
+func shouldStopInput(msg string) bool {
+	quitMessages := []string{
+		"quit",
+		"/q",
+		":q",
+		":q!",
+		"exit",
+	}
+
+	for _, qm := range quitMessages {
+		if qm == msg {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (c *NetClient) startInputRoutine(initialTopology *models.Topology) {
+
+	clients, err := topology.GetClientPKI(initialTopology.MixProviderNodes)
+	if err != nil {
+		c.log.Fatalf("Could not read clients from topology: %v", err)
+	}
+
+	var choosableClients map[string]config.ClientConfig
+	var choosableOptions []string
+	for {
+		choosableClients, choosableOptions = makeChoosables(clients)
+		if len(choosableClients) > 0 && len(choosableOptions) > 0 {
+			break
+		} else {
+			c.log.Infof("No clients available. Waiting for 5s to try again")
+			time.Sleep(time.Second * 5)
+		}
+	}
+
+	var chosenClientOption string
+	prompt := &survey.Select{
+		Message: "Choose another client to communicate with:",
+		Options: choosableOptions,
+	}
+	if err := survey.AskOne(prompt, &chosenClientOption, nil); err == terminal.InterruptErr {
+		// we got an interrupt so we're killing whole client
+		c.log.Warningf("Received an interrupt - stopping entire client")
+		c.Shutdown()
+		return
+	}
+
+	chosenClient := choosableClients[chosenClientOption]
+	fmt.Println("you chose", chosenClientOption, chosenClient)
+
+	for {
+		select {
+		case <-c.haltedCh:
+			return
+		default:
+		}
+		messageToSend := ""
+		prompt := &survey.Input{
+			Message: fmt.Sprintf("Type in a message to send to %v", "[ INSERT CLIENT NAME ]"),
+		}
+		if err := survey.AskOne(prompt, &messageToSend); err == terminal.InterruptErr {
+			// we got an interrupt so we're killing whole client
+			c.log.Warningf("Received an interrupt - stopping entire client")
+			c.Shutdown()
+			return
+		}
+		if shouldStopInput(messageToSend) {
+			c.log.Warningf("Received a stop signal. Stopping the input routine")
+			return
+		}
+
+		c.log.Infof("Sending: %v to %v", messageToSend, chosenClient.GetId())
+		if err := c.SendMessage(messageToSend, chosenClient); err != nil {
+			c.log.Errorf("Failed to send %v to %v: %v", messageToSend, chosenClient.GetId(), err)
+		}
+	}
 }
 
 func (c *NetClient) checkTopology() error {
