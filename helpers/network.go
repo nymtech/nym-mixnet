@@ -23,8 +23,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 
@@ -81,9 +79,12 @@ func GetLocalIP() (string, error) {
 }
 
 // RegisterMixNodePresence registers server presence at the directory server.
-func RegisterMixNodePresence(publicKey *sphinx.PublicKey, layer int) error {
+func RegisterMixNodePresence(publicKey *sphinx.PublicKey, layer int, host ...string) error {
 	b64Key := base64.StdEncoding.EncodeToString(publicKey.Bytes())
 	values := map[string]interface{}{"pubKey": b64Key, "layer": layer}
+	if len(host) == 1 {
+		values["host"] = host[0]
+	}
 	jsonValue, err := json.Marshal(values)
 	if err != nil {
 		return err
@@ -97,12 +98,12 @@ func RegisterMixNodePresence(publicKey *sphinx.PublicKey, layer int) error {
 	_ = resp
 	// TODO: properly parse it, etc.
 
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-	fmt.Println(string(body))
-	_ = resp
+	// body, err := ioutil.ReadAll(resp.Body)
+	// if err != nil {
+	// 	return err
+	// }
+	// fmt.Println(string(body))
+	// _ = resp
 	return nil
 }
 
@@ -132,9 +133,12 @@ func SendMixMetrics(metric models.MixMetric) error {
 }
 
 // RegisterMixProviderPresence registers server presence at the directory server.
-func RegisterMixProviderPresence(publicKey *sphinx.PublicKey, clients []models.RegisteredClient) error {
+func RegisterMixProviderPresence(publicKey *sphinx.PublicKey, clients []models.RegisteredClient, host ...string) error {
 	b64Key := base64.StdEncoding.EncodeToString(publicKey.Bytes())
 	values := map[string]interface{}{"pubKey": b64Key, "registeredClients": clients}
+	if len(host) == 1 {
+		values["host"] = host[0]
+	}
 	jsonValue, err := json.Marshal(values)
 	if err != nil {
 		return err
