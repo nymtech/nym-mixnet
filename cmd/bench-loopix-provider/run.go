@@ -42,6 +42,11 @@ func cmdRun(args []string, usage string) {
 		os.Exit(1)
 	}
 
+	if err := os.RemoveAll("inboxes/0000000000000000000000000000000000000000000000000000000000000000"); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to empty bench inbox: %v", err)
+		os.Exit(1)
+	}
+
 	// have constant keys to simplify the procedure so that pki/database would not need to be reset every run
 	privP := sphinx.BytesToPrivateKey([]byte{191, 43, 90, 175, 50, 224, 156, 22, 204, 173, 87, 255, 64, 152, 17,
 		30, 48, 162, 36, 95, 57, 34, 187, 183, 203, 215, 25, 172, 55, 199, 211, 59})
