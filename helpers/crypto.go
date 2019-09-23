@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/nymtech/loopix-messaging/config"
+	"github.com/nymtech/loopix-messaging/sphinx"
 )
 
 var (
@@ -70,4 +71,14 @@ func SHA256(arg []byte) ([]byte, error) {
 		return nil, err
 	}
 	return h.Sum(nil), nil
+}
+
+func IsZeroElement(el sphinx.CryptoElement) bool {
+	bytes := el.Bytes()
+	for _, b := range bytes {
+		if b != 0 {
+			return false
+		}
+	}
+	return true
 }
