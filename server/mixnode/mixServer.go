@@ -70,6 +70,7 @@ type MixServer struct {
 
 type metrics struct {
 	sync.Mutex
+	host             string
 	b64Key           string
 	receivedMessages uint
 	sentMessages     map[string]uint
@@ -105,7 +106,7 @@ func (m *metrics) sendToDirectoryServer() {
 	receivedCopy := m.receivedMessages
 
 	go func(metricsCopy models.MixMetric) {
-		if err := helpers.SendMixMetrics(metricsCopy); err != nil {
+		if err := helpers.SendMixMetrics(metricsCopy, m.host); err != nil {
 			m.log.Errorf("Failed to send metrics: %v", err)
 		}
 	}(models.MixMetric{
@@ -115,13 +116,14 @@ func (m *metrics) sendToDirectoryServer() {
 	})
 }
 
-func newMetrics(log *logrus.Logger, publicKey *sphinx.PublicKey) *metrics {
+func newMetrics(log *logrus.Logger, publicKey *sphinx.PublicKey, host string) *metrics {
 	b64key := base64.StdEncoding.EncodeToString(publicKey.Bytes())
 	log.Infof("Our public key is: %v", b64key)
 	return &metrics{
 		log:          log,
 		b64Key:       b64key,
 		sentMessages: make(map[string]uint),
+		host:         host,
 	}
 }
 
@@ -313,7 +315,7 @@ func NewMixServer(id string,
 		port:     port,
 		Mix:      mix,
 		layer:    layer,
-		metrics:  newMetrics(baseLogger.GetLogger("metrics "+id), pubKey),
+		metrics:  newMetrics(baseLogger.GetLogger("metrics "+id), pubKey, net.JoinHostPort(host, port)),
 		haltedCh: make(chan struct{}),
 		log:      log,
 	}

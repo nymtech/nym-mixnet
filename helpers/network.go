@@ -90,7 +90,18 @@ func RegisterMixNodePresence(publicKey *sphinx.PublicKey, layer int, host ...str
 		return err
 	}
 
-	resp, err := http.Post(config.DirectoryServerMixPresenceURL, "application/json", bytes.NewBuffer(jsonValue))
+	endpoint := config.DirectoryServerMixPresenceURL
+	if len(host) == 1 {
+		ip, _, err := net.SplitHostPort(host[0])
+		if err == nil && (ip == "localhost" || net.ParseIP(ip).IsLoopback()) {
+			endpoint = config.LocalDirectoryServerMixPresenceURL
+		} else if err.Error() == "missing port in address" &&
+			(host[0] == "localhost" || net.ParseIP(host[0]).IsLoopback()) {
+			endpoint = config.LocalDirectoryServerMixPresenceURL
+		}
+	}
+
+	resp, err := http.Post(endpoint, "application/json", bytes.NewBuffer(jsonValue))
 	if err != nil {
 		return err
 	}
@@ -108,14 +119,25 @@ func RegisterMixNodePresence(publicKey *sphinx.PublicKey, layer int, host ...str
 }
 
 // SendMixMetrics sends the mixnode related packet metrics to the directory server.
-func SendMixMetrics(metric models.MixMetric) error {
+func SendMixMetrics(metric models.MixMetric, host ...string) error {
 	values := map[string]interface{}{"sent": metric.Sent, "pubKey": metric.PubKey, "received": metric.Received}
 	jsonValue, err := json.Marshal(values)
 	if err != nil {
 		return err
 	}
 
-	resp, err := http.Post(config.DirectoryServerMetricsURL, "application/json", bytes.NewBuffer(jsonValue))
+	endpoint := config.DirectoryServerMetricsURL
+	if len(host) == 1 {
+		ip, _, err := net.SplitHostPort(host[0])
+		if err == nil && (ip == "localhost" || net.ParseIP(ip).IsLoopback()) {
+			endpoint = config.LocalDirectoryServerMetricsURL
+		} else if err.Error() == "missing port in address" &&
+			(host[0] == "localhost" || net.ParseIP(host[0]).IsLoopback()) {
+			endpoint = config.LocalDirectoryServerMetricsURL
+		}
+	}
+
+	resp, err := http.Post(endpoint, "application/json", bytes.NewBuffer(jsonValue))
 	if err != nil {
 		return err
 	}
@@ -144,7 +166,18 @@ func RegisterMixProviderPresence(publicKey *sphinx.PublicKey, clients []models.R
 		return err
 	}
 
-	resp, err := http.Post(config.DirectoryServerMixProviderPresenceURL, "application/json", bytes.NewBuffer(jsonValue))
+	endpoint := config.DirectoryServerMixProviderPresenceURL
+	if len(host) == 1 {
+		ip, _, err := net.SplitHostPort(host[0])
+		if err == nil && (ip == "localhost" || net.ParseIP(ip).IsLoopback()) {
+			endpoint = config.LocalDirectoryServerMixProviderPresenceURL
+		} else if err.Error() == "missing port in address" &&
+			(host[0] == "localhost" || net.ParseIP(host[0]).IsLoopback()) {
+			endpoint = config.LocalDirectoryServerMixProviderPresenceURL
+		}
+	}
+
+	resp, err := http.Post(endpoint, "application/json", bytes.NewBuffer(jsonValue))
 	if err != nil {
 		return err
 	}
