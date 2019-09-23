@@ -15,6 +15,7 @@
 package provider
 
 import (
+	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -76,7 +77,8 @@ func TestProviderServer_AuthenticateUser_Pass(t *testing.T) {
 	key := []byte{1, 2, 3, 4, 5}
 	testToken := []byte("AuthenticationToken")
 	record := ClientRecord{id: "Alice", host: "localhost", port: "1111", pubKey: key, token: testToken}
-	providerServer.assignedClients[fmt.Sprintf("%x", key)] = record
+	b64Key := base64.URLEncoding.EncodeToString(key)
+	providerServer.assignedClients[b64Key] = record
 	assert.True(t,
 		providerServer.authenticateUser(key, []byte("AuthenticationToken")),
 		" Authentication should be successful",
@@ -86,7 +88,8 @@ func TestProviderServer_AuthenticateUser_Pass(t *testing.T) {
 func TestProviderServer_AuthenticateUser_Fail(t *testing.T) {
 	key := []byte{1, 2, 3, 4, 5}
 	record := ClientRecord{id: "Alice", host: "localhost", port: "1111", pubKey: key, token: []byte("AuthenticationToken")}
-	providerServer.assignedClients[fmt.Sprintf("%x", key)] = record
+	b64Key := base64.URLEncoding.EncodeToString(key)
+	providerServer.assignedClients[b64Key] = record
 	assert.False(t,
 		providerServer.authenticateUser(key, []byte("WrongAuthToken")),
 		" Authentication should not be successful",

@@ -117,7 +117,7 @@ func (m *metrics) sendToDirectoryServer() {
 }
 
 func newMetrics(log *logrus.Logger, publicKey *sphinx.PublicKey, host string) *metrics {
-	b64key := base64.StdEncoding.EncodeToString(publicKey.Bytes())
+	b64key := base64.URLEncoding.EncodeToString(publicKey.Bytes())
 	log.Infof("Our public key is: %v", b64key)
 	return &metrics{
 		log:          log,

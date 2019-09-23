@@ -23,7 +23,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -69,7 +68,7 @@ func GetNetworkTopology(endpoint string) (*models.Topology, error) {
 func GetMixesPKI(mixPresence MixPresence) (LayeredMixes, error) {
 	mixes := make(LayeredMixes)
 	for k, v := range mixPresence {
-		b, err := base64.StdEncoding.DecodeString(v.PubKey)
+		b, err := base64.URLEncoding.DecodeString(v.PubKey)
 		if err != nil {
 			continue
 		}
@@ -95,7 +94,7 @@ func GetMixesPKI(mixPresence MixPresence) (LayeredMixes, error) {
 }
 
 func ProviderPresenceToConfig(presence models.MixProviderPresence) (config.MixConfig, error) {
-	b, err := base64.StdEncoding.DecodeString(presence.PubKey)
+	b, err := base64.URLEncoding.DecodeString(presence.PubKey)
 	if err != nil {
 		return config.MixConfig{}, errors.New("invalid provider presence")
 	}
@@ -108,13 +107,13 @@ func ProviderPresenceToConfig(presence models.MixProviderPresence) (config.MixCo
 }
 
 func RegisteredClientToConfig(client models.RegisteredClient) (config.ClientConfig, error) {
-	b, err := base64.StdEncoding.DecodeString(client.PubKey)
+	b, err := base64.URLEncoding.DecodeString(client.PubKey)
 	if err != nil {
 		return config.ClientConfig{}, errors.New("invalid client information")
 	}
 
 	return config.ClientConfig{
-		Id:     fmt.Sprintf("%x", b),
+		Id:     client.PubKey,
 		Host:   DefaultClientHost,
 		Port:   DefaultClientPort,
 		PubKey: b,

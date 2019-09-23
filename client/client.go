@@ -163,10 +163,11 @@ func (c *NetClient) halt() {
 }
 
 func toChoosable(client config.ClientConfig) string {
-	b64Key := base64.StdEncoding.EncodeToString(client.PubKey)
+	b64Key := base64.URLEncoding.EncodeToString(client.PubKey)
+	b64ProviderKey := base64.URLEncoding.EncodeToString(client.Provider.PubKey)
 	// while normally it's unsafe to directly index string, it's safe here
-	// as id is guaranteed to only hold ascii characters due to being hex encoding of the key
-	return fmt.Sprintf("ID: %x...\t-\tPubKey:%s", client.PubKey[:8], b64Key)
+	// as id is guaranteed to only hold ascii characters due to being b64 encoding of the key
+	return fmt.Sprintf("ID: %s\t@[Provider]\t%s", b64Key, b64ProviderKey)
 }
 
 func makeChoosables(clients []config.ClientConfig) (map[string]config.ClientConfig, []string) {
@@ -223,8 +224,9 @@ func (c *NetClient) startInputRoutine() {
 		default:
 		}
 		messageToSend := ""
+		b64Key := base64.URLEncoding.EncodeToString(chosenClient.GetPubKey())
 		prompt := &survey.Input{
-			Message: fmt.Sprintf("Type in a message to send to %x...", chosenClient.GetPubKey()[:8]),
+			Message: fmt.Sprintf("Type in a message to send to %s...", b64Key),
 		}
 		if err := survey.AskOne(prompt, &messageToSend); err == terminal.InterruptErr {
 			// we got an interrupt so we're killing whole client
@@ -698,11 +700,10 @@ func NewClient(cfg *clientConfig.Config) (*NetClient, error) {
 
 	c.log.Infof("Logging level set to %v", c.cfg.Logging.Level)
 
-	ID := fmt.Sprintf("%x", c.GetPublicKey().Bytes())
-	b64Key := base64.StdEncoding.EncodeToString(c.GetPublicKey().Bytes())
-	c.log.Infof("Our full ID is: %v\nOur Public Key is: %v", ID, b64Key)
+	b64Key := base64.URLEncoding.EncodeToString(c.GetPublicKey().Bytes())
+	c.log.Infof("Our full ID/Public Key is: %v", b64Key)
 
-	c.config = config.ClientConfig{Id: ID,
+	c.config = config.ClientConfig{Id: b64Key,
 		Host:     "", // TODO: remove
 		Port:     "", // TODO: remove
 		PubKey:   c.GetPublicKey().Bytes(),
@@ -737,9 +738,9 @@ func NewTestClient(cfg *clientConfig.Config, prvKey *sphinx.PrivateKey, pubKey *
 		log:      disabledLog,
 	}
 
-	ID := fmt.Sprintf("%x", c.GetPublicKey().Bytes())
+	b64Key := base64.URLEncoding.EncodeToString(c.GetPublicKey().Bytes())
 
-	c.config = config.ClientConfig{Id: ID,
+	c.config = config.ClientConfig{Id: b64Key,
 		Host:     "", // TODO: remove
 		Port:     "", // TODO: remove
 		PubKey:   c.GetPublicKey().Bytes(),
