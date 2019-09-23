@@ -273,6 +273,10 @@ func (p *ProviderServer) handleConnection(conn net.Conn) {
 
 	buff := make([]byte, 1024)
 	reqLen, err := conn.Read(buff)
+	if err != nil {
+		p.log.Errorf("Error while reading from the connection: %v", err)
+		return
+	}
 
 	var packet config.GeneralPacket
 	if err = proto.Unmarshal(buff[:reqLen], &packet); err != nil {
@@ -283,6 +287,10 @@ func (p *ProviderServer) handleConnection(conn net.Conn) {
 	switch flags.PacketTypeFlagFromBytes(packet.Flag) {
 	case flags.AssignFlag:
 		tokenBytes, err := p.handleAssignRequest(packet.Data)
+		if err != nil {
+			p.log.Errorf("Error while handling token request: %v", err)
+			return
+		}
 		clientResponse, err := p.createClientResponse(tokenBytes)
 		if err != nil {
 			p.log.Errorf("Error while creating client response for token: %v", err)
