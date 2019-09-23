@@ -91,11 +91,11 @@ func RegisterMixNodePresence(publicKey *sphinx.PublicKey, layer int, host ...str
 	}
 
 	endpoint := config.DirectoryServerMixPresenceURL
-	if len(host) == 1 {
+	if len(host) == 1 && len(host[0]) > 0 {
 		ip, _, err := net.SplitHostPort(host[0])
 		if err == nil && (ip == "localhost" || net.ParseIP(ip).IsLoopback()) {
 			endpoint = config.LocalDirectoryServerMixPresenceURL
-		} else if err.Error() == "missing port in address" &&
+		} else if err != nil && err.Error() == "missing port in address" &&
 			(host[0] == "localhost" || net.ParseIP(host[0]).IsLoopback()) {
 			endpoint = config.LocalDirectoryServerMixPresenceURL
 		}
@@ -127,11 +127,11 @@ func SendMixMetrics(metric models.MixMetric, host ...string) error {
 	}
 
 	endpoint := config.DirectoryServerMetricsURL
-	if len(host) == 1 {
+	if len(host) == 1 && len(host[0]) > 0 {
 		ip, _, err := net.SplitHostPort(host[0])
 		if err == nil && (ip == "localhost" || net.ParseIP(ip).IsLoopback()) {
 			endpoint = config.LocalDirectoryServerMetricsURL
-		} else if err.Error() == "missing port in address" &&
+		} else if err != nil && err.Error() == "missing port in address" &&
 			(host[0] == "localhost" || net.ParseIP(host[0]).IsLoopback()) {
 			endpoint = config.LocalDirectoryServerMetricsURL
 		}
@@ -167,11 +167,11 @@ func RegisterMixProviderPresence(publicKey *sphinx.PublicKey, clients []models.R
 	}
 
 	endpoint := config.DirectoryServerMixProviderPresenceURL
-	if len(host) == 1 {
+	if len(host) == 1 && len(host[0]) > 0 {
 		ip, _, err := net.SplitHostPort(host[0])
 		if err == nil && (ip == "localhost" || net.ParseIP(ip).IsLoopback()) {
 			endpoint = config.LocalDirectoryServerMixProviderPresenceURL
-		} else if err.Error() == "missing port in address" &&
+		} else if err != nil && err.Error() == "missing port in address" &&
 			(host[0] == "localhost" || net.ParseIP(host[0]).IsLoopback()) {
 			endpoint = config.LocalDirectoryServerMixProviderPresenceURL
 		}

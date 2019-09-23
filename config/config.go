@@ -40,6 +40,8 @@ const (
 	// TODO: somehow split mixConfig to distinguish providers and mixnodes?
 	// But then we would have to deal with nasty interfaces and protobuf issues...
 	ProviderLayer = 1000000
+
+	DefaultRemotePort = "1789"
 )
 
 // NewMixConfig constructor

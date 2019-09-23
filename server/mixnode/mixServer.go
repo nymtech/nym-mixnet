@@ -332,13 +332,7 @@ func NewMixServer(id string,
 		return nil, err
 	}
 
-	// addr, err := helpers.ResolveTCPAddress(mixServer.host, mixServer.port)
-
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	listener, err := net.Listen("tcp", ":"+mixServer.port)
+	listener, err := net.Listen("tcp", net.JoinHostPort(host, port))
 	if err != nil {
 		return nil, err
 	}
