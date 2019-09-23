@@ -31,6 +31,8 @@ func InitCmd(args []string, usage string) {
 	id := opts.Flags("--id").Label("ID").String("Id of the loopix-client we want to create config for", "")
 	providerID := opts.Flags("--provider").Label("PROVIDER").String("Id of the provider we have preference "+
 		"to connect to. If left empty, a random provider will be chosen", "")
+	local := opts.Flags("--local").Label("LOCAL").Bool("Flag to indicate whether the client is expected " +
+		"to run on the local mixnet deployment")
 
 	params := opts.Parse(args)
 	if len(params) != 0 {
@@ -60,6 +62,10 @@ func InitCmd(args []string, usage string) {
 	}
 
 	defaultCfg.Client.ProviderID = *providerID
+	if *local {
+		fmt.Fprintf(os.Stdout, "Using the local directory server")
+		defaultCfg.Client.DirectoryServerTopologyEndpoint = clientConfig.DefaultLocalDirectoryServerTopologyEndpoint
+	}
 
 	configPath, err := clientConfig.DefaultConfigPath(clientID)
 	if err != nil {

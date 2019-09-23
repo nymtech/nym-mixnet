@@ -39,7 +39,8 @@ const (
 	defaultFetchMessageRate     = 1.0
 	defaultMessageSendingRate   = 1.0
 
-	defaultDirectoryServerTopologyEndpoint = "http://directory.nymtech.net:8080/api/presence/topology"
+	defaultDirectoryServerTopologyEndpoint      = "http://directory.nymtech.net:8080/api/presence/topology"
+	DefaultLocalDirectoryServerTopologyEndpoint = "http://localhost:8080/api/presence/topology"
 )
 
 //nolint: gochecknoglobals
