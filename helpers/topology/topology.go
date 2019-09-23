@@ -46,8 +46,8 @@ const (
 	DefaultClientPort = "42"
 )
 
-func GetNetworkTopology() (*models.Topology, error) {
-	resp, err := http.Get(config.DirectoryServerTopology)
+func GetNetworkTopology(endpoint string) (*models.Topology, error) {
+	resp, err := http.Get(endpoint)
 	if err != nil {
 		return nil, err
 	}

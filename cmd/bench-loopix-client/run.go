@@ -66,7 +66,7 @@ func cmdRun(args []string, usage string) {
 	cfg.Client.DirectoryServerTopologyEndpoint = clientConfig.DefaultLocalDirectoryServerTopologyEndpoint
 
 	// get an Ingress provider that IS NOT the benchmark provider
-	initialTopology, err := topology.GetNetworkTopology()
+	initialTopology, err := topology.GetNetworkTopology(cfg.Client.DirectoryServerTopologyEndpoint)
 	if err != nil || len(initialTopology.MixProviderNodes) == 0 {
 		fmt.Fprintf(os.Stderr, "failed to obtain network topology: %v", err)
 		os.Exit(1)

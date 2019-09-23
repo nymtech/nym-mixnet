@@ -88,7 +88,7 @@ func (c *NetClient) Start() error {
 
 	c.outQueue = make(chan []byte)
 
-	initialTopology, err := topology.GetNetworkTopology()
+	initialTopology, err := topology.GetNetworkTopology(c.cfg.Client.DirectoryServerTopologyEndpoint)
 	if err != nil {
 		return err
 	}
@@ -118,7 +118,7 @@ func (c *NetClient) Start() error {
 
 	// before we start traffic, we must wait until registration of some client reaches directory server
 	for {
-		initialTopology, err := topology.GetNetworkTopology()
+		initialTopology, err := topology.GetNetworkTopology(c.cfg.Client.DirectoryServerTopologyEndpoint)
 		if err != nil {
 			return err
 		}
@@ -246,7 +246,7 @@ func (c *NetClient) startInputRoutine() {
 
 func (c *NetClient) checkTopology() error {
 	if c.Network.ShouldUpdate() {
-		newTopology, err := topology.GetNetworkTopology()
+		newTopology, err := topology.GetNetworkTopology(c.cfg.Client.DirectoryServerTopologyEndpoint)
 		if err != nil {
 			c.log.Errorf("error while reading network topology: %v", err)
 			return err

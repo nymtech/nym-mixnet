@@ -95,7 +95,7 @@ func InitCmd(args []string, usage string) {
 	fmt.Fprintf(os.Stdout, "Saved generated public key to %v\n", defaultCfg.Client.PublicKeyFile())
 
 	// if we haven't specified a provider, let's try to obtain one now
-	initialTopology, err := topology.GetNetworkTopology()
+	initialTopology, err := topology.GetNetworkTopology(defaultCfg.Client.DirectoryServerTopologyEndpoint)
 	if err != nil || len(initialTopology.MixProviderNodes) == 0 {
 		fmt.Fprintf(os.Stderr, "failed to obtain network topology: %v", err)
 		os.Exit(1)
