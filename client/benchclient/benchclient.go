@@ -1,4 +1,4 @@
-// Copyright 2018-2019 The Loopix-Messaging Authors
+// Copyright 2019 The Loopix-Messaging Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -159,8 +159,8 @@ func NewBenchClient(nc *client.NetClient, numMsgs int, interval time.Duration, p
 				Id:   "BenchmarkProvider",
 				Host: "localhost",
 				Port: "11000",
-				PubKey: []byte{17, 170, 15, 150, 155, 75, 240, 66, 54, 100, 131, 127, 193, 10, 133,
-					32, 62, 155, 9, 46, 200, 55, 60, 125, 223, 76, 170, 167, 100, 34, 176, 117},
+				PubKey: []byte{17, 170, 15, 150, 155, 75, 240, 66, 54, 100, 131, 127, 193, 10,
+					133, 32, 62, 155, 9, 46, 200, 55, 60, 125, 223, 76, 170, 167, 100, 34, 176, 117},
 			},
 		},
 		numberMessages:     numMsgs,

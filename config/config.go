@@ -25,13 +25,17 @@ import (
 )
 
 const (
-	DirectoryServerBaseURL                = "http://directory.nymtech.net:8080/"
 	DirectoryServerHealthcheckURL         = "http://directory.nymtech.net:8080/api/healthcheck"
 	DirectoryServerMetricsURL             = "http://directory.nymtech.net:8080/api/metrics/mixes"
 	DirectoryServerPkiURL                 = "http://directory.nymtech.net:8080/api/nodes"
 	DirectoryServerMixPresenceURL         = "http://directory.nymtech.net:8080/api/presence/mixnodes"
 	DirectoryServerMixProviderPresenceURL = "http://directory.nymtech.net:8080/api/presence/mixproviders"
 	DirectoryServerTopology               = "http://directory.nymtech.net:8080/api/presence/topology"
+
+	LocalDirectoryServerMetricsURL             = "http://localhost:8080/api/metrics/mixes"
+	LocalDirectoryServerMixPresenceURL         = "http://localhost:8080/api/presence/mixnodes"
+	LocalDirectoryServerMixProviderPresenceURL = "http://localhost:8080/api/presence/mixproviders"
+	LocalDirectoryServerTopology               = "http://localhost:8080/api/presence/topology"
 
 	// TODO: somehow split mixConfig to distinguish providers and mixnodes?
 	// But then we would have to deal with nasty interfaces and protobuf issues...

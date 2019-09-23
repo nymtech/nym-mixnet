@@ -31,6 +31,8 @@ func InitCmd(args []string, usage string) {
 	id := opts.Flags("--id").Label("ID").String("Id of the loopix-client we want to create config for", "")
 	providerID := opts.Flags("--provider").Label("PROVIDER").String("Id of the provider we have preference "+
 		"to connect to. If left empty, a random provider will be chosen", "")
+	local := opts.Flags("--local").Label("LOCAL").Bool("Flag to indicate whether the client is expected " +
+		"to run on the local mixnet deployment")
 
 	params := opts.Parse(args)
 	if len(params) != 0 {
@@ -60,6 +62,10 @@ func InitCmd(args []string, usage string) {
 	}
 
 	defaultCfg.Client.ProviderID = *providerID
+	if *local {
+		fmt.Fprintf(os.Stdout, "Using the local directory server")
+		defaultCfg.Client.DirectoryServerTopologyEndpoint = clientConfig.DefaultLocalDirectoryServerTopologyEndpoint
+	}
 
 	configPath, err := clientConfig.DefaultConfigPath(clientID)
 	if err != nil {
@@ -89,7 +95,7 @@ func InitCmd(args []string, usage string) {
 	fmt.Fprintf(os.Stdout, "Saved generated public key to %v\n", defaultCfg.Client.PublicKeyFile())
 
 	// if we haven't specified a provider, let's try to obtain one now
-	initialTopology, err := topology.GetNetworkTopology()
+	initialTopology, err := topology.GetNetworkTopology(defaultCfg.Client.DirectoryServerTopologyEndpoint)
 	if err != nil || len(initialTopology.MixProviderNodes) == 0 {
 		fmt.Fprintf(os.Stderr, "failed to obtain network topology: %v", err)
 		os.Exit(1)
@@ -97,14 +103,17 @@ func InitCmd(args []string, usage string) {
 
 	// iterating through map is not deterministic so in theory multiple clients should be getting
 	// different providers
-	for provID, _ := range initialTopology.MixProviderNodes {
+	for provID := range initialTopology.MixProviderNodes {
 		// get the first entry
 		defaultCfg.Client.ProviderID = provID
 		break
 	}
 
 	// finally write our config to a file
-	clientConfig.WriteConfigFile(configPath, defaultCfg)
+	if err := clientConfig.WriteConfigFile(configPath, defaultCfg); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to write config to a file: %v", err)
+		os.Exit(1)
+	}
 
 	fmt.Fprintf(os.Stdout, "Saved generated config to %v\n", configPath)
 }

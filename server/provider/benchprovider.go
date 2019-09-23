@@ -19,6 +19,7 @@ package provider
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
 	"time"
@@ -26,6 +27,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/nymtech/loopix-messaging/config"
 	"github.com/nymtech/loopix-messaging/flags"
+	"github.com/nymtech/loopix-messaging/helpers"
 )
 
 const (
@@ -45,9 +47,21 @@ type BenchProvider struct {
 	receivedMessagesCount int
 }
 
-func DisableLogging() {
-	// logLocal.Warn("Disabling logging")
-	// logLocal.Logger.Out = ioutil.Discard
+func (p *BenchProvider) startSendingPresence() {
+	ticker := time.NewTicker(presenceInterval)
+	for {
+		select {
+		case <-ticker.C:
+			if err := helpers.RegisterMixProviderPresence(p.GetPublicKey(),
+				p.convertRecordsToModelData(),
+				net.JoinHostPort(p.host, p.port),
+			); err != nil {
+				p.log.Errorf("Failed to register presence: %v", err)
+			}
+		case <-p.haltedCh:
+			return
+		}
+	}
 }
 
 // Start creates loggers for capturing info and error logs
@@ -69,6 +83,7 @@ func (p *BenchProvider) run() {
 		p.log.Infof("Listening on %s", p.host+":"+p.port)
 		p.listenForIncomingConnections()
 	}()
+	go p.startSendingPresence()
 
 	<-p.doneCh
 
@@ -144,55 +159,61 @@ func (p *BenchProvider) receivedPacket(packet []byte) error {
 func (p *BenchProvider) listenForIncomingConnections() {
 	for {
 		conn, err := p.listener.Accept()
-
 		if err != nil {
-			p.log.Errorf("Error when listening for incoming connection: %v", err)
-		} else {
-			p.log.Infof("Received new connection from %s", conn.RemoteAddr())
-			errs := make(chan error, 1)
-			go p.handleConnection(conn, errs)
-			err = <-errs
-			if err != nil {
-				p.log.Errorf("Error when listening for incoming connection: %v", err)
+			if e, ok := err.(net.Error); ok && !e.Temporary() {
+				p.log.Panicf("Critical accept failure: %v", err)
+				return
 			}
+			continue
 		}
+
+		p.log.Infof("Received new connection from %s", conn.RemoteAddr())
+		go p.handleConnection(conn)
 	}
 }
 
 // HandleConnection handles the received packets; it checks the flag of the
 // packet and schedules a corresponding process function and returns an error.
-func (p *BenchProvider) handleConnection(conn net.Conn, errs chan<- error) {
+func (p *BenchProvider) handleConnection(conn net.Conn) {
+	defer func() {
+		p.log.Debugf("Closing Connection to %v", conn.RemoteAddr())
+		if err := conn.Close(); err != nil {
+			p.log.Warnf("error when closing connection from %s: %v", conn.RemoteAddr(), err)
+		}
+	}()
 
 	buff := make([]byte, 1024)
 	reqLen, err := conn.Read(buff)
-	defer conn.Close()
-
 	if err != nil {
-		errs <- err
+		p.log.Errorf("Error while reading from the connection: %v", err)
+		return
 	}
 
 	var packet config.GeneralPacket
-	err = proto.Unmarshal(buff[:reqLen], &packet)
-	if err != nil {
-		errs <- err
+	if err = proto.Unmarshal(buff[:reqLen], &packet); err != nil {
+		p.log.Errorf("Error while unmarshalling received packet: %v", err)
+		return
 	}
 
-	if flags.PacketTypeFlagFromBytes(packet.Flag) == flags.CommFlag {
+	switch flags.PacketTypeFlagFromBytes(packet.Flag) {
+	case flags.CommFlag:
 		if err := p.receivedPacket(packet.Data); err != nil {
 			panic(err)
 		}
-	} else {
+
+	default:
 		fmt.Fprintf(os.Stderr, "%v", string(packet.Data))
 		panic(errors.New("unknown packet received - can't have those during benchmark"))
 	}
-	errs <- nil
 }
 
 func NewBenchProvider(provider *ProviderServer, numMessages int) (*BenchProvider, error) {
-	return &BenchProvider{
+	bp := &BenchProvider{
 		doneCh:           make(chan struct{}),
 		ProviderServer:   provider,
 		numMessages:      numMessages,
 		receivedMessages: make([]timestampedMessage, 0, numMessages),
-	}, nil
+	}
+	bp.ProviderServer.log.Out = ioutil.Discard
+	return bp, nil
 }

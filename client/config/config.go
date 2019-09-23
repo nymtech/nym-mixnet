@@ -20,6 +20,7 @@ import (
 	"os"
 	"path/filepath"
 
+	mainConfig "github.com/nymtech/loopix-messaging/config"
 	"github.com/sirupsen/logrus"
 )
 
@@ -39,7 +40,8 @@ const (
 	defaultFetchMessageRate     = 1.0
 	defaultMessageSendingRate   = 1.0
 
-	defaultDirectoryServerTopologyEndpoint = "http://directory.nymtech.net:8080/api/presence/topology"
+	defaultDirectoryServerTopologyEndpoint      = mainConfig.DirectoryServerTopology
+	DefaultLocalDirectoryServerTopologyEndpoint = mainConfig.LocalDirectoryServerTopology
 )
 
 //nolint: gochecknoglobals

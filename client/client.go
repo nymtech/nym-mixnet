@@ -88,7 +88,7 @@ func (c *NetClient) Start() error {
 
 	c.outQueue = make(chan []byte)
 
-	initialTopology, err := topology.GetNetworkTopology()
+	initialTopology, err := topology.GetNetworkTopology(c.cfg.Client.DirectoryServerTopologyEndpoint)
 	if err != nil {
 		return err
 	}
@@ -96,8 +96,11 @@ func (c *NetClient) Start() error {
 		return err
 	}
 
-	// provider, err := topology.ProviderPresenceToConfig(initialTopology.MixProviderNodes[c.cfg.Client.ProviderID])
-	provider, err := providerFromTopology(initialTopology)
+	if _, ok := initialTopology.MixProviderNodes[c.cfg.Client.ProviderID]; !ok {
+		return fmt.Errorf("specified provider does not seem to be online: %v", c.cfg.Client.ProviderID)
+	}
+	provider, err := topology.ProviderPresenceToConfig(initialTopology.MixProviderNodes[c.cfg.Client.ProviderID])
+	// provider, err := providerFromTopology(initialTopology)
 	if err != nil {
 		return err
 	}
@@ -115,7 +118,7 @@ func (c *NetClient) Start() error {
 
 	// before we start traffic, we must wait until registration of some client reaches directory server
 	for {
-		initialTopology, err := topology.GetNetworkTopology()
+		initialTopology, err := topology.GetNetworkTopology(c.cfg.Client.DirectoryServerTopologyEndpoint)
 		if err != nil {
 			return err
 		}
@@ -131,7 +134,12 @@ func (c *NetClient) Start() error {
 	c.log.Info("Obtained valid network topology")
 
 	c.startTraffic()
-	go c.startInputRoutine()
+
+	// if public is zeroed, it means either something went terribly wrong
+	// or we are running a benchmark. In either case, we don't want to be accepting inputs
+	if !helpers.IsZeroElement(c.GetPublicKey()) {
+		go c.startInputRoutine()
+	}
 	return nil
 }
 
@@ -238,7 +246,7 @@ func (c *NetClient) startInputRoutine() {
 
 func (c *NetClient) checkTopology() error {
 	if c.Network.ShouldUpdate() {
-		newTopology, err := topology.GetNetworkTopology()
+		newTopology, err := topology.GetNetworkTopology(c.cfg.Client.DirectoryServerTopologyEndpoint)
 		if err != nil {
 			c.log.Errorf("error while reading network topology: %v", err)
 			return err
@@ -712,6 +720,7 @@ func NewTestClient(cfg *clientConfig.Config, prvKey *sphinx.PrivateKey, pubKey *
 	if err != nil {
 		return nil, err
 	}
+
 	// this logger can be shared as it will be disabled anyway
 	disabledLog := baseDisabledLogger.GetLogger("test")
 
@@ -723,10 +732,14 @@ func NewTestClient(cfg *clientConfig.Config, prvKey *sphinx.PrivateKey, pubKey *
 	)
 
 	c := NetClient{CryptoClient: core,
+		cfg:      cfg,
 		haltedCh: make(chan struct{}),
 		log:      disabledLog,
 	}
-	c.config = config.ClientConfig{Id: c.cfg.Client.ID,
+
+	ID := fmt.Sprintf("%x", c.GetPublicKey().Bytes())
+
+	c.config = config.ClientConfig{Id: ID,
 		Host:     "", // TODO: remove
 		Port:     "", // TODO: remove
 		PubKey:   c.GetPublicKey().Bytes(),
