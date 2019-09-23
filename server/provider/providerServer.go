@@ -146,6 +146,7 @@ func (p *ProviderServer) startSendingPresence() {
 		case <-ticker.C:
 			if err := helpers.RegisterMixProviderPresence(p.GetPublicKey(),
 				p.convertRecordsToModelData(),
+				net.JoinHostPort(p.host, p.port),
 			); err != nil {
 				p.log.Errorf("Failed to register presence: %v", err)
 			}
@@ -519,6 +520,7 @@ func NewProviderServer(id string,
 
 	if err := helpers.RegisterMixProviderPresence(providerServer.GetPublicKey(),
 		providerServer.convertRecordsToModelData(),
+		net.JoinHostPort(host, port),
 	); err != nil {
 		return nil, err
 	}
