@@ -103,14 +103,17 @@ func InitCmd(args []string, usage string) {
 
 	// iterating through map is not deterministic so in theory multiple clients should be getting
 	// different providers
-	for provID, _ := range initialTopology.MixProviderNodes {
+	for provID := range initialTopology.MixProviderNodes {
 		// get the first entry
 		defaultCfg.Client.ProviderID = provID
 		break
 	}
 
 	// finally write our config to a file
-	clientConfig.WriteConfigFile(configPath, defaultCfg)
+	if err := clientConfig.WriteConfigFile(configPath, defaultCfg); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to write config to a file: %v", err)
+		os.Exit(1)
+	}
 
 	fmt.Fprintf(os.Stdout, "Saved generated config to %v\n", configPath)
 }

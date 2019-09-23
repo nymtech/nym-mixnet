@@ -28,6 +28,7 @@ const (
 	defaultID = "Client"
 )
 
+//nolint: lll
 func RunCmd(args []string, usage string) {
 	opts := newOpts("run [OPTIONS]", usage)
 	id := opts.Flags("--id").Label("ID").String("Id of the loopix-client we want to run", defaultID)
