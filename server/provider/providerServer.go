@@ -133,7 +133,7 @@ func (p *ProviderServer) convertRecordsToModelData() []models.RegisteredClient {
 	registeredClients := make([]models.RegisteredClient, 0, len(p.assignedClients))
 	for _, entry := range p.assignedClients {
 		registeredClients = append(registeredClients, models.RegisteredClient{
-			PubKey: base64.StdEncoding.EncodeToString(entry.pubKey),
+			PubKey: base64.URLEncoding.EncodeToString(entry.pubKey),
 		})
 	}
 	return registeredClients
@@ -335,7 +335,7 @@ func (p *ProviderServer) registerNewClient(clientBytes []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	clientID := fmt.Sprintf("%x", clientConf.PubKey)
+	clientID := base64.URLEncoding.EncodeToString(clientConf.PubKey)
 
 	token, err := helpers.SHA256([]byte("TMP_Token" + clientID))
 	if err != nil {
@@ -387,7 +387,7 @@ func (p *ProviderServer) handlePullRequest(rqsBytes []byte) ([][]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	clientID := fmt.Sprintf("%x", request.ClientPublicKey)
+	clientID := base64.URLEncoding.EncodeToString(request.ClientPublicKey)
 
 	p.log.Infof("Processing pull request: %s %s", clientID, string(request.Token))
 	if p.authenticateUser(request.ClientPublicKey, request.Token) {
@@ -414,7 +414,8 @@ func (p *ProviderServer) handlePullRequest(rqsBytes []byte) ([][]byte, error) {
 // the one stored by the provider. If tokens are the same, it returns true
 // and false otherwise.
 func (p *ProviderServer) authenticateUser(clientKey, clientToken []byte) bool {
-	clientID := fmt.Sprintf("%x", clientKey)
+
+	clientID := base64.URLEncoding.EncodeToString(clientKey)
 	if bytes.Equal(p.assignedClients[clientID].token, clientToken) &&
 		bytes.Equal(p.assignedClients[clientID].pubKey, clientKey) {
 		// && signature check on message to make sure client actually owns this ID

@@ -80,7 +80,7 @@ func GetLocalIP() (string, error) {
 
 // RegisterMixNodePresence registers server presence at the directory server.
 func RegisterMixNodePresence(publicKey *sphinx.PublicKey, layer int, host ...string) error {
-	b64Key := base64.StdEncoding.EncodeToString(publicKey.Bytes())
+	b64Key := base64.URLEncoding.EncodeToString(publicKey.Bytes())
 	values := map[string]interface{}{"pubKey": b64Key, "layer": layer}
 	if len(host) == 1 {
 		values["host"] = host[0]
@@ -156,7 +156,7 @@ func SendMixMetrics(metric models.MixMetric, host ...string) error {
 
 // RegisterMixProviderPresence registers server presence at the directory server.
 func RegisterMixProviderPresence(publicKey *sphinx.PublicKey, clients []models.RegisteredClient, host ...string) error {
-	b64Key := base64.StdEncoding.EncodeToString(publicKey.Bytes())
+	b64Key := base64.URLEncoding.EncodeToString(publicKey.Bytes())
 	values := map[string]interface{}{"pubKey": b64Key, "registeredClients": clients}
 	if len(host) == 1 {
 		values["host"] = host[0]

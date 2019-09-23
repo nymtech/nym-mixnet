@@ -28,7 +28,7 @@ import (
 
 const (
 	defaultBenchmarkClientID = "BenchmarkClient"
-	benchmarkProviderID      = "EaoPlptL8EI2ZIN/wQqFID6bCS7INzx930yqp2QisHU="
+	benchmarkProviderID      = "EaoPlptL8EI2ZIN_wQqFID6bCS7INzx930yqp2QisHU="
 )
 
 // I think here we need to sacrifice the linter error of too long lines for the formatting as it would hideous

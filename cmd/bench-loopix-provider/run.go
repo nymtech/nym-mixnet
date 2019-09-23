@@ -42,7 +42,7 @@ func cmdRun(args []string, usage string) {
 		os.Exit(1)
 	}
 
-	if err := os.RemoveAll("inboxes/0000000000000000000000000000000000000000000000000000000000000000"); err != nil {
+	if err := os.RemoveAll("inboxes/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="); err != nil {
 		fmt.Fprintf(os.Stderr, "failed to empty bench inbox: %v", err)
 		os.Exit(1)
 	}
@@ -63,7 +63,7 @@ func cmdRun(args []string, usage string) {
 		panic(err)
 	}
 
-	b64Key := base64.StdEncoding.EncodeToString(pubP.Bytes())
+	b64Key := base64.URLEncoding.EncodeToString(pubP.Bytes())
 	fmt.Println(b64Key)
 
 	benchmarkProviderServer, err := provider.NewBenchProvider(baseProviderServer, *numMessages)
