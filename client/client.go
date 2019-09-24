@@ -18,13 +18,11 @@
 package client
 
 import (
-	"crypto/rand"
 	"encoding/base64"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"math"
-	"math/big"
 	"net"
 	"os"
 	"sync"
@@ -48,8 +46,7 @@ import (
 )
 
 const (
-	dummyLoad = "DummyPayloadMessage"
-	loopLoad  = "LoopCoverMessage"
+	loopLoad = "LoopCoverMessage"
 )
 
 // Client is the client networking interface
@@ -360,10 +357,6 @@ func (c *NetClient) startTraffic() {
 		c.turnOnLoopCoverTraffic()
 	}
 
-	if c.cfg.Debug.DropCoverTrafficRate > 0.0 {
-		c.turnOnDropCoverTraffic()
-	}
-
 	if c.cfg.Debug.FetchMessageRate > 0.0 {
 		go func() {
 			c.controlMessagingFetching()
@@ -440,8 +433,6 @@ func (c *NetClient) getMessagesFromProvider() error {
 		switch packetDataStr {
 		case loopLoad:
 			c.log.Debugf("Received loop cover message %v", packetDataStr)
-		case dummyLoad:
-			c.log.Debugf("Received drop cover message %v", packetDataStr)
 		default:
 			fmt.Fprintf(os.Stdout, "\nReceived: %s\n?> ", packetDataStr) // print to stdout regardless of logging location
 			c.log.Infof("Received new message: %v", packetDataStr)
@@ -467,7 +458,7 @@ func (c *NetClient) controlOutQueue() error {
 			c.log.Debugf("Received response: %v", response)
 		default:
 			if !c.cfg.Debug.RateCompliantCoverMessagesDisabled {
-				dummyPacket, err := c.createDropCoverMessage()
+				dummyPacket, err := c.createLoopCoverMessage()
 				if err != nil {
 					return err
 				}
@@ -500,38 +491,6 @@ func (c *NetClient) controlMessagingFetching() {
 			c.log.Errorf("Error in ControlMessagingFetching - generating random exp. value failed: %v", err)
 		}
 	}
-}
-
-// CreateCoverMessage packs a dummy message into a Sphinx packet.
-// The dummy message is a loop message.
-func (c *NetClient) createDropCoverMessage() ([]byte, error) {
-	randomRecipient, err := c.getRandomRecipient(c.Network.Clients)
-	if err != nil {
-		return nil, err
-	}
-	sphinxPacket, err := c.EncodeMessage(dummyLoad, randomRecipient)
-	if err != nil {
-		return nil, err
-	}
-
-	packetBytes, err := config.WrapWithFlag(flags.CommFlag, sphinxPacket)
-	if err != nil {
-		return nil, err
-	}
-	return packetBytes, nil
-}
-
-// getRandomRecipient picks a random client from the list of all available clients (stored by the client).
-// getRandomRecipient returns the selected client public configuration and an error
-func (c *NetClient) getRandomRecipient(slice []config.ClientConfig) (config.ClientConfig, error) {
-	if len(slice) == 0 {
-		return config.ClientConfig{}, errors.New("invalid client config slice provided")
-	}
-	randIdx, err := rand.Int(rand.Reader, big.NewInt(int64(len(slice))))
-	if err != nil {
-		return config.ClientConfig{}, err
-	}
-	return slice[randIdx.Int64()], nil
 }
 
 // createLoopCoverMessage packs a dummy loop message into
@@ -573,31 +532,6 @@ func (c *NetClient) runLoopCoverTrafficStream() error {
 	}
 }
 
-// runDropCoverTrafficStream manages the stream of drop cover traffic.
-// In each stream iteration it creates a fresh drop cover message destinated
-// to a randomly selected user in the network. The drop packet is sent
-// and the next stream call is scheduled after random time.
-func (c *NetClient) runDropCoverTrafficStream() error {
-	c.log.Debugf("Stream of drop cover traffic started")
-	for {
-		dropPacket, err := c.createDropCoverMessage()
-		if err != nil {
-			return err
-		}
-		response, err := c.send(dropPacket, c.Provider.Host, c.Provider.Port)
-		if err != nil {
-			c.log.Errorf("Could not send loop drop cover traffic message: %v", err)
-			return err
-		}
-		c.log.Debugf("Drop packet sent")
-		c.log.Debugf("Received response: %v", response)
-
-		if err := delayBeforeContinue(c.cfg.Debug.DropCoverTrafficRate); err != nil {
-			return err
-		}
-	}
-}
-
 func delayBeforeContinue(rateParam float64) error {
 	delaySec, err := helpers.RandomExponential(rateParam)
 	if err != nil {
@@ -613,16 +547,6 @@ func (c *NetClient) turnOnLoopCoverTraffic() {
 		err := c.runLoopCoverTrafficStream()
 		if err != nil {
 			c.log.Errorf("Error in the controller of the loop cover traffic. Possible security threat.: %v", err)
-		}
-	}()
-}
-
-// turnOnDropCoverTraffic starts the stream of drop cover traffic
-func (c *NetClient) turnOnDropCoverTraffic() {
-	go func() {
-		err := c.runDropCoverTrafficStream()
-		if err != nil {
-			c.log.Errorf("Error in the controller of the drop cover traffic. Possible security threat.: %v", err)
 		}
 	}()
 }
