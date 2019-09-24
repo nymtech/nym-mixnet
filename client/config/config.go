@@ -35,10 +35,10 @@ const (
 	defaultPrivateKeyFileName = "private_key.pem"
 	defaultPublicKeyFileName  = "public_key.pem"
 
-	defaultLoopCoverTrafficRate = 0.1
-	defaultDropCoverTrafficRate = 0.1
-	defaultFetchMessageRate     = 1.0
-	defaultMessageSendingRate   = 1.0
+	defaultLoopCoverTrafficRate = 10.0
+	defaultDropCoverTrafficRate = 10.0
+	defaultFetchMessageRate     = 10.0
+	defaultMessageSendingRate   = 10.0
 
 	defaultDirectoryServerTopologyEndpoint      = mainConfig.DirectoryServerTopology
 	DefaultLocalDirectoryServerTopologyEndpoint = mainConfig.LocalDirectoryServerTopology
