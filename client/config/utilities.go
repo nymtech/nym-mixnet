@@ -133,13 +133,6 @@ level = "{{ .Logging.Level }}"
 # If set to a negative value, the loop cover traffic stream will be disabled.
 loop_cover_traffic_rate = {{FormatFloats .Debug.LoopCoverTrafficRate }}
 
-# The rate at which clients are sending drop cover packets
-# to randomly selected users in the network in the drop cover traffic stream.
-# The value is the parameter of an exponential distribution, and is the reciprocal of the
-# expected value of the exponential distribution.
-# If set to a negative value, the drop cover traffic stream will be disabled.
-drop_cover_traffic_rate = {{FormatFloats .Debug.DropCoverTrafficRate }}
-
 # The rate at which clients are querying the providers for received packets.
 # The value is the parameter of an exponential distribution, and is the reciprocal of the
 # expected value of the exponential distribution.
@@ -154,7 +147,7 @@ fetch_message_rate = {{FormatFloats .Debug.FetchMessageRate }}
 # If set to a negative value, client will never try to send real traffic data.
 message_sending_rate = {{FormatFloats .Debug.MessageSendingRate }}
 
-# Whether drop cover messages should be sent to respect message_sending_rate.
+# Whether loop cover messages should be sent to respect message_sending_rate.
 # In the case of it being disabled and not having enough real traffic
 # waiting to be sent the actual sending rate is going be lower than the desired value
 # thus decreasing the anonymity.

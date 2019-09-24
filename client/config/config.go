@@ -193,13 +193,6 @@ type Debug struct {
 	// If set to a negative value, the loop cover traffic stream will be disabled.
 	LoopCoverTrafficRate float64 `toml:"loop_cover_traffic_rate"`
 
-	// DropCoverTrafficRate defines the rate at which clients are sending drop cover packets
-	// to randomly selected users in the network in the drop cover traffic stream.
-	// The value is the parameter of an exponential distribution, and is the reciprocal of the
-	// expected value of the exponential distribution.
-	// If set to a negative value, the drop cover traffic stream will be disabled.
-	DropCoverTrafficRate float64 `toml:"drop_cover_traffic_rate"`
-
 	// FetchMessageRate defines the rate at which clients are querying the providers for received packets.
 	// The value is the parameter of an exponential distribution, and is the reciprocal of the
 	// expected value of the exponential distribution.
@@ -214,7 +207,7 @@ type Debug struct {
 	// If set to a negative value, client will never try to send real traffic data.
 	MessageSendingRate float64 `toml:"message_sending_rate "`
 
-	// RateCompliantCoverMessagesDisabled specifies whether drop cover messages should be sent
+	// RateCompliantCoverMessagesDisabled specifies whether loop cover messages should be sent
 	// to respect MessageSendingRate. In the case of it being disabled and not having enough real traffic
 	// waiting to be sent the actual sending rate is going be lower than the desired value
 	// thus decreasing the anonymity.
@@ -224,9 +217,6 @@ type Debug struct {
 func (dCfg *Debug) applyDefaults() {
 	if dCfg.LoopCoverTrafficRate == 0.0 {
 		dCfg.LoopCoverTrafficRate = defaultLoopCoverTrafficRate
-	}
-	if dCfg.DropCoverTrafficRate == 0.0 {
-		dCfg.DropCoverTrafficRate = defaultDropCoverTrafficRate
 	}
 	if dCfg.FetchMessageRate == 0.0 {
 		dCfg.FetchMessageRate = defaultFetchMessageRate
@@ -240,7 +230,6 @@ func (dCfg *Debug) applyDefaults() {
 func DefaultDebugConfig() *Debug {
 	return &Debug{
 		LoopCoverTrafficRate:               defaultLoopCoverTrafficRate,
-		DropCoverTrafficRate:               defaultDropCoverTrafficRate,
 		FetchMessageRate:                   defaultFetchMessageRate,
 		MessageSendingRate:                 defaultMessageSendingRate,
 		RateCompliantCoverMessagesDisabled: false,

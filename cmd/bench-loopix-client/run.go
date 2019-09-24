@@ -59,7 +59,6 @@ func cmdRun(args []string, usage string) {
 
 	cfg.Logging.Disable = true
 	cfg.Debug.LoopCoverTrafficRate = 0.0
-	cfg.Debug.DropCoverTrafficRate = 0.0
 	cfg.Debug.FetchMessageRate = 0.0
 	cfg.Debug.MessageSendingRate = 10000000.0
 	cfg.Debug.RateCompliantCoverMessagesDisabled = true
