@@ -26,7 +26,7 @@ import (
 const (
 	// PkiDb is the location of the database file, relative to the project root. TODO: move this to homedir.
 	PkiDb        = "pki/database.db"
-	defaultHost  = "localhost"
+	defaultHost  = ""
 	defaultID    = "Mix1"
 	defaultPort  = "1789"
 	defaultLayer = -1
