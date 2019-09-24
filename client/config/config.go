@@ -177,10 +177,10 @@ func (cfg *Logging) validate() error {
 }
 
 // DefaultLoggingConfig returns default logging configuration.
-func DefaultLoggingConfig() *Logging {
+func DefaultLoggingConfig(clientID string) *Logging {
 	return &Logging{
 		Disable: false,
-		File:    "",
+		File:    filepath.Join("/tmp", "loopix_"+clientID+".log"),
 		Level:   defaultLogLevel,
 	}
 }
@@ -262,7 +262,7 @@ func DefaultConfig(clientID string) (*Config, error) {
 	defaultClientConfig, _ := DefaultClientConfig(clientID)
 	return &Config{
 		Client:  defaultClientConfig,
-		Logging: DefaultLoggingConfig(),
+		Logging: DefaultLoggingConfig(clientID),
 		Debug:   DefaultDebugConfig(),
 	}, nil
 }
@@ -282,7 +282,7 @@ func (cfg *Config) validateAndApplyDefaults() error {
 	cfg.Debug.applyDefaults()
 
 	if cfg.Logging == nil {
-		cfg.Logging = DefaultLoggingConfig()
+		cfg.Logging = DefaultLoggingConfig(cfg.Client.ID)
 	}
 
 	if err := cfg.Logging.validate(); err != nil {
