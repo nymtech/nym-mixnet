@@ -27,7 +27,7 @@ linters-settings:
     list-type: whitelist
     include-go-root: false
     packages:
-      - github.com/nymtech/loopix-messaging
+      - github.com/nymtech/nym-mixnet
       - github.com/golang/protobuf/proto
       - github.com/jmoiron/sqlx
       - github.com/stretchr/testify/assert

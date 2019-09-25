@@ -18,9 +18,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/nymtech/loopix-messaging/client"
-	clientConfig "github.com/nymtech/loopix-messaging/client/config"
-	"github.com/nymtech/loopix-messaging/helpers"
+	"github.com/nymtech/nym-mixnet/client"
+	clientConfig "github.com/nymtech/nym-mixnet/client/config"
+	"github.com/nymtech/nym-mixnet/helpers"
 	"github.com/tav/golly/optparse"
 )
 

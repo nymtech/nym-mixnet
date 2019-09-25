@@ -25,10 +25,10 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/nymtech/loopix-messaging/config"
-	"github.com/nymtech/loopix-messaging/helpers"
-	"github.com/nymtech/loopix-messaging/helpers/topology"
-	"github.com/nymtech/loopix-messaging/sphinx"
+	"github.com/nymtech/nym-mixnet/config"
+	"github.com/nymtech/nym-mixnet/helpers"
+	"github.com/nymtech/nym-mixnet/helpers/topology"
+	"github.com/nymtech/nym-mixnet/sphinx"
 	"github.com/sirupsen/logrus"
 )
 

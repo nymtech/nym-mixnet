@@ -24,8 +24,8 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/nymtech/loopix-messaging/config"
-	"github.com/nymtech/loopix-messaging/sphinx"
+	"github.com/nymtech/nym-mixnet/config"
+	"github.com/nymtech/nym-mixnet/sphinx"
 )
 
 var (

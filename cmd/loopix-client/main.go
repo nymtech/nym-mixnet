@@ -15,7 +15,7 @@
 package main
 
 import (
-	cmd "github.com/nymtech/loopix-messaging/cmd/loopix-client/commands"
+	cmd "github.com/nymtech/nym-mixnet/cmd/loopix-client/commands"
 	"github.com/tav/golly/optparse"
 )
 

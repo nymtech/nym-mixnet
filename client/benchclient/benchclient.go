@@ -23,9 +23,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/nymtech/loopix-messaging/client"
-	"github.com/nymtech/loopix-messaging/config"
-	"github.com/nymtech/loopix-messaging/flags"
+	"github.com/nymtech/nym-mixnet/client"
+	"github.com/nymtech/nym-mixnet/config"
+	"github.com/nymtech/nym-mixnet/flags"
 )
 
 const (

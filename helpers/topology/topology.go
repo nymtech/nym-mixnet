@@ -28,7 +28,7 @@ import (
 	"net/http"
 
 	"github.com/nymtech/directory-server/models"
-	"github.com/nymtech/loopix-messaging/config"
+	"github.com/nymtech/nym-mixnet/config"
 )
 
 // MixPresence defines map containing presence information of all mix nodes in given topology.

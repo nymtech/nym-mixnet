@@ -29,13 +29,13 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/nymtech/directory-server/models"
-	"github.com/nymtech/loopix-messaging/config"
-	"github.com/nymtech/loopix-messaging/flags"
-	"github.com/nymtech/loopix-messaging/helpers"
-	"github.com/nymtech/loopix-messaging/logger"
-	"github.com/nymtech/loopix-messaging/networker"
-	"github.com/nymtech/loopix-messaging/node"
-	"github.com/nymtech/loopix-messaging/sphinx"
+	"github.com/nymtech/nym-mixnet/config"
+	"github.com/nymtech/nym-mixnet/flags"
+	"github.com/nymtech/nym-mixnet/helpers"
+	"github.com/nymtech/nym-mixnet/logger"
+	"github.com/nymtech/nym-mixnet/networker"
+	"github.com/nymtech/nym-mixnet/node"
+	"github.com/nymtech/nym-mixnet/sphinx"
 	"github.com/sirupsen/logrus"
 )
 

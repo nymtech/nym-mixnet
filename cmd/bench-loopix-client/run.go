@@ -18,11 +18,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/nymtech/loopix-messaging/client"
-	"github.com/nymtech/loopix-messaging/client/benchclient"
-	clientConfig "github.com/nymtech/loopix-messaging/client/config"
-	"github.com/nymtech/loopix-messaging/helpers/topology"
-	"github.com/nymtech/loopix-messaging/sphinx"
+	"github.com/nymtech/nym-mixnet/client"
+	"github.com/nymtech/nym-mixnet/client/benchclient"
+	clientConfig "github.com/nymtech/nym-mixnet/client/config"
+	"github.com/nymtech/nym-mixnet/helpers/topology"
+	"github.com/nymtech/nym-mixnet/sphinx"
 	"github.com/tav/golly/optparse"
 )
 

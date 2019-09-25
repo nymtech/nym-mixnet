@@ -24,10 +24,10 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/nymtech/loopix-messaging/config"
-	"github.com/nymtech/loopix-messaging/helpers"
-	"github.com/nymtech/loopix-messaging/server/mixnode"
-	"github.com/nymtech/loopix-messaging/sphinx"
+	"github.com/nymtech/nym-mixnet/config"
+	"github.com/nymtech/nym-mixnet/helpers"
+	"github.com/nymtech/nym-mixnet/server/mixnode"
+	"github.com/nymtech/nym-mixnet/sphinx"
 	"github.com/stretchr/testify/assert"
 )
 

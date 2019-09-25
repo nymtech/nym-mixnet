@@ -21,7 +21,7 @@ package config
 
 import (
 	"github.com/golang/protobuf/proto"
-	"github.com/nymtech/loopix-messaging/flags"
+	"github.com/nymtech/nym-mixnet/flags"
 )
 
 const (

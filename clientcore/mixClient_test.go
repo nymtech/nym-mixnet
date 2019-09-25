@@ -22,10 +22,10 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/nymtech/loopix-messaging/config"
-	"github.com/nymtech/loopix-messaging/helpers/topology"
-	"github.com/nymtech/loopix-messaging/logger"
-	sphinx "github.com/nymtech/loopix-messaging/sphinx"
+	"github.com/nymtech/nym-mixnet/config"
+	"github.com/nymtech/nym-mixnet/helpers/topology"
+	"github.com/nymtech/nym-mixnet/logger"
+	sphinx "github.com/nymtech/nym-mixnet/sphinx"
 	"github.com/stretchr/testify/assert"
 )
 

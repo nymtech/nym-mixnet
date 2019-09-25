@@ -19,8 +19,8 @@ package node
 import (
 	"time"
 
-	"github.com/nymtech/loopix-messaging/flags"
-	"github.com/nymtech/loopix-messaging/sphinx"
+	"github.com/nymtech/nym-mixnet/flags"
+	"github.com/nymtech/nym-mixnet/sphinx"
 )
 
 type Mix struct {

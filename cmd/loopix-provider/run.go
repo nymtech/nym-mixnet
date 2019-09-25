@@ -17,9 +17,9 @@ package main
 import (
 	"os"
 
-	"github.com/nymtech/loopix-messaging/helpers"
-	"github.com/nymtech/loopix-messaging/server/provider"
-	"github.com/nymtech/loopix-messaging/sphinx"
+	"github.com/nymtech/nym-mixnet/helpers"
+	"github.com/nymtech/nym-mixnet/server/provider"
+	"github.com/nymtech/nym-mixnet/sphinx"
 	"github.com/tav/golly/optparse"
 )
 

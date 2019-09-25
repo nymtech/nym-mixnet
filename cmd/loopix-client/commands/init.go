@@ -19,11 +19,11 @@ import (
 	"os"
 	"path/filepath"
 
-	clientConfig "github.com/nymtech/loopix-messaging/client/config"
-	"github.com/nymtech/loopix-messaging/constants"
-	"github.com/nymtech/loopix-messaging/helpers"
-	"github.com/nymtech/loopix-messaging/helpers/topology"
-	"github.com/nymtech/loopix-messaging/sphinx"
+	clientConfig "github.com/nymtech/nym-mixnet/client/config"
+	"github.com/nymtech/nym-mixnet/constants"
+	"github.com/nymtech/nym-mixnet/helpers"
+	"github.com/nymtech/nym-mixnet/helpers/topology"
+	"github.com/nymtech/nym-mixnet/sphinx"
 )
 
 func InitCmd(args []string, usage string) {

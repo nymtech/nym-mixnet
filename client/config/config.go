@@ -20,7 +20,7 @@ import (
 	"os"
 	"path/filepath"
 
-	mainConfig "github.com/nymtech/loopix-messaging/config"
+	mainConfig "github.com/nymtech/nym-mixnet/config"
 	"github.com/sirupsen/logrus"
 )
 

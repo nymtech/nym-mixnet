@@ -27,8 +27,8 @@ import (
 	"net/http"
 
 	"github.com/nymtech/directory-server/models"
-	"github.com/nymtech/loopix-messaging/config"
-	"github.com/nymtech/loopix-messaging/sphinx"
+	"github.com/nymtech/nym-mixnet/config"
+	"github.com/nymtech/nym-mixnet/sphinx"
 )
 
 var (

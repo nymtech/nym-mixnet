@@ -1,4 +1,4 @@
-module github.com/nymtech/loopix-messaging
+module github.com/nymtech/nym-mixnet
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.0.4

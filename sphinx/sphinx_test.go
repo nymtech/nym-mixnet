@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/nymtech/loopix-messaging/config"
+	"github.com/nymtech/nym-mixnet/config"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/crypto/curve25519"
 )

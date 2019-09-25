@@ -20,7 +20,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/nymtech/loopix-messaging/config"
+	"github.com/nymtech/nym-mixnet/config"
 	"github.com/stretchr/testify/assert"
 )
 

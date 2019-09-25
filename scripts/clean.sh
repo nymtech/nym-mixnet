@@ -14,7 +14,7 @@
 
 #!/bin/bash
 
-# This script should be run from inside the loopix-messaging package directory
+# This script should be run from inside the nym-mixnet package directory
 
 logDir="$PWD/logs"
 
