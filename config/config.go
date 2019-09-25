@@ -25,12 +25,12 @@ import (
 )
 
 const (
-	DirectoryServerHealthcheckURL         = "http://directory.nymtech.net:8080/api/healthcheck"
-	DirectoryServerMetricsURL             = "http://directory.nymtech.net:8080/api/metrics/mixes"
-	DirectoryServerPkiURL                 = "http://directory.nymtech.net:8080/api/nodes"
-	DirectoryServerMixPresenceURL         = "http://directory.nymtech.net:8080/api/presence/mixnodes"
-	DirectoryServerMixProviderPresenceURL = "http://directory.nymtech.net:8080/api/presence/mixproviders"
-	DirectoryServerTopology               = "http://directory.nymtech.net:8080/api/presence/topology"
+	DirectoryServerHealthcheckURL         = "https://directory.nymtech.net/api/healthcheck"
+	DirectoryServerMetricsURL             = "https://directory.nymtech.net/api/metrics/mixes"
+	DirectoryServerPkiURL                 = "https://directory.nymtech.net/api/nodes"
+	DirectoryServerMixPresenceURL         = "https://directory.nymtech.net/api/presence/mixnodes"
+	DirectoryServerMixProviderPresenceURL = "https://directory.nymtech.net/api/presence/mixproviders"
+	DirectoryServerTopology               = "https://directory.nymtech.net/api/presence/topology"
 
 	LocalDirectoryServerMetricsURL             = "http://localhost:8080/api/metrics/mixes"
 	LocalDirectoryServerMixPresenceURL         = "http://localhost:8080/api/presence/mixnodes"
