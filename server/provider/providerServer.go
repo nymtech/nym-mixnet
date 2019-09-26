@@ -28,14 +28,14 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/nymtech/directory-server/models"
-	"github.com/nymtech/loopix-messaging/config"
-	"github.com/nymtech/loopix-messaging/flags"
-	"github.com/nymtech/loopix-messaging/helpers"
-	"github.com/nymtech/loopix-messaging/logger"
-	"github.com/nymtech/loopix-messaging/networker"
-	"github.com/nymtech/loopix-messaging/node"
-	"github.com/nymtech/loopix-messaging/sphinx"
+	"github.com/nymtech/nym-directory/models"
+	"github.com/nymtech/nym-mixnet/config"
+	"github.com/nymtech/nym-mixnet/flags"
+	"github.com/nymtech/nym-mixnet/helpers"
+	"github.com/nymtech/nym-mixnet/logger"
+	"github.com/nymtech/nym-mixnet/networker"
+	"github.com/nymtech/nym-mixnet/node"
+	"github.com/nymtech/nym-mixnet/sphinx"
 	"github.com/sirupsen/logrus"
 )
 
@@ -64,7 +64,7 @@ type ProviderServer struct {
 	id              string
 	host            string
 	port            string
-	listener        *net.TCPListener
+	listener        net.Listener
 	assignedClients map[string]ClientRecord
 	config          config.MixConfig
 	haltedCh        chan struct{}
@@ -124,7 +124,7 @@ func (p *ProviderServer) run() {
 		p.listenForIncomingConnections()
 	}()
 
-	// go p.startSendingPresence()
+	go p.startSendingPresence()
 
 	p.Wait()
 }
@@ -133,8 +133,7 @@ func (p *ProviderServer) convertRecordsToModelData() []models.RegisteredClient {
 	registeredClients := make([]models.RegisteredClient, 0, len(p.assignedClients))
 	for _, entry := range p.assignedClients {
 		registeredClients = append(registeredClients, models.RegisteredClient{
-			Host:   entry.host + ":" + entry.port,
-			PubKey: base64.StdEncoding.EncodeToString(entry.pubKey),
+			PubKey: base64.URLEncoding.EncodeToString(entry.pubKey),
 		})
 	}
 	return registeredClients
@@ -145,7 +144,10 @@ func (p *ProviderServer) startSendingPresence() {
 	for {
 		select {
 		case <-ticker.C:
-			if err := helpers.RegisterMixProviderPresence(p.host+p.port, p.GetPublicKey(), p.convertRecordsToModelData()); err != nil {
+			if err := helpers.RegisterMixProviderPresence(p.GetPublicKey(),
+				p.convertRecordsToModelData(),
+				net.JoinHostPort(p.host, p.port),
+			); err != nil {
 				p.log.Errorf("Failed to register presence: %v", err)
 			}
 		case <-p.haltedCh:
@@ -175,7 +177,6 @@ func (p *ProviderServer) receivedPacket(packet []byte) error {
 		}
 	case flags.LastHopFlag:
 		tmpMsgID := fmt.Sprintf("TMP_MESSAGE_%v", helpers.RandomString(8))
-		// err = p.storeMessage(dePacket, nextHop.Id, "TMP_MESSAGE_ID")
 		if err := p.storeMessage(dePacket, nextHop.Id, tmpMsgID); err != nil {
 			return err
 		}
@@ -228,140 +229,171 @@ func (p *ProviderServer) send(packet []byte, address string) error {
 func (p *ProviderServer) listenForIncomingConnections() {
 	for {
 		conn, err := p.listener.Accept()
-
 		if err != nil {
-			p.log.Errorf("Error when listening for incoming connection: %v", err)
-		} else {
-			p.log.Infof("%s: Received new connection from %s", p.id, conn.RemoteAddr())
-			errs := make(chan error, 1)
-			go p.handleConnection(conn, errs)
-			err = <-errs
-			if err != nil {
-				p.log.Errorf("Error when listening for incoming connection: %v", err)
+			if e, ok := err.(net.Error); ok && !e.Temporary() {
+				p.log.Panicf("Critical accept failure: %v", err)
+				return
 			}
+			continue
 		}
+
+		p.log.Infof("Received new connection from %s", conn.RemoteAddr())
+		go p.handleConnection(conn)
 	}
+}
+
+func (p *ProviderServer) replyToClient(data []byte, conn net.Conn) {
+	p.log.Infof("Replying back to the client (%v)", conn.RemoteAddr())
+	if _, err := conn.Write(data); err != nil {
+		p.log.Errorf("Couldn't reply to the client. Connection write error: %v", err)
+	}
+}
+
+func (p *ProviderServer) createClientResponse(marshalledPackets ...[]byte) ([]byte, error) {
+	response := &config.ProviderResponse{
+		NumberOfPackets: uint64(len(marshalledPackets)),
+		Packets:         marshalledPackets,
+	}
+	mBytes, err := proto.Marshal(response)
+	if err != nil {
+		return nil, err
+	}
+	return mBytes, nil
 }
 
 // HandleConnection handles the received packets; it checks the flag of the
 // packet and schedules a corresponding process function and returns an error.
-func (p *ProviderServer) handleConnection(conn net.Conn, errs chan<- error) {
+func (p *ProviderServer) handleConnection(conn net.Conn) {
+	defer func() {
+		p.log.Debugf("Closing Connection to %v", conn.RemoteAddr())
+		if err := conn.Close(); err != nil {
+			p.log.Warnf("error when closing connection from %s: %v", conn.RemoteAddr(), err)
+		}
+	}()
 
 	buff := make([]byte, 1024)
 	reqLen, err := conn.Read(buff)
-	defer conn.Close()
-
 	if err != nil {
-		errs <- err
+		p.log.Errorf("Error while reading from the connection: %v", err)
+		return
 	}
 
 	var packet config.GeneralPacket
-	err = proto.Unmarshal(buff[:reqLen], &packet)
-	if err != nil {
-		errs <- err
+	if err = proto.Unmarshal(buff[:reqLen], &packet); err != nil {
+		p.log.Errorf("Error while unmarshalling received packet: %v", err)
+		return
 	}
 
 	switch flags.PacketTypeFlagFromBytes(packet.Flag) {
 	case flags.AssignFlag:
-		err = p.handleAssignRequest(packet.Data)
+		tokenBytes, err := p.handleAssignRequest(packet.Data)
 		if err != nil {
-			errs <- err
+			p.log.Errorf("Error while handling token request: %v", err)
+			return
 		}
+		clientResponse, err := p.createClientResponse(tokenBytes)
+		if err != nil {
+			p.log.Errorf("Error while creating client response for token: %v", err)
+			return
+		}
+		p.replyToClient(clientResponse, conn)
+
 	case flags.CommFlag:
-		err = p.receivedPacket(packet.Data)
-		if err != nil {
-			errs <- err
+		if err := p.receivedPacket(packet.Data); err != nil {
+			p.log.Errorf("Error while handling received packet: %v", err)
+			return
 		}
+
 	case flags.PullFlag:
-		err = p.handlePullRequest(packet.Data)
+		messagesBytes, err := p.handlePullRequest(packet.Data)
 		if err != nil {
-			errs <- err
+			p.log.Errorf("Error while handling pull request: %v", err)
+			return
 		}
+
+		clientResponse, err := p.createClientResponse(messagesBytes...)
+		if err != nil {
+			p.log.Errorf("Error while creating client response for pull request: %v", err)
+			return
+		}
+		p.replyToClient(clientResponse, conn)
+
 	default:
 		p.log.Info(packet.Flag)
 		p.log.Info("Packet flag not recognised. Packet dropped")
-		errs <- nil
+
 	}
-	errs <- nil
 }
 
 // RegisterNewClient generates a fresh authentication token and
 // saves it together with client's public configuration data
 // in the list of all registered clients. After the client is registered the function creates an inbox directory
 // for the client's inbox, in which clients messages will be stored.
-func (p *ProviderServer) registerNewClient(clientBytes []byte) ([]byte, string, error) {
+func (p *ProviderServer) registerNewClient(clientBytes []byte) ([]byte, error) {
 	var clientConf config.ClientConfig
 	err := proto.Unmarshal(clientBytes, &clientConf)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
+	clientID := base64.URLEncoding.EncodeToString(clientConf.PubKey)
 
-	token, err := helpers.SHA256([]byte("TMP_Token" + clientConf.Id))
+	token, err := helpers.SHA256([]byte("TMP_Token" + clientID))
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
-	record := ClientRecord{id: clientConf.Id,
+	record := ClientRecord{id: clientID,
 		host:   clientConf.Host,
 		port:   clientConf.Port,
 		pubKey: clientConf.PubKey,
 		token:  token,
 	}
-	p.assignedClients[clientConf.Id] = record
-	address := clientConf.Host + ":" + clientConf.Port
+	p.assignedClients[clientID] = record
 
-	path := fmt.Sprintf("./inboxes/%s", clientConf.Id)
+	path := fmt.Sprintf("./inboxes/%s", clientID)
 	exists, err := helpers.DirExists(path)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 	if !exists {
 		if err := os.MkdirAll(path, 0775); err != nil {
-			return nil, "", err
+			return nil, err
 		}
 	}
 
-	return token, address, nil
+	return token, nil
 }
 
 // Function is responsible for handling the registration request from the client.
 // it registers the client in the list of all registered clients and send
 // an authentication token back to the client.
-func (p *ProviderServer) handleAssignRequest(packet []byte) error {
+func (p *ProviderServer) handleAssignRequest(packet []byte) ([]byte, error) {
 	p.log.Info("Received assign request from the client")
 
-	token, adr, err := p.registerNewClient(packet)
+	token, err := p.registerNewClient(packet)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	tokenBytes, err := config.WrapWithFlag(flags.TokenFlag, token)
-	if err != nil {
-		return err
-	}
-	err = p.send(tokenBytes, adr)
-	if err != nil {
-		return err
-	}
-	return nil
+	return config.WrapWithFlag(flags.TokenFlag, token)
 }
 
 // Function is responsible for handling the pull request received from the client.
 // It first authenticates the client, by checking if the received token is valid.
 // If yes, the function triggers the function for checking client's inbox
 // and sending buffered messages. Otherwise, an error is returned.
-func (p *ProviderServer) handlePullRequest(rqsBytes []byte) error {
+func (p *ProviderServer) handlePullRequest(rqsBytes []byte) ([][]byte, error) {
 	var request config.PullRequest
 	err := proto.Unmarshal(rqsBytes, &request)
 	if err != nil {
-		return err
+		return nil, err
 	}
+	clientID := base64.URLEncoding.EncodeToString(request.ClientPublicKey)
 
-	p.log.Infof("Processing pull request: %s %s", request.ClientId, string(request.Token))
-
-	if p.authenticateUser(request.ClientId, request.Token) {
-		signal, err := p.fetchMessages(request.ClientId)
+	p.log.Infof("Processing pull request: %s %s", clientID, string(request.Token))
+	if p.authenticateUser(request.ClientPublicKey, request.Token) {
+		signal, messagesBytes, err := p.fetchMessages(clientID)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		switch signal {
 		case "NI":
@@ -371,19 +403,22 @@ func (p *ProviderServer) handlePullRequest(rqsBytes []byte) error {
 		case "SI":
 			p.log.Info("All messages from the inbox successfully sent to the client.")
 		}
+		return messagesBytes, nil
 	} else {
 		p.log.Warn("Authentication went wrong")
-		return errors.New("authentication went wrong")
+		return nil, errors.New("authentication went wrong")
 	}
-	return nil
 }
 
 // AuthenticateUser compares the authentication token received from the client with
 // the one stored by the provider. If tokens are the same, it returns true
 // and false otherwise.
-func (p *ProviderServer) authenticateUser(clientID string, clientToken []byte) bool {
+func (p *ProviderServer) authenticateUser(clientKey, clientToken []byte) bool {
 
-	if bytes.Equal(p.assignedClients[clientID].token, clientToken) {
+	clientID := base64.URLEncoding.EncodeToString(clientKey)
+	if bytes.Equal(p.assignedClients[clientID].token, clientToken) &&
+		bytes.Equal(p.assignedClients[clientID].pubKey, clientKey) {
+		// && signature check on message to make sure client actually owns this ID
 		return true
 	}
 	p.log.Warnf("Non matching token: %s, %s", p.assignedClients[clientID].token, clientToken)
@@ -396,48 +431,46 @@ func (p *ProviderServer) authenticateUser(clientID string, clientToken []byte) b
 // are send to the client one by one. FetchMessages returns a code
 // signalling whether (NI) inbox does not exist, (EI) inbox is empty,
 // (SI) messages were send to the client; and an error.
-func (p *ProviderServer) fetchMessages(clientID string) (string, error) {
+func (p *ProviderServer) fetchMessages(clientID string) (string, [][]byte, error) {
 
 	path := fmt.Sprintf("./inboxes/%s", clientID)
 	exist, err := helpers.DirExists(path)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	if !exist {
-		return "NI", nil
+		return "NI", nil, nil
 	}
 	files, err := ioutil.ReadDir(path)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	if len(files) == 0 {
-		return "EI", nil
+		return "EI", nil, nil
 	}
 
-	for _, f := range files {
+	messagesBytes := make([][]byte, len(files))
+	for i, f := range files {
 		fullPath := filepath.Join(path, f.Name())
 		dat, err := ioutil.ReadFile(fullPath)
 		if err != nil {
-			return "", err
+			return "", nil, err
 		}
 
-		address := p.assignedClients[clientID].host + ":" + p.assignedClients[clientID].port
-		p.log.Infof("Found stored message for address %s", address)
+		p.log.Infof("Found stored message for %s", clientID)
 		p.log.Infof("Messages data: %v", string(dat))
 		msgBytes, err := config.WrapWithFlag(flags.CommFlag, dat)
 		if err != nil {
-			return "", err
+			return "", nil, err
 		}
-		err = p.send(msgBytes, address)
-		if err != nil {
-			return "", err
-		}
+		messagesBytes[i] = msgBytes
+
 		if err := os.Remove(fullPath); err != nil {
 			p.log.Errorf("Failed to remove %v: %v", f, err)
 		}
 		p.log.Infof("Removed %v", fullPath)
 	}
-	return "SI", nil
+	return "SI", messagesBytes, nil
 }
 
 // StoreMessage saves the given message in the inbox defined by the given id.
@@ -471,7 +504,6 @@ func NewProviderServer(id string,
 	port string,
 	prvKey *sphinx.PrivateKey,
 	pubKey *sphinx.PublicKey,
-	pkiPath string,
 ) (*ProviderServer, error) {
 	baseLogger, err := logger.New(defaultLogFileLocation, defaultLogLevel, false)
 	if err != nil {
@@ -495,24 +527,14 @@ func NewProviderServer(id string,
 		PubKey: providerServer.GetPublicKey().Bytes()}
 	providerServer.assignedClients = make(map[string]ClientRecord)
 
-	configBytes, err := proto.Marshal(&providerServer.config)
-	if err != nil {
-		return nil, err
-	}
-	err = helpers.AddToDatabase(pkiPath, "Pki", providerServer.id, "Provider", configBytes)
-	if err != nil {
+	if err := helpers.RegisterMixProviderPresence(providerServer.GetPublicKey(),
+		providerServer.convertRecordsToModelData(),
+		net.JoinHostPort(host, port),
+	); err != nil {
 		return nil, err
 	}
 
-	// if err := helpers.RegisterMixProviderPresence(providerServer.host+providerServer.port, providerServer.GetPublicKey(), providerServer.convertRecordsToModelData()); err != nil {
-	// 	return nil, err
-	// }
-
-	addr, err := helpers.ResolveTCPAddress(providerServer.host, providerServer.port)
-	if err != nil {
-		return nil, err
-	}
-	providerServer.listener, err = net.ListenTCP("tcp", addr)
+	providerServer.listener, err = net.Listen("tcp", net.JoinHostPort(host, port))
 
 	if err != nil {
 		return nil, err

@@ -12,25 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+// Package constants declares system-wide constants.
+package constants
 
-import "github.com/tav/golly/optparse"
+const (
+	// PrivateKeyPEMType defines PEM Type for Sphinx Private Key on Curve25519.
+	PrivateKeyPEMType = "SPHINX CURVE25519 PRIVATE KEY"
 
-func main() {
-	var logo = `
-  _                      _
- | |    ___   ___  _ __ (_)_  __
- | |   / _ \ / _ \| '_ \| \ \/ /
- | |___ (_) | (_) | |_) | |>  <
- |_____\___/ \___/| .__/|_/_/\_\
-		  |_|            (mixnode)
-
-		  `
-	cmds := map[string]func([]string, string){
-		"run": cmdRun,
-	}
-	info := map[string]string{
-		"run": "Run a Loopix mixnode",
-	}
-	optparse.Commands("loopix-mixnode", "0.0.3", cmds, info, logo)
-}
+	// PublicKeyPEMType defines PEM Type for Sphinx Public Key on Curve25519.
+	PublicKeyPEMType = "SPHINX CURVE25519 PUBLIC KEY"
+)

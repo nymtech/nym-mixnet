@@ -6,6 +6,7 @@ message MixConfig {
     string Host = 2;
     string Port = 3;
     bytes PubKey = 4;
+    uint64 Layer = 5;
 }
 
 message ClientConfig {
@@ -21,7 +22,12 @@ message GeneralPacket {
     bytes Data = 2;
 }
 
+message ProviderResponse {
+    uint64 NumberOfPackets = 1;
+    repeated bytes Packets = 2;
+}
+
 message PullRequest {
-    string ClientId = 1;
-    bytes Token = 2;
+    bytes Token = 1;
+    bytes ClientPublicKey = 2;
 }

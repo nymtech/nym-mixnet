@@ -15,29 +15,25 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
-	"github.com/nymtech/loopix-messaging/helpers"
-	"github.com/nymtech/loopix-messaging/pki"
-	"github.com/nymtech/loopix-messaging/server/provider"
-	"github.com/nymtech/loopix-messaging/sphinx"
+	"github.com/nymtech/nym-mixnet/helpers"
+	"github.com/nymtech/nym-mixnet/server/provider"
+	"github.com/nymtech/nym-mixnet/sphinx"
 	"github.com/tav/golly/optparse"
 )
 
 const (
-	// PkiDb is the location of the database file, relative to the project root. TODO: move this to homedir.
-	PkiDb       = "pki/database.db"
-	defaultHost = "localhost"
-	defaultID   = "Client1"
-	defaultPort = "6666"
+	defaultHost = ""
+	defaultID   = "Provider"
+	defaultPort = "1789"
 )
 
 func cmdRun(args []string, usage string) {
 	opts := newOpts("run [OPTIONS]", usage)
-	id := opts.Flags("--id").Label("ID").String("Id of the loopix-client we want to run", defaultID)
-	host := opts.Flags("--host").Label("HOST").String("The host on which the loopix-client is running", defaultHost)
-	port := opts.Flags("--port").Label("PORT").String("Port on which loopix-client listens", defaultPort)
+	id := opts.Flags("--id").Label("ID").String("Id of the loopix-provider we want to run", defaultID)
+	host := opts.Flags("--host").Label("HOST").String("The host on which the loopix-provider is running", defaultHost)
+	port := opts.Flags("--port").Label("PORT").String("Port on which loopix-provider listens", defaultPort)
 
 	params := opts.Parse(args)
 	if len(params) != 0 {
@@ -45,18 +41,12 @@ func cmdRun(args []string, usage string) {
 		os.Exit(1)
 	}
 
-	err := pki.EnsureDbExists(PkiDb)
-	if err != nil {
-		fmt.Println("PkiDb problem ")
-		panic(err)
-	}
-
 	ip, err := helpers.GetLocalIP()
 	if err != nil {
 		panic(err)
 	}
 
-	if host != &ip {
+	if host == nil || len(*host) < 7 {
 		host = &ip
 	}
 
@@ -65,7 +55,7 @@ func cmdRun(args []string, usage string) {
 		panic(err)
 	}
 
-	providerServer, err := provider.NewProviderServer(*id, *host, *port, pubP, privP, PkiDb)
+	providerServer, err := provider.NewProviderServer(*id, *host, *port, pubP, privP)
 	if err != nil {
 		panic(err)
 	}

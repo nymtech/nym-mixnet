@@ -14,23 +14,27 @@
 
 package main
 
-import "github.com/tav/golly/optparse"
+import (
+	cmd "github.com/nymtech/nym-mixnet/cmd/loopix-client/commands"
+	"github.com/tav/golly/optparse"
+)
 
 func main() {
 	var logo = `
-  _                      _      
+  _                      _
  | |    ___   ___  _ __ (_)_  __
  | |   / _ \ / _ \| '_ \| \ \/ /
- | |___ (_) | (_) | |_) | |>  < 
+ | |___ (_) | (_) | |_) | |>  <
  |_____\___/ \___/| .__/|_/_/\_\
 		  |_|            (client)
-		  
+
 		  `
 	cmds := map[string]func([]string, string){
-		"run": cmdRun,
+		"run":  cmd.RunCmd,
+		"init": cmd.InitCmd,
 	}
 	info := map[string]string{
 		"run": "Run a persistent Loopix client process",
 	}
-	optparse.Commands("loopix-client", "0.0.2", cmds, info, logo)
+	optparse.Commands("loopix-client", "0.0.3", cmds, info, logo)
 }

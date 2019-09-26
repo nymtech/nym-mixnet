@@ -18,10 +18,9 @@ import (
 	"fmt"
 	"os"
 	"reflect"
-	"sort"
 	"testing"
 
-	"github.com/nymtech/loopix-messaging/config"
+	"github.com/nymtech/nym-mixnet/config"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -100,32 +99,6 @@ func TestDirExists_Fail(t *testing.T) {
 	assert.Equal(t, false, exists, " DirExists should return false for a non existing directory")
 }
 
-func TestPermute_Pass(t *testing.T) {
-	permuted, err := Permute(mixes)
-	if err != nil {
-		t.Fatal(err)
-	}
-	assert.Equal(t,
-		len(mixes),
-		len(permuted),
-		" Permute should return a permutation of a given slice, hence the lengths should be equal",
-	)
-	sort.Sort(ByID(mixes))
-	sort.Sort(ByID(permuted))
-	assert.True(t, reflect.DeepEqual(mixes, permuted))
-
-}
-
-func TestPermute_Fail(t *testing.T) {
-	_, err := Permute([]config.MixConfig{})
-	// TODO: redefine the error as a constant
-	assert.EqualError(t,
-		ErrPermEmptyList,
-		err.Error(),
-		" Permute should return an error for an empty slice",
-	)
-}
-
 func TestRandomExponential_Pass(t *testing.T) {
 	val, err := RandomExponential(5.0)
 	if err != nil {
@@ -153,34 +126,4 @@ func TestRandomExponential_Fail_NegativeParam(t *testing.T) {
 		err.Error(),
 		" RandomExponential should return an error if the given parameter is non-positive",
 	)
-}
-
-func TestRandomSample_Pass_SmallerLen(t *testing.T) {
-	sample, err := RandomSample(mixes, 5)
-	if err != nil {
-		t.Fatal(err)
-	}
-	assert.Equal(t, 5, len(sample), " RandomSample should return a sample of given size")
-}
-
-func TestRandomSample_Pass_EqualLen(t *testing.T) {
-	sample, err := RandomSample(mixes, 5)
-	if err != nil {
-		t.Fatal(err)
-	}
-	assert.Equal(t, 5, len(sample), " RandomSample should return a sample of given size")
-}
-
-func TestRandomSample_Fail(t *testing.T) {
-	_, err := RandomSample(mixes, 20)
-	// TODO: redefine the error as a constant
-	assert.EqualError(t,
-		ErrTooBigSampleSize,
-		err.Error(),
-		" RandomSample cannot take a sample larger than the given slice",
-	)
-}
-
-func TestResolveTCPAddress(t *testing.T) {
-	// TO DO: How this should be tested ? And should it even be tested it if it uses a build in function?
 }

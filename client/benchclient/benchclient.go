@@ -1,4 +1,4 @@
-// Copyright 2018-2019 The Loopix-Messaging Authors
+// Copyright 2019 The Loopix-Messaging Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,9 +23,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/nymtech/loopix-messaging/client"
-	"github.com/nymtech/loopix-messaging/config"
-	"github.com/nymtech/loopix-messaging/flags"
+	"github.com/nymtech/nym-mixnet/client"
+	"github.com/nymtech/nym-mixnet/config"
+	"github.com/nymtech/nym-mixnet/flags"
 )
 
 const (
@@ -113,15 +113,6 @@ func (bc *BenchClient) RunBench() error {
 	defer bc.Shutdown()
 	fmt.Println("starting bench client")
 
-	// ignore all loopix requirements about cover traffic, etc. and just blast the system with messages
-	client.ToggleControlMessageFetching(false)
-	client.ToggleDropCoverTraffic(false)
-	client.ToggleLoopCoverTraffic(false)
-	client.ToggleRateCompliantCoverTraffic(false)
-	client.UpdateDesiredRateParameter(10000000.0)
-	// to reduce effect of writing to stdout
-	bc.DisableLogging()
-	// start underlying client
 	if err := bc.NetClient.Start(); err != nil {
 		return err
 	}
@@ -168,8 +159,8 @@ func NewBenchClient(nc *client.NetClient, numMsgs int, interval time.Duration, p
 				Id:   "BenchmarkProvider",
 				Host: "localhost",
 				Port: "11000",
-				PubKey: []byte{17, 170, 15, 150, 155, 75, 240, 66, 54, 100, 131, 127, 193, 10, 133,
-					32, 62, 155, 9, 46, 200, 55, 60, 125, 223, 76, 170, 167, 100, 34, 176, 117},
+				PubKey: []byte{17, 170, 15, 150, 155, 75, 240, 66, 54, 100, 131, 127, 193, 10,
+					133, 32, 62, 155, 9, 46, 200, 55, 60, 125, 223, 76, 170, 167, 100, 34, 176, 117},
 			},
 		},
 		numberMessages:     numMsgs,

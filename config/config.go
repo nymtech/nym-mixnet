@@ -21,22 +21,32 @@ package config
 
 import (
 	"github.com/golang/protobuf/proto"
-	"github.com/nymtech/loopix-messaging/flags"
+	"github.com/nymtech/nym-mixnet/flags"
 )
 
 const (
-	DirectoryServerBaseURL                = "http://localhost:8080/"
-	DirectoryServerHealthcheckURL         = "http://localhost:8080/api/healthcheck"
-	DirectoryServerMetricsURL             = "http://localhost:8080/api/metrics/mixes"
-	DirectoryServerPkiURL                 = "http://localhost:8080/api/nodes"
-	DirectoryServerMixPresenceURL         = "http://localhost:8080/api/presence/mixnodes"
-	DirectoryServerMixProviderPresenceURL = "http://localhost:8080/api/presence/mixproviders"
-	DirectoryServerTopology               = "http://localhost:8080/api/presence/topology"
+	DirectoryServerHealthcheckURL         = "https://directory.nymtech.net/api/healthcheck"
+	DirectoryServerMetricsURL             = "https://directory.nymtech.net/api/metrics/mixes"
+	DirectoryServerPkiURL                 = "https://directory.nymtech.net/api/nodes"
+	DirectoryServerMixPresenceURL         = "https://directory.nymtech.net/api/presence/mixnodes"
+	DirectoryServerMixProviderPresenceURL = "https://directory.nymtech.net/api/presence/mixproviders"
+	DirectoryServerTopology               = "https://directory.nymtech.net/api/presence/topology"
+
+	LocalDirectoryServerMetricsURL             = "http://localhost:8080/api/metrics/mixes"
+	LocalDirectoryServerMixPresenceURL         = "http://localhost:8080/api/presence/mixnodes"
+	LocalDirectoryServerMixProviderPresenceURL = "http://localhost:8080/api/presence/mixproviders"
+	LocalDirectoryServerTopology               = "http://localhost:8080/api/presence/topology"
+
+	// TODO: somehow split mixConfig to distinguish providers and mixnodes?
+	// But then we would have to deal with nasty interfaces and protobuf issues...
+	ProviderLayer = 1000000
+
+	DefaultRemotePort = "1789"
 )
 
 // NewMixConfig constructor
-func NewMixConfig(mixID, host, port string, pubKey []byte) MixConfig {
-	return MixConfig{Id: mixID, Host: host, Port: port, PubKey: pubKey}
+func NewMixConfig(mixID, host, port string, pubKey []byte, layer uint) MixConfig {
+	return MixConfig{Id: mixID, Host: host, Port: port, PubKey: pubKey, Layer: uint64(layer)}
 }
 
 // NewClientConfig constructor
@@ -67,4 +77,14 @@ type E2EPath struct {
 // Len adds 3 to the mix path. TODO: why? Check this with Ania.
 func (p *E2EPath) Len() int {
 	return 3 + len(p.Mixes)
+}
+
+func UnmarshalProviderResponse(resp ProviderResponse) ([]GeneralPacket, error) {
+	packets := make([]GeneralPacket, resp.NumberOfPackets)
+	for i, packet := range resp.Packets {
+		if err := proto.Unmarshal(packet, &packets[i]); err != nil {
+			return nil, err
+		}
+	}
+	return packets, nil
 }

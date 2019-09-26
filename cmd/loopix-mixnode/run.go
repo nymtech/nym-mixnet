@@ -15,22 +15,20 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
-	"github.com/nymtech/loopix-messaging/helpers"
-	"github.com/nymtech/loopix-messaging/pki"
-	"github.com/nymtech/loopix-messaging/server/mixnode"
-	"github.com/nymtech/loopix-messaging/sphinx"
+	"github.com/nymtech/nym-mixnet/helpers"
+	"github.com/nymtech/nym-mixnet/server/mixnode"
+	"github.com/nymtech/nym-mixnet/sphinx"
 	"github.com/tav/golly/optparse"
 )
 
 const (
 	// PkiDb is the location of the database file, relative to the project root. TODO: move this to homedir.
 	PkiDb        = "pki/database.db"
-	defaultHost  = "localhost"
+	defaultHost  = ""
 	defaultID    = "Mix1"
-	defaultPort  = "6666"
+	defaultPort  = "1789"
 	defaultLayer = -1
 )
 
@@ -47,17 +45,12 @@ func cmdRun(args []string, usage string) {
 		os.Exit(1)
 	}
 
-	if err := pki.EnsureDbExists(PkiDb); err != nil {
-		fmt.Fprintf(os.Stderr, "PkiDb problem: %v ", err)
-		panic(err)
-	}
-
 	ip, err := helpers.GetLocalIP()
 	if err != nil {
 		panic(err)
 	}
 
-	if host != &ip {
+	if host == nil || len(*host) < 7 {
 		host = &ip
 	}
 
@@ -66,7 +59,7 @@ func cmdRun(args []string, usage string) {
 		panic(err)
 	}
 
-	mixServer, err := mixnode.NewMixServer(*id, *host, *port, pubM, privM, PkiDb, *layer)
+	mixServer, err := mixnode.NewMixServer(*id, *host, *port, pubM, privM, *layer)
 	if err != nil {
 		panic(err)
 	}

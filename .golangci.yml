@@ -27,7 +27,7 @@ linters-settings:
     list-type: whitelist
     include-go-root: false
     packages:
-      - github.com/nymtech/loopix-messaging
+      - github.com/nymtech/nym-mixnet
       - github.com/golang/protobuf/proto
       - github.com/jmoiron/sqlx
       - github.com/stretchr/testify/assert
@@ -35,7 +35,10 @@ linters-settings:
       - github.com/sirupsen/logrus
       - github.com/mattn/go-sqlite3
       - golang.org/x/crypto/curve25519
-
+      - github.com/nymtech/nym-directory/models
+      - github.com/BurntSushi/toml
+      - github.com/pelletier/go-toml
+      - github.com/AlecAivazis/survey/v2
   misspell:
     locale: UK
     # ignore-words:

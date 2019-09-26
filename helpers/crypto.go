@@ -24,7 +24,8 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/nymtech/loopix-messaging/config"
+	"github.com/nymtech/nym-mixnet/config"
+	"github.com/nymtech/nym-mixnet/sphinx"
 )
 
 var (
@@ -40,32 +41,9 @@ func init() {
 	rand.Seed(time.Now().UTC().UnixNano())
 }
 
-func Permute(slice []config.MixConfig) ([]config.MixConfig, error) {
-	if len(slice) == 0 {
-		return nil, ErrPermEmptyList
-	}
-
-	permutedData := make([]config.MixConfig, len(slice))
-	permutation := rand.Perm(len(slice))
-	for i, v := range permutation {
-		permutedData[v] = slice[i]
-	}
-	return permutedData, nil
-}
-
-// RandomSample takes a slice of MixConfigs, and returns a new
-// slice of length `length` in a randomised order.
-func RandomSample(slice []config.MixConfig, length int) ([]config.MixConfig, error) {
-	if len(slice) < length {
-		return nil, ErrTooBigSampleSize
-	}
-
-	permuted, err := Permute(slice)
-	if err != nil {
-		return nil, err
-	}
-
-	return permuted[:length], err
+// RandomMix returns a single pseudorandomly chosen mix from given slices of mixes.
+func RandomMix(mixes []config.MixConfig) config.MixConfig {
+	return mixes[rand.Intn(len(mixes))]
 }
 
 // a very dummy implementation of getting "random" string of given length
@@ -93,4 +71,14 @@ func SHA256(arg []byte) ([]byte, error) {
 		return nil, err
 	}
 	return h.Sum(nil), nil
+}
+
+func IsZeroElement(el sphinx.CryptoElement) bool {
+	bytes := el.Bytes()
+	for _, b := range bytes {
+		if b != 0 {
+			return false
+		}
+	}
+	return true
 }

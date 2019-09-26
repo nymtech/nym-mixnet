@@ -23,13 +23,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"io/ioutil"
 	"net"
 	"net/http"
 
-	"github.com/nymtech/directory-server/models"
-	"github.com/nymtech/loopix-messaging/config"
-	"github.com/nymtech/loopix-messaging/sphinx"
+	"github.com/nymtech/nym-directory/models"
+	"github.com/nymtech/nym-mixnet/config"
+	"github.com/nymtech/nym-mixnet/sphinx"
 )
 
 var (
@@ -80,15 +79,29 @@ func GetLocalIP() (string, error) {
 }
 
 // RegisterMixNodePresence registers server presence at the directory server.
-func RegisterMixNodePresence(host string, publicKey *sphinx.PublicKey, layer int) error {
-	b64Key := base64.StdEncoding.EncodeToString(publicKey.Bytes())
-	values := map[string]interface{}{"host": host, "pubKey": b64Key, "layer": layer}
+func RegisterMixNodePresence(publicKey *sphinx.PublicKey, layer int, host ...string) error {
+	b64Key := base64.URLEncoding.EncodeToString(publicKey.Bytes())
+	values := map[string]interface{}{"pubKey": b64Key, "layer": layer}
+	if len(host) == 1 {
+		values["host"] = host[0]
+	}
 	jsonValue, err := json.Marshal(values)
 	if err != nil {
 		return err
 	}
 
-	resp, err := http.Post(config.DirectoryServerMixPresenceURL, "application/json", bytes.NewBuffer(jsonValue))
+	endpoint := config.DirectoryServerMixPresenceURL
+	if len(host) == 1 && len(host[0]) > 0 {
+		ip, _, err := net.SplitHostPort(host[0])
+		if err == nil && (ip == "localhost" || net.ParseIP(ip).IsLoopback()) {
+			endpoint = config.LocalDirectoryServerMixPresenceURL
+		} else if err != nil && err.Error() == "missing port in address" &&
+			(host[0] == "localhost" || net.ParseIP(host[0]).IsLoopback()) {
+			endpoint = config.LocalDirectoryServerMixPresenceURL
+		}
+	}
+
+	resp, err := http.Post(endpoint, "application/json", bytes.NewBuffer(jsonValue))
 	if err != nil {
 		return err
 	}
@@ -96,38 +109,75 @@ func RegisterMixNodePresence(host string, publicKey *sphinx.PublicKey, layer int
 	_ = resp
 	// TODO: properly parse it, etc.
 
+	// body, err := ioutil.ReadAll(resp.Body)
+	// if err != nil {
+	// 	return err
+	// }
+	// fmt.Println(string(body))
+	// _ = resp
 	return nil
 }
 
 // SendMixMetrics sends the mixnode related packet metrics to the directory server.
-func SendMixMetrics(metrics map[string]uint) error {
-	jsonValue, err := json.Marshal(metrics)
+func SendMixMetrics(metric models.MixMetric, host ...string) error {
+	values := map[string]interface{}{"sent": metric.Sent, "pubKey": metric.PubKey, "received": metric.Received}
+	jsonValue, err := json.Marshal(values)
 	if err != nil {
 		return err
 	}
 
-	resp, err := http.Post(config.DirectoryServerMetricsURL, "application/json", bytes.NewBuffer(jsonValue))
+	endpoint := config.DirectoryServerMetricsURL
+	if len(host) == 1 && len(host[0]) > 0 {
+		ip, _, err := net.SplitHostPort(host[0])
+		if err == nil && (ip == "localhost" || net.ParseIP(ip).IsLoopback()) {
+			endpoint = config.LocalDirectoryServerMetricsURL
+		} else if err != nil && err.Error() == "missing port in address" &&
+			(host[0] == "localhost" || net.ParseIP(host[0]).IsLoopback()) {
+			endpoint = config.LocalDirectoryServerMetricsURL
+		}
+	}
+
+	resp, err := http.Post(endpoint, "application/json", bytes.NewBuffer(jsonValue))
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
 
-	_ = resp
+	// body, err := ioutil.ReadAll(resp.Body)
+	// if err != nil {
+	// 	return err
+	// }
+	// fmt.Println(string(body))
+	// _ = resp
 	// TODO: properly parse it, etc.
 
 	return nil
 }
 
 // RegisterMixProviderPresence registers server presence at the directory server.
-func RegisterMixProviderPresence(host string, publicKey *sphinx.PublicKey, clients []models.RegisteredClient) error {
-	b64Key := base64.StdEncoding.EncodeToString(publicKey.Bytes())
-	values := map[string]interface{}{"host": host, "pubKey": b64Key, "registeredClients": clients}
+func RegisterMixProviderPresence(publicKey *sphinx.PublicKey, clients []models.RegisteredClient, host ...string) error {
+	b64Key := base64.URLEncoding.EncodeToString(publicKey.Bytes())
+	values := map[string]interface{}{"pubKey": b64Key, "registeredClients": clients}
+	if len(host) == 1 {
+		values["host"] = host[0]
+	}
 	jsonValue, err := json.Marshal(values)
 	if err != nil {
 		return err
 	}
 
-	resp, err := http.Post(config.DirectoryServerMixProviderPresenceURL, "application/json", bytes.NewBuffer(jsonValue))
+	endpoint := config.DirectoryServerMixProviderPresenceURL
+	if len(host) == 1 && len(host[0]) > 0 {
+		ip, _, err := net.SplitHostPort(host[0])
+		if err == nil && (ip == "localhost" || net.ParseIP(ip).IsLoopback()) {
+			endpoint = config.LocalDirectoryServerMixProviderPresenceURL
+		} else if err != nil && err.Error() == "missing port in address" &&
+			(host[0] == "localhost" || net.ParseIP(host[0]).IsLoopback()) {
+			endpoint = config.LocalDirectoryServerMixProviderPresenceURL
+		}
+	}
+
+	resp, err := http.Post(endpoint, "application/json", bytes.NewBuffer(jsonValue))
 	if err != nil {
 		return err
 	}
@@ -136,23 +186,4 @@ func RegisterMixProviderPresence(host string, publicKey *sphinx.PublicKey, clien
 	// TODO: properly parse it, etc.
 
 	return nil
-}
-
-func GetNetworkTopology() (*models.Topology, error) {
-	resp, err := http.Get(config.DirectoryServerTopology)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	model := &models.Topology{}
-	if err := json.Unmarshal(body, model); err != nil {
-		return nil, err
-	}
-
-	return model, nil
 }

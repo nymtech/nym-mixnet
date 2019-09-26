@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/nymtech/loopix-messaging/config"
+	"github.com/nymtech/nym-mixnet/config"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/crypto/curve25519"
 )
@@ -234,9 +234,9 @@ func TestEncapsulateHeader(t *testing.T) {
 	_, pubD, err := GenerateKeyPair()
 	assert.Nil(t, err)
 
-	m1 := config.NewMixConfig("Node1", "localhost", "3331", pub1.Bytes())
-	m2 := config.NewMixConfig("Node2", "localhost", "3332", pub2.Bytes())
-	m3 := config.NewMixConfig("Node3", "localhost", "3333", pub3.Bytes())
+	m1 := config.NewMixConfig("Node1", "localhost", "3331", pub1.Bytes(), 1)
+	m2 := config.NewMixConfig("Node2", "localhost", "3332", pub2.Bytes(), 2)
+	m3 := config.NewMixConfig("Node3", "localhost", "3333", pub3.Bytes(), 3)
 
 	nodes := []config.MixConfig{m1, m2, m3}
 
@@ -336,9 +336,9 @@ func TestProcessSphinxHeader(t *testing.T) {
 	c2 := Commands{Delay: 0.25}
 	c3 := Commands{Delay: 1.10}
 
-	m1 := config.NewMixConfig("Node1", "localhost", "3331", pub1.Bytes())
-	m2 := config.NewMixConfig("Node2", "localhost", "3332", pub2.Bytes())
-	m3 := config.NewMixConfig("Node3", "localhost", "3333", pub3.Bytes())
+	m1 := config.NewMixConfig("Node1", "localhost", "3331", pub1.Bytes(), 1)
+	m2 := config.NewMixConfig("Node2", "localhost", "3332", pub2.Bytes(), 2)
+	m3 := config.NewMixConfig("Node3", "localhost", "3333", pub3.Bytes(), 3)
 
 	nodes := []config.MixConfig{m1, m2, m3}
 
@@ -435,9 +435,9 @@ func TestProcessSphinxPayload(t *testing.T) {
 	priv3, pub3, err := GenerateKeyPair()
 	assert.Nil(t, err)
 
-	m1 := config.NewMixConfig("Node1", "localhost", "3331", pub1.Bytes())
-	m2 := config.NewMixConfig("Node2", "localhost", "3332", pub2.Bytes())
-	m3 := config.NewMixConfig("Node3", "localhost", "3333", pub3.Bytes())
+	m1 := config.NewMixConfig("Node1", "localhost", "3331", pub1.Bytes(), 1)
+	m2 := config.NewMixConfig("Node2", "localhost", "3332", pub2.Bytes(), 2)
+	m3 := config.NewMixConfig("Node3", "localhost", "3333", pub3.Bytes(), 3)
 
 	nodes := []config.MixConfig{m1, m2, m3}
 

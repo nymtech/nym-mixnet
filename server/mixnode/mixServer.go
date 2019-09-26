@@ -16,18 +16,20 @@
 package mixnode
 
 import (
+	"encoding/base64"
 	"net"
 	"sync"
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/nymtech/loopix-messaging/config"
-	"github.com/nymtech/loopix-messaging/flags"
-	"github.com/nymtech/loopix-messaging/helpers"
-	"github.com/nymtech/loopix-messaging/logger"
-	"github.com/nymtech/loopix-messaging/networker"
-	"github.com/nymtech/loopix-messaging/node"
-	"github.com/nymtech/loopix-messaging/sphinx"
+	"github.com/nymtech/nym-directory/models"
+	"github.com/nymtech/nym-mixnet/config"
+	"github.com/nymtech/nym-mixnet/flags"
+	"github.com/nymtech/nym-mixnet/helpers"
+	"github.com/nymtech/nym-mixnet/logger"
+	"github.com/nymtech/nym-mixnet/networker"
+	"github.com/nymtech/nym-mixnet/node"
+	"github.com/nymtech/nym-mixnet/sphinx"
 	"github.com/sirupsen/logrus"
 )
 
@@ -58,7 +60,7 @@ type MixServer struct {
 	host     string
 	port     string
 	layer    int
-	listener *net.TCPListener
+	listener net.Listener
 	config   config.MixConfig
 	metrics  *metrics
 	haltedCh chan struct{}
@@ -68,19 +70,24 @@ type MixServer struct {
 
 type metrics struct {
 	sync.Mutex
-	sentMessages map[string]uint
-	log          *logrus.Logger
+	host             string
+	b64Key           string
+	receivedMessages uint
+	sentMessages     map[string]uint
+	log              *logrus.Logger
 }
 
 func (m *metrics) reset() {
 	m.Lock()
 	defer m.Unlock()
 	m.sentMessages = make(map[string]uint)
+	m.receivedMessages = 0
 }
 
 func (m *metrics) addMessage(hopAddress string) {
 	m.Lock()
 	defer m.Unlock()
+	m.receivedMessages++
 	if _, ok := m.sentMessages[hopAddress]; ok {
 		m.sentMessages[hopAddress]++
 	} else {
@@ -92,21 +99,31 @@ func (m *metrics) sendToDirectoryServer() {
 	m.Lock()
 	defer m.Unlock()
 	// send the data in a new goroutine so we wouldn't block if there were issues in sending the data
-	metricsCopy := make(map[string]uint)
+	sentCopy := make(map[string]uint)
 	for k, v := range m.sentMessages {
-		metricsCopy[k] = v
+		sentCopy[k] = v
 	}
-	go func(metricsCopy map[string]uint) {
-		if err := helpers.SendMixMetrics(metricsCopy); err != nil {
+	receivedCopy := m.receivedMessages
+
+	go func(metricsCopy models.MixMetric) {
+		if err := helpers.SendMixMetrics(metricsCopy, m.host); err != nil {
 			m.log.Errorf("Failed to send metrics: %v", err)
 		}
-	}(metricsCopy)
+	}(models.MixMetric{
+		PubKey:   m.b64Key,
+		Sent:     sentCopy,
+		Received: &receivedCopy,
+	})
 }
 
-func newMetrics(log *logrus.Logger) *metrics {
+func newMetrics(log *logrus.Logger, publicKey *sphinx.PublicKey, host string) *metrics {
+	b64key := base64.URLEncoding.EncodeToString(publicKey.Bytes())
+	log.Infof("Our public key is: %v", b64key)
 	return &metrics{
 		log:          log,
+		b64Key:       b64key,
 		sentMessages: make(map[string]uint),
+		host:         host,
 	}
 }
 
@@ -191,8 +208,8 @@ func (m *MixServer) send(packet []byte, address string) error {
 func (m *MixServer) run() {
 	defer m.listener.Close()
 
-	// go m.startSendingMetrics()
-	// go m.startSendingPresence()
+	go m.startSendingMetrics()
+	go m.startSendingPresence()
 
 	go func() {
 		m.log.Infof("Listening on %s", m.host+":"+m.port)
@@ -220,7 +237,10 @@ func (m *MixServer) startSendingPresence() {
 	for {
 		select {
 		case <-ticker.C:
-			if err := helpers.RegisterMixNodePresence(m.id, m.GetPublicKey(), m.layer); err != nil {
+			if err := helpers.RegisterMixNodePresence(m.GetPublicKey(),
+				m.layer,
+				net.JoinHostPort(m.host, m.port),
+			); err != nil {
 				m.log.Errorf("Failed to register presence: %v", err)
 			}
 		case <-m.haltedCh:
@@ -274,13 +294,11 @@ func (m *MixServer) handleConnection(conn net.Conn, errs chan<- error) {
 
 // NewMixServer constructor
 // TODO: Identical case to 'NewClient'
-// TODO: remove pkiPath once it becomes completely replaced with the directory server
 func NewMixServer(id string,
 	host string,
 	port string,
 	prvKey *sphinx.PrivateKey,
 	pubKey *sphinx.PublicKey,
-	pkiPath string,
 	layer int,
 ) (*MixServer, error) {
 
@@ -297,7 +315,7 @@ func NewMixServer(id string,
 		port:     port,
 		Mix:      mix,
 		layer:    layer,
-		metrics:  newMetrics(baseLogger.GetLogger("metrics " + id)),
+		metrics:  newMetrics(baseLogger.GetLogger("metrics "+id), pubKey, net.JoinHostPort(host, port)),
 		haltedCh: make(chan struct{}),
 		log:      log,
 	}
@@ -307,26 +325,14 @@ func NewMixServer(id string,
 		PubKey: mixServer.GetPublicKey().Bytes(),
 	}
 
-	configBytes, err := proto.Marshal(&mixServer.config)
-	if err != nil {
+	if err := helpers.RegisterMixNodePresence(mixServer.GetPublicKey(),
+		layer,
+		net.JoinHostPort(host, port),
+	); err != nil {
 		return nil, err
 	}
 
-	if err := helpers.AddToDatabase(pkiPath, "Pki", mixServer.id, "Mix", configBytes); err != nil {
-		return nil, err
-	}
-
-	// if err := helpers.RegisterMixNodePresence(mixServer.host+mixServer.port, mixServer.GetPublicKey(), layer); err != nil {
-	// 	return nil, err
-	// }
-
-	addr, err := helpers.ResolveTCPAddress(mixServer.host, mixServer.port)
-
-	if err != nil {
-		return nil, err
-	}
-
-	listener, err := net.ListenTCP("tcp", addr)
+	listener, err := net.Listen("tcp", net.JoinHostPort(host, port))
 	if err != nil {
 		return nil, err
 	}

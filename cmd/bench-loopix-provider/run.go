@@ -15,16 +15,16 @@
 package main
 
 import (
+	"encoding/base64"
+	"fmt"
 	"os"
 
-	"github.com/nymtech/loopix-messaging/server/provider"
-	"github.com/nymtech/loopix-messaging/sphinx"
+	"github.com/nymtech/nym-mixnet/server/provider"
+	"github.com/nymtech/nym-mixnet/sphinx"
 	"github.com/tav/golly/optparse"
 )
 
 const (
-	// PkiDir is the location of the database file, relative to the project root. TODO: move this to homedir.
-	PkiDir                       = "pki/database.db"
 	defaultBenchmarkProviderHost = "localhost"
 	defaultBenchmarkProviderPort = "11000"
 	defaultBenchmarkProviderID   = "BenchmarkProvider"
@@ -42,6 +42,11 @@ func cmdRun(args []string, usage string) {
 		os.Exit(1)
 	}
 
+	if err := os.RemoveAll("inboxes/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to empty bench inbox: %v", err)
+		os.Exit(1)
+	}
+
 	// have constant keys to simplify the procedure so that pki/database would not need to be reset every run
 	privP := sphinx.BytesToPrivateKey([]byte{191, 43, 90, 175, 50, 224, 156, 22, 204, 173, 87, 255, 64, 152, 17,
 		30, 48, 162, 36, 95, 57, 34, 187, 183, 203, 215, 25, 172, 55, 199, 211, 59})
@@ -53,18 +58,18 @@ func cmdRun(args []string, usage string) {
 		*port,
 		privP,
 		pubP,
-		PkiDir,
 	)
 	if err != nil {
 		panic(err)
 	}
 
+	b64Key := base64.URLEncoding.EncodeToString(pubP.Bytes())
+	fmt.Println(b64Key)
+
 	benchmarkProviderServer, err := provider.NewBenchProvider(baseProviderServer, *numMessages)
 	if err != nil {
 		panic(err)
 	}
-
-	provider.DisableLogging()
 
 	err = benchmarkProviderServer.RunBench()
 	if err != nil {
