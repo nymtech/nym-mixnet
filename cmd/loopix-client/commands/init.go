@@ -16,9 +16,11 @@ package commands
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
 	"path/filepath"
 
+	"github.com/nymtech/nym-directory/models"
 	clientConfig "github.com/nymtech/nym-mixnet/client/config"
 	"github.com/nymtech/nym-mixnet/constants"
 	"github.com/nymtech/nym-mixnet/helpers"
@@ -101,13 +103,7 @@ func InitCmd(args []string, usage string) {
 		os.Exit(1)
 	}
 
-	// iterating through map is not deterministic so in theory multiple clients should be getting
-	// different providers
-	for provID := range initialTopology.MixProviderNodes {
-		// get the first entry
-		defaultCfg.Client.ProviderID = provID
-		break
-	}
+	defaultCfg.Client.ProviderID = chooseRandom(initialTopology.MixProviderNodes).PubKey
 
 	// finally write our config to a file
 	if err := clientConfig.WriteConfigFile(configPath, defaultCfg); err != nil {
@@ -116,4 +112,8 @@ func InitCmd(args []string, usage string) {
 	}
 
 	fmt.Fprintf(os.Stdout, "Saved generated config to %v\n", configPath)
+}
+
+func chooseRandom(providers []models.MixProviderPresence) models.MixProviderPresence {
+	return providers[rand.Intn(len(providers))]
 }
