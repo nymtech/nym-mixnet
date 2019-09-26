@@ -20,3 +20,4 @@
 /build/loopix-client
 /build/loopix-mixnode
 /build/loopix-provider
+/scripts/deploy.sh
