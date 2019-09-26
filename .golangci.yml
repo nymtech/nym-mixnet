@@ -35,7 +35,7 @@ linters-settings:
       - github.com/sirupsen/logrus
       - github.com/mattn/go-sqlite3
       - golang.org/x/crypto/curve25519
-      - github.com/nymtech/directory-server/models
+      - github.com/nymtech/nym-directory/models
       - github.com/BurntSushi/toml
       - github.com/pelletier/go-toml
       - github.com/AlecAivazis/survey/v2

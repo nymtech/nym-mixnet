@@ -27,15 +27,15 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/nymtech/directory-server/models"
+	"github.com/nymtech/nym-directory/models"
 	"github.com/nymtech/nym-mixnet/config"
 )
 
 // MixPresence defines map containing presence information of all mix nodes in given topology.
-type MixPresence map[string]models.MixNodePresence
+type MixPresence []models.MixNodePresence
 
 // MixPresence defines map containing presence information of all providers in given topology.
-type ProviderPresence map[string]models.MixProviderPresence
+type ProviderPresence []models.MixProviderPresence
 
 // LayeredMixes defines map of list of mix nodes corresponding to particular layer in given topology.
 type LayeredMixes map[uint][]config.MixConfig
@@ -77,7 +77,7 @@ func GetMixesPKI(mixPresence MixPresence) (LayeredMixes, error) {
 			continue
 		}
 		newMixEntry := config.MixConfig{
-			Id:     k,
+			Id:     mixPresence[k].PubKey,
 			Host:   host,
 			Port:   port,
 			PubKey: b,
