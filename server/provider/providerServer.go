@@ -28,7 +28,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/nymtech/directory-server/models"
+	"github.com/nymtech/nym-directory/models"
 	"github.com/nymtech/nym-mixnet/config"
 	"github.com/nymtech/nym-mixnet/flags"
 	"github.com/nymtech/nym-mixnet/helpers"

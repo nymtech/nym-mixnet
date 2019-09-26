@@ -71,9 +71,9 @@ func cmdRun(args []string, usage string) {
 		os.Exit(1)
 	}
 
-	for provID := range initialTopology.MixProviderNodes {
-		if provID != benchmarkProviderID {
-			cfg.Client.ProviderID = provID
+	for _, node := range initialTopology.MixProviderNodes {
+		if node.PubKey != benchmarkProviderID {
+			cfg.Client.ProviderID = node.PubKey
 			break
 		}
 	}

@@ -31,7 +31,7 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/golang/protobuf/proto"
-	"github.com/nymtech/directory-server/models"
+	"github.com/nymtech/nym-directory/models"
 	clientConfig "github.com/nymtech/nym-mixnet/client/config"
 	"github.com/nymtech/nym-mixnet/clientcore"
 	"github.com/nymtech/nym-mixnet/config"
@@ -78,6 +78,17 @@ func (c *NetClient) OutQueue() chan<- []byte {
 	return c.outQueue
 }
 
+func getProvider(presences []models.MixProviderPresence, pubKey string) (models.MixProviderPresence, error) {
+	var pres models.MixProviderPresence
+
+	for _, presence := range presences {
+		if presence.PubKey == pubKey {
+			return presence, nil
+		}
+	}
+	return pres, fmt.Errorf("no provider with the given public key exists in the current network")
+}
+
 // Start reads the network and users information from the topology
 // and starts the listening server. Returns an error
 // signalling whenever any operation was unsuccessful.
@@ -93,10 +104,11 @@ func (c *NetClient) Start() error {
 		return err
 	}
 
-	if _, ok := initialTopology.MixProviderNodes[c.cfg.Client.ProviderID]; !ok {
+	var providerPresence models.MixProviderPresence
+	if providerPresence, err = getProvider(initialTopology.MixProviderNodes, c.cfg.Client.ProviderID); err != nil {
 		return fmt.Errorf("specified provider does not seem to be online: %v", c.cfg.Client.ProviderID)
 	}
-	provider, err := topology.ProviderPresenceToConfig(initialTopology.MixProviderNodes[c.cfg.Client.ProviderID])
+	provider, err := topology.ProviderPresenceToConfig(providerPresence)
 	// provider, err := providerFromTopology(initialTopology)
 	if err != nil {
 		return err
