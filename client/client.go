@@ -78,7 +78,7 @@ func (c *NetClient) OutQueue() chan<- []byte {
 	return c.outQueue
 }
 
-func GetProvider(presences []models.MixProviderPresence, pubKey string) (models.MixProviderPresence, error) {
+func getProvider(presences []models.MixProviderPresence, pubKey string) (models.MixProviderPresence, error) {
 	var pres models.MixProviderPresence
 
 	for _, presence := range presences {
@@ -105,7 +105,7 @@ func (c *NetClient) Start() error {
 	}
 
 	var providerPresence models.MixProviderPresence
-	if providerPresence, err = GetProvider(initialTopology.MixProviderNodes, c.cfg.Client.ProviderID); err != nil {
+	if providerPresence, err = getProvider(initialTopology.MixProviderNodes, c.cfg.Client.ProviderID); err != nil {
 		return fmt.Errorf("specified provider does not seem to be online: %v", c.cfg.Client.ProviderID)
 	}
 	provider, err := topology.ProviderPresenceToConfig(providerPresence)
