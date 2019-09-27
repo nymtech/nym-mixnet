@@ -84,10 +84,15 @@ func (m *metrics) reset() {
 	m.receivedMessages = 0
 }
 
-func (m *metrics) addMessage(hopAddress string) {
+func (m *metrics) incrementReceived() {
 	m.Lock()
 	defer m.Unlock()
 	m.receivedMessages++
+}
+
+func (m *metrics) addMessage(hopAddress string) {
+	m.Lock()
+	defer m.Unlock()
 	if _, ok := m.sentMessages[hopAddress]; ok {
 		m.sentMessages[hopAddress]++
 	} else {
@@ -159,6 +164,7 @@ func (m *MixServer) GetConfig() config.MixConfig {
 
 func (m *MixServer) receivedPacket(packet []byte) error {
 	m.log.Infof("%s: Received new sphinx packet", m.id)
+	m.metrics.incrementReceived()
 
 	res := m.ProcessPacket(packet)
 	dePacket := res.PacketData()
