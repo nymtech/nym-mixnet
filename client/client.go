@@ -637,7 +637,14 @@ func NewClient(cfg *clientConfig.Config) (*NetClient, error) {
 	c.log.Infof("Logging level set to %v", c.cfg.Logging.Level)
 
 	b64Key := base64.URLEncoding.EncodeToString(c.GetPublicKey().Bytes())
-	c.log.Infof("Our full ID/Public Key is: %v", b64Key)
+
+	keyInfoStr := fmt.Sprintf("\x1b[%dmOur Public Key is: %s\x1b[0m",
+		logger.ColorYellow,
+		b64Key,
+	)
+
+	fmt.Fprint(os.Stdout, keyInfoStr + "\n\n")
+
 
 	c.config = config.ClientConfig{Id: b64Key,
 		Host:     "", // TODO: remove
