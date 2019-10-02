@@ -310,7 +310,7 @@ func (c *NetClient) encodeMessage(message string, recipient config.ClientConfig)
 // Otherwise it returns the response sent by server
 func (c *NetClient) send(packet []byte, host string, port string) (config.ProviderResponse, error) {
 
-	conn, err := net.Dial("tcp", host+":"+port)
+	conn, err := net.Dial("tcp", net.JoinHostPort(host, port))
 
 	if err != nil {
 		c.log.Errorf("Error in send - dial returned an error: %v", err)
