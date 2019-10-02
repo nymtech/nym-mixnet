@@ -1,0 +1,44 @@
+# github.com/davecgh/go-spew v1.1.1
+github.com/davecgh/go-spew/spew
+# github.com/dchest/siphash v1.2.1
+github.com/dchest/siphash
+# github.com/flynn/go-shlex v0.0.0-20150515145356-3f9db97f8568
+github.com/flynn/go-shlex
+# github.com/golang/protobuf v1.3.2
+github.com/golang/protobuf/proto
+# github.com/jmoiron/sqlx v0.0.0-20171211234905-de8647470aaf
+github.com/jmoiron/sqlx
+github.com/jmoiron/sqlx/reflectx
+# github.com/konsorten/go-windows-terminal-sequences v1.0.1
+github.com/konsorten/go-windows-terminal-sequences
+# github.com/mattn/go-colorable v0.1.2
+github.com/mattn/go-colorable
+# github.com/mattn/go-isatty v0.0.9
+github.com/mattn/go-isatty
+# github.com/mattn/go-sqlite3 v1.5.0
+github.com/mattn/go-sqlite3
+# github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b
+github.com/mgutz/ansi
+# github.com/nymtech/directory-server v0.0.0-20190916143248-9fd40a9a38a3
+github.com/nymtech/directory-server/models
+# github.com/pmezard/go-difflib v1.0.0
+github.com/pmezard/go-difflib/difflib
+# github.com/sirupsen/logrus v1.4.2
+github.com/sirupsen/logrus
+# github.com/stretchr/testify v1.4.0
+github.com/stretchr/testify/assert
+# github.com/tav/golly v0.0.0-20180823113506-ad032321f11e
+github.com/tav/golly/optparse
+github.com/tav/golly/log
+github.com/tav/golly/process
+github.com/tav/golly/structure
+# golang.org/x/crypto v0.0.0-20190909091759-094676da4a83
+golang.org/x/crypto/curve25519
+golang.org/x/crypto/ssh/terminal
+# golang.org/x/net v0.0.0-20190909003024-a7b16738d86b
+golang.org/x/net/context
+# golang.org/x/sys v0.0.0-20190910064555-bbd175535a8b
+golang.org/x/sys/unix
+golang.org/x/sys/windows
+# gopkg.in/yaml.v2 v2.2.2
+gopkg.in/yaml.v2
