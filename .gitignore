@@ -3,7 +3,6 @@
 /nym-mixnet
 /pki/TESTDATABASE.DB
 /pki/database.db
-/vendor/
 .vscode
 /cmd/loopix-client/loopix-client
 /cmd/loopix-mixnode/loopix-mixnode
@@ -21,5 +20,4 @@
 /build/loopix-client
 /build/loopix-mixnode
 /build/loopix-provider
-/scripts/deploy_network.sh
 /scripts/deploy.sh

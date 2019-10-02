@@ -21,13 +21,13 @@ import (
 
 func main() {
 	var logo = `
-  _                      _      
+  _                      _
  | |    ___   ___  _ __ (_)_  __
  | |   / _ \ / _ \| '_ \| \ \/ /
- | |___ (_) | (_) | |_) | |>  < 
+ | |___ (_) | (_) | |_) | |>  <
  |_____\___/ \___/| .__/|_/_/\_\
 		  |_|            (client)
-		  
+
 		  `
 	cmds := map[string]func([]string, string){
 		"run":  cmd.RunCmd,
@@ -36,5 +36,5 @@ func main() {
 	info := map[string]string{
 		"run": "Run a persistent Loopix client process",
 	}
-	optparse.Commands("loopix-client", "0.0.2", cmds, info, logo)
+	optparse.Commands("loopix-client", "0.0.3", cmds, info, logo)
 }
