@@ -32,5 +32,5 @@ func main() {
 	info := map[string]string{
 		"run": "Run a benchmark Loopix provider",
 	}
-	optparse.Commands("bench-loopix-provider", "0.0.3", cmds, info, logo)
+	optparse.Commands("bench-loopix-provider", "0.1.0", cmds, info, logo)
 }
