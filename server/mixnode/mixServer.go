@@ -74,7 +74,8 @@ type metrics struct {
 	b64Key           string
 	receivedMessages uint
 	sentMessages     map[string]uint
-	log              *logrus.Logger
+
+	log *logrus.Logger
 }
 
 func (m *metrics) reset() {
@@ -166,23 +167,27 @@ func (m *MixServer) receivedPacket(packet []byte) error {
 	m.log.Infof("%s: Received new sphinx packet", m.id)
 	m.metrics.incrementReceived()
 
-	res := m.ProcessPacket(packet)
-	dePacket := res.PacketData()
-	nextHop := res.NextHop()
-	flag := res.Flag()
-	if err := res.Err(); err != nil {
-		return err
-	}
-
-	if flag == flags.RelayFlag {
-		if err := m.forwardPacket(dePacket, nextHop.Address); err != nil {
-			return err
+	// process in goroutine so we wouldn't block while executing the required delay
+	go func(packet []byte) {
+		res := m.ProcessPacket(packet)
+		dePacket := res.PacketData()
+		nextHop := res.NextHop()
+		flag := res.Flag()
+		if err := res.Err(); err != nil {
+			m.log.Errorf("error while processing packet: %v", err)
 		}
-		// add it only if we didn't return an error
-		m.metrics.addMessage(nextHop.Address)
-	} else {
-		m.log.Info("Packet has non-forward flag. Packet dropped")
-	}
+
+		if flag == flags.RelayFlag {
+			if err := m.forwardPacket(dePacket, nextHop.Address); err != nil {
+				m.log.Errorf("error while forwarding packet: %v", err)
+			}
+			// add it only if we didn't return an error
+			m.metrics.addMessage(nextHop.Address)
+		} else {
+			m.log.Info("Packet has non-forward flag. Packet dropped")
+		}
+	}(packet)
+
 	return nil
 }
 
@@ -262,40 +267,40 @@ func (m *MixServer) listenForIncomingConnections() {
 			m.log.Errorf("Error when listening for incoming connection: %v", err)
 		} else {
 			m.log.Infof("Received connection from %s", conn.RemoteAddr())
-			errs := make(chan error, 1)
-			go m.handleConnection(conn, errs)
-			err = <-errs
-			if err != nil {
-				m.log.Errorf("Error when listening for incoming connection: %v", err)
-			}
+			go func(conn net.Conn) {
+				err := m.handleConnection(conn)
+				if err != nil {
+					m.log.Errorf("Error when listening for incoming connection: %v", err)
+				}
+			}(conn)
 		}
 	}
 }
 
-func (m *MixServer) handleConnection(conn net.Conn, errs chan<- error) {
+func (m *MixServer) handleConnection(conn net.Conn) error {
 	defer conn.Close()
 
 	buff := make([]byte, 1024)
 	reqLen, err := conn.Read(buff)
 	if err != nil {
-		errs <- err
+		return err
 	}
 
 	var packet config.GeneralPacket
 	if err := proto.Unmarshal(buff[:reqLen], &packet); err != nil {
-		errs <- err
+		return err
 	}
 
 	switch flags.PacketTypeFlagFromBytes(packet.Flag) {
 	case flags.CommFlag:
 		if err := m.receivedPacket(packet.Data); err != nil {
-			errs <- err
+			return err
 		}
 	default:
 		m.log.Infof("Packet flag %s not recognised. Packet dropped", packet.Flag)
-		errs <- nil
+		return nil
 	}
-	errs <- nil
+	return nil
 }
 
 // NewMixServer constructor

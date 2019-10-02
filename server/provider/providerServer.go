@@ -162,27 +162,30 @@ func (p *ProviderServer) startSendingPresence() {
 func (p *ProviderServer) receivedPacket(packet []byte) error {
 	p.log.Infof("%s: Received new sphinx packet", p.id)
 
-	res := p.ProcessPacket(packet)
-	dePacket := res.PacketData()
-	nextHop := res.NextHop()
-	flag := res.Flag()
-	if err := res.Err(); err != nil {
-		return err
-	}
+	// process in goroutine so we wouldn't block while executing the required delay
+	go func(packet []byte) {
+		res := p.ProcessPacket(packet)
+		dePacket := res.PacketData()
+		nextHop := res.NextHop()
+		flag := res.Flag()
+		if err := res.Err(); err != nil {
+			p.log.Errorf("error while processing packet: %v", err)
+		}
 
-	switch flag {
-	case flags.RelayFlag:
-		if err := p.forwardPacket(dePacket, nextHop.Address); err != nil {
-			return err
+		switch flag {
+		case flags.RelayFlag:
+			if err := p.forwardPacket(dePacket, nextHop.Address); err != nil {
+				p.log.Errorf("error while forwarding packet: %v", err)
+			}
+		case flags.LastHopFlag:
+			tmpMsgID := fmt.Sprintf("TMP_MESSAGE_%v", helpers.RandomString(8))
+			if err := p.storeMessage(dePacket, nextHop.Id, tmpMsgID); err != nil {
+				p.log.Errorf("error while storing packet: %v", err)
+			}
+		default:
+			p.log.Info("Sphinx packet flag not recognised")
 		}
-	case flags.LastHopFlag:
-		tmpMsgID := fmt.Sprintf("TMP_MESSAGE_%v", helpers.RandomString(8))
-		if err := p.storeMessage(dePacket, nextHop.Id, tmpMsgID); err != nil {
-			return err
-		}
-	default:
-		p.log.Info("Sphinx packet flag not recognised")
-	}
+	}(packet)
 
 	return nil
 }
@@ -230,15 +233,13 @@ func (p *ProviderServer) listenForIncomingConnections() {
 	for {
 		conn, err := p.listener.Accept()
 		if err != nil {
-			if e, ok := err.(net.Error); ok && !e.Temporary() {
-				p.log.Panicf("Critical accept failure: %v", err)
-				return
-			}
-			continue
+			p.log.Errorf("Error when listening for incoming connection: %v", err)
+		} else {
+			p.log.Infof("Received connection from %s", conn.RemoteAddr())
+			go func(conn net.Conn) {
+				p.handleConnection(conn)
+			}(conn)
 		}
-
-		p.log.Infof("Received new connection from %s", conn.RemoteAddr())
-		go p.handleConnection(conn)
 	}
 }
 
