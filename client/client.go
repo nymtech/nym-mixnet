@@ -28,8 +28,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/AlecAivazis/survey/v2"
-	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/golang/protobuf/proto"
 	"github.com/nymtech/nym-directory/models"
 	clientConfig "github.com/nymtech/nym-mixnet/client/config"
@@ -144,11 +142,6 @@ func (c *NetClient) Start() error {
 
 	c.startTraffic()
 
-	// if public is zeroed, it means either something went terribly wrong
-	// or we are running a benchmark. In either case, we don't want to be accepting inputs
-	if !helpers.IsZeroElement(c.GetPublicKey()) {
-		go c.startInputRoutine()
-	}
 	return nil
 }
 
@@ -169,90 +162,6 @@ func (c *NetClient) halt() {
 	// close any listeners, free resources, etc
 
 	close(c.haltedCh)
-}
-
-func toChoosable(client config.ClientConfig) string {
-	b64Key := base64.URLEncoding.EncodeToString(client.PubKey)
-	b64ProviderKey := base64.URLEncoding.EncodeToString(client.Provider.PubKey)
-	// while normally it's unsafe to directly index string, it's safe here
-	// as id is guaranteed to only hold ascii characters due to being b64 encoding of the key
-	return fmt.Sprintf("ID: %s\t@[Provider]\t%s", b64Key, b64ProviderKey)
-}
-
-func makeChoosables(clients []config.ClientConfig) (map[string]config.ClientConfig, []string) {
-	choosableClients := make(map[string]config.ClientConfig)
-	options := make([]string, len(clients))
-	for i, client := range clients {
-		choosableClient := toChoosable(client)
-		options[i] = choosableClient
-		choosableClients[choosableClient] = client // basically a mapping from the string back to original struct
-	}
-	return choosableClients, options
-}
-
-func shouldStopInput(msg string) bool {
-	quitMessages := []string{
-		"quit",
-		"/q",
-		":q",
-		":q!",
-		"exit",
-	}
-
-	for _, qm := range quitMessages {
-		if qm == msg {
-			return true
-		}
-	}
-
-	return false
-}
-
-func (c *NetClient) startInputRoutine() {
-
-	choosableClients, choosableOptions := makeChoosables(c.Network.Clients)
-
-	var chosenClientOption string
-	prompt := &survey.Select{
-		Message: "Choose another client to communicate with:",
-		Options: choosableOptions,
-	}
-	if err := survey.AskOne(prompt, &chosenClientOption, nil); err == terminal.InterruptErr {
-		// we got an interrupt so we're killing whole client
-		c.log.Warningf("Received an interrupt - stopping entire client")
-		c.Shutdown()
-		return
-	}
-
-	chosenClient := choosableClients[chosenClientOption]
-
-	for {
-		select {
-		case <-c.haltedCh:
-			return
-		default:
-		}
-		messageToSend := ""
-		b64Key := base64.URLEncoding.EncodeToString(chosenClient.GetPubKey())
-		prompt := &survey.Input{
-			Message: fmt.Sprintf("Type in a message to send to %s...", b64Key),
-		}
-		if err := survey.AskOne(prompt, &messageToSend); err == terminal.InterruptErr {
-			// we got an interrupt so we're killing whole client
-			c.log.Warningf("Received an interrupt - stopping entire client")
-			c.Shutdown()
-			return
-		}
-		if shouldStopInput(messageToSend) {
-			c.log.Warningf("Received a stop signal. Stopping the input routine")
-			return
-		}
-
-		c.log.Infof("Sending: %v to %v", messageToSend, chosenClient.GetId())
-		if err := c.SendMessage(messageToSend, chosenClient); err != nil {
-			c.log.Errorf("Failed to send %v to %x...: %v", messageToSend, chosenClient.GetPubKey()[:8], err)
-		}
-	}
 }
 
 func (c *NetClient) checkTopology() error {
@@ -461,6 +370,9 @@ func (c *NetClient) controlOutQueue() error {
 	c.log.Debugf("Queue controller started")
 	for {
 		select {
+		case <-c.haltedCh:
+			c.log.Infof("Halting controlOutQueue")
+			return nil
 		case realPacket := <-c.outQueue:
 			response, err := c.send(realPacket, c.Provider.Host, c.Provider.Port)
 			if err != nil {
@@ -493,14 +405,20 @@ func (c *NetClient) controlOutQueue() error {
 // to fetch received messages
 func (c *NetClient) controlMessagingFetching() {
 	for {
-		if err := c.getMessagesFromProvider(); err != nil {
-			c.log.Errorf("Could not get message from provider: %v", err)
-			continue
-		}
-		// c.log.Infof("Sent request to provider to fetch messages")
-		err := delayBeforeContinue(c.cfg.Debug.FetchMessageRate)
-		if err != nil {
-			c.log.Errorf("Error in ControlMessagingFetching - generating random exp. value failed: %v", err)
+		select {
+		case <-c.haltedCh:
+			c.log.Infof("Stopping controlMessagingFetching")
+			return
+		default:
+			if err := c.getMessagesFromProvider(); err != nil {
+				c.log.Errorf("Could not get message from provider: %v", err)
+				continue
+			}
+			// c.log.Infof("Sent request to provider to fetch messages")
+			err := delayBeforeContinue(c.cfg.Debug.FetchMessageRate)
+			if err != nil {
+				c.log.Errorf("Error in ControlMessagingFetching - generating random exp. value failed: %v", err)
+			}
 		}
 	}
 }
@@ -526,20 +444,26 @@ func (c *NetClient) createLoopCoverMessage() ([]byte, error) {
 func (c *NetClient) runLoopCoverTrafficStream() error {
 	c.log.Debugf("Stream of loop cover traffic started")
 	for {
-		loopPacket, err := c.createLoopCoverMessage()
-		if err != nil {
-			return err
-		}
-		response, err := c.send(loopPacket, c.Provider.Host, c.Provider.Port)
-		if err != nil {
-			c.log.Errorf("Could not send loop cover traffic message: %v", err)
-			return err
-		}
-		c.log.Debugf("Loop message sent")
-		c.log.Debugf("Received response: %v", response)
+		select {
+		case <-c.haltedCh:
+			c.log.Infof("Halting loopCoverTrafficStream")
+			return nil
+		default:
+			loopPacket, err := c.createLoopCoverMessage()
+			if err != nil {
+				return err
+			}
+			response, err := c.send(loopPacket, c.Provider.Host, c.Provider.Port)
+			if err != nil {
+				c.log.Errorf("Could not send loop cover traffic message: %v", err)
+				return err
+			}
+			c.log.Debugf("Loop message sent")
+			c.log.Debugf("Received response: %v", response)
 
-		if err := delayBeforeContinue(c.cfg.Debug.LoopCoverTrafficRate); err != nil {
-			return err
+			if err := delayBeforeContinue(c.cfg.Debug.LoopCoverTrafficRate); err != nil {
+				return err
+			}
 		}
 	}
 }
@@ -643,8 +567,7 @@ func NewClient(cfg *clientConfig.Config) (*NetClient, error) {
 		b64Key,
 	)
 
-	fmt.Fprint(os.Stdout, keyInfoStr + "\n\n")
-
+	fmt.Fprint(os.Stdout, keyInfoStr+"\n\n")
 
 	c.config = config.ClientConfig{Id: b64Key,
 		Host:     "", // TODO: remove
