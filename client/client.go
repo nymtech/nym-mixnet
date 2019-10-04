@@ -164,17 +164,22 @@ func (c *NetClient) halt() {
 	close(c.haltedCh)
 }
 
+func (c *NetClient) UpdateNetworkView() error {
+	newTopology, err := topology.GetNetworkTopology(c.cfg.Client.DirectoryServerTopologyEndpoint)
+	if err != nil {
+		c.log.Errorf("error while reading network topology: %v", err)
+		return err
+	}
+	if err := c.ReadInNetworkFromTopology(newTopology); err != nil {
+		c.log.Errorf("error while trying to update topology: %v", err)
+		return err
+	}
+	return nil
+}
+
 func (c *NetClient) checkTopology() error {
 	if c.Network.ShouldUpdate() {
-		newTopology, err := topology.GetNetworkTopology(c.cfg.Client.DirectoryServerTopologyEndpoint)
-		if err != nil {
-			c.log.Errorf("error while reading network topology: %v", err)
-			return err
-		}
-		if err := c.ReadInNetworkFromTopology(newTopology); err != nil {
-			c.log.Errorf("error while trying to update topology: %v", err)
-			return err
-		}
+		c.UpdateNetworkView()
 	}
 	return nil
 }
