@@ -57,17 +57,37 @@ type Client interface {
 	ReadInNetworkFromTopology(pkiName string) error
 }
 
+type ReceivedMessages struct {
+	sync.Mutex
+	messages [][]byte
+}
+
 // NetClient is a queuing TCP network client for the mixnet.
 type NetClient struct {
 	*clientcore.CryptoClient
 	// TODO: somehow rename or completely remove config.ClientConfig because it's waaaay too confusing right now
-	cfg      *clientConfig.Config
-	config   config.ClientConfig
-	token    []byte // TODO: combine with the 'Provider' field considering it's provider specific
-	outQueue chan []byte
-	haltedCh chan struct{}
-	haltOnce sync.Once
-	log      *logrus.Logger
+	cfg              *clientConfig.Config
+	config           config.ClientConfig
+	token            []byte // TODO: combine with the 'Provider' field considering it's provider specific
+	outQueue         chan []byte
+	haltedCh         chan struct{}
+	haltOnce         sync.Once
+	log              *logrus.Logger
+	receivedMessages ReceivedMessages
+}
+
+func (c *NetClient) GetReceivedMessages() [][]byte {
+	c.receivedMessages.Lock()
+	defer c.receivedMessages.Unlock()
+	msgsPtr := c.receivedMessages.messages
+	c.receivedMessages.messages = make([][]byte, 0, 20)
+	return msgsPtr
+}
+
+func (c *NetClient) addNewMessage(msg []byte) {
+	c.receivedMessages.Lock()
+	defer c.receivedMessages.Unlock()
+	c.receivedMessages.messages = append(c.receivedMessages.messages, msg)
 }
 
 // OutQueue returns a reference to the client's outQueue. It's a queue
@@ -360,8 +380,8 @@ func (c *NetClient) getMessagesFromProvider() error {
 		case loopLoad:
 			c.log.Debugf("Received loop cover message %v", packetDataStr)
 		default:
-			fmt.Fprintf(os.Stdout, "\nReceived: %s\n?> ", packetDataStr) // print to stdout regardless of logging location
 			c.log.Infof("Received new message: %v", packetDataStr)
+			c.addNewMessage(packetData)
 		}
 	}
 
@@ -561,6 +581,9 @@ func NewClient(cfg *clientConfig.Config) (*NetClient, error) {
 		cfg:      cfg,
 		haltedCh: make(chan struct{}),
 		log:      log,
+		receivedMessages: ReceivedMessages{
+			messages: make([][]byte, 0, 20),
+		},
 	}
 
 	c.log.Infof("Logging level set to %v", c.cfg.Logging.Level)
