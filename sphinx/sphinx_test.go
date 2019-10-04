@@ -424,7 +424,7 @@ func TestProcessSphinxHeader(t *testing.T) {
 
 func TestProcessSphinxPayload(t *testing.T) {
 
-	message := "Plaintext message"
+	message := []byte("Plaintext message")
 
 	priv1, pub1, err := GenerateKeyPair()
 	assert.Nil(t, err)

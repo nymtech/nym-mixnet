@@ -87,7 +87,7 @@ const (
 // sphinx cryptographic packet format. Next, the encoded packet is combined with a
 // flag signalling that this is a usual network packet, and passed to be send.
 // The function returns an error if any issues occurred.
-func (c *CryptoClient) createSphinxPacket(message string, recipient config.ClientConfig) ([]byte, error) {
+func (c *CryptoClient) createSphinxPacket(message []byte, recipient config.ClientConfig) ([]byte, error) {
 
 	path, err := c.buildPath(recipient)
 	if err != nil {
@@ -173,7 +173,7 @@ func (c *CryptoClient) generateDelaySequence(desiredRateParameter float64, lengt
 // EncodeMessage encodes given message into the Sphinx packet format. EncodeMessage takes as inputs
 // the message and the recipient's public configuration.
 // EncodeMessage returns the byte representation of the packet or an error if the packet could not be created.
-func (c *CryptoClient) EncodeMessage(message string, recipient config.ClientConfig) ([]byte, error) {
+func (c *CryptoClient) EncodeMessage(message []byte, recipient config.ClientConfig) ([]byte, error) {
 
 	packet, err := c.createSphinxPacket(message, recipient)
 	if err != nil {

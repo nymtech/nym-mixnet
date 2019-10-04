@@ -53,7 +53,7 @@ type Client interface {
 	networker.NetworkServer
 
 	Start() error
-	SendMessage(message string, recipient config.ClientConfig) error
+	SendMessage(message []byte, recipient config.ClientConfig) error
 	ReadInNetworkFromTopology(pkiName string) error
 }
 
@@ -204,9 +204,9 @@ func (c *NetClient) checkTopology() error {
 	return nil
 }
 
-// SendMessage responsible for sending a real message. Takes as input the message string
+// SendMessage responsible for sending a real message. Takes as input the message bytes
 // and the public information about the destination.
-func (c *NetClient) SendMessage(message string, recipient config.ClientConfig) error {
+func (c *NetClient) SendMessage(message []byte, recipient config.ClientConfig) error {
 	// before we send a message, ensure our topology is up to date
 	if err := c.checkTopology(); err != nil {
 		c.log.Errorf("error in updating topology: %v", err)
@@ -223,7 +223,7 @@ func (c *NetClient) SendMessage(message string, recipient config.ClientConfig) e
 
 // encodeMessage encapsulates the given message into a sphinx packet destinated for recipient
 // and wraps with the flag pointing that it is the communication packet
-func (c *NetClient) encodeMessage(message string, recipient config.ClientConfig) ([]byte, error) {
+func (c *NetClient) encodeMessage(message []byte, recipient config.ClientConfig) ([]byte, error) {
 	sphinxPacket, err := c.EncodeMessage(message, recipient)
 	if err != nil {
 		c.log.Errorf("Error in sending message - create sphinx packet returned an error: %v", err)
@@ -452,7 +452,7 @@ func (c *NetClient) controlMessagingFetching() {
 // a sphinx packet. The loop message is destinated back to the sender
 // createLoopCoverMessage returns a byte representation of the encapsulated packet and an error
 func (c *NetClient) createLoopCoverMessage() ([]byte, error) {
-	sphinxPacket, err := c.EncodeMessage(loopLoad, c.config)
+	sphinxPacket, err := c.EncodeMessage([]byte(loopLoad), c.config)
 	if err != nil {
 		return nil, err
 	}

@@ -43,7 +43,7 @@ func createTestPacket(mixes []config.MixConfig,
 	recipient config.ClientConfig,
 ) (*sphinx.SphinxPacket, error) {
 	path := config.E2EPath{IngressProvider: provider, Mixes: mixes, EgressProvider: provider, Recipient: recipient}
-	testPacket, err := sphinx.PackForwardMessage(path, []float64{1.4, 2.5, 2.3, 3.2, 7.4}, "Test Message")
+	testPacket, err := sphinx.PackForwardMessage(path, []float64{1.4, 2.5, 2.3, 3.2, 7.4}, []byte("Test Message"))
 	if err != nil {
 		return nil, err
 	}
