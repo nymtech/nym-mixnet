@@ -76,7 +76,7 @@ func (s *SocketServer) halt() {
 	for id, conn := range s.conns {
 		delete(s.conns, id)
 		if err := conn.Close(); err != nil {
-			s.log.Errorf("Error closing connection id: %s, conn: %v, err: %v", id, conn, err)
+			s.log.Errorf("Error closing connection id: %d, conn: %v, err: %v", id, conn, err)
 		}
 	}
 
