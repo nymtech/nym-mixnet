@@ -1,6 +1,8 @@
 syntax = "proto3";
 package config;
 
+option go_package = "github.com/nymtech/nym-mixnet/config";
+
 message MixConfig {
     string Id = 1;
     string Host = 2;

@@ -47,6 +47,7 @@ const (
 	loopLoad = "LoopCoverMessage"
 )
 
+// TODO: what is the point of this interface currently?
 // Client is the client networking interface
 type Client interface {
 	networker.NetworkClient

@@ -1,0 +1,5 @@
+syntax = "proto3";
+import "client/rpc/types.proto";
+
+package grpc;
+
