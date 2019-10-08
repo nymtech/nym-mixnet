@@ -20,7 +20,6 @@ message RequestFetchMessages {
 }
 
 message RequestFlush {
-
 }
 
 message Response {
@@ -40,12 +39,8 @@ message ResponseSendMessage {
 }
 
 message ResponseFlush {
-
 }
 
 message ResponseFetchMessages {
     repeated bytes messages = 1; // the message is implementation specific; it might be marshaled 'ChatMessage' or something completely else
 }
-
-// we need to be able to send message (so req type + data) or pull
-// we need to be able to receive messages we pulled
