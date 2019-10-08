@@ -1,7 +1,7 @@
 module github.com/nymtech/nym-mixnet
 
 require (
-	github.com/AlecAivazis/survey/v2 v2.0.4
+	github.com/AlecAivazis/survey/v2 v2.0.4 // indirect
 	github.com/BurntSushi/toml v0.3.1
 	github.com/dchest/siphash v1.2.1 // indirect
 	github.com/flynn/go-shlex v0.0.0-20150515145356-3f9db97f8568 // indirect
