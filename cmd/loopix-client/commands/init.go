@@ -105,6 +105,11 @@ func InitCmd(args []string, usage string) {
 
 	defaultCfg.Client.ProviderID = chooseRandom(initialTopology.MixProviderNodes).PubKey
 
+	if err := helpers.EnsureDir(defaultCfg.Client.FullMixAppsDir(), 0700); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to create mixapps directory: %v", err)
+		os.Exit(1)
+	}
+
 	// finally write our config to a file
 	if err := clientConfig.WriteConfigFile(configPath, defaultCfg); err != nil {
 		fmt.Fprintf(os.Stderr, "failed to write config to a file: %v", err)
