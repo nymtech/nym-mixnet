@@ -4,9 +4,10 @@ package main
 
 import (
 	"fmt"
+	"github.com/golang/protobuf/proto"
+	"github.com/gorilla/websocket"
 	"github.com/nymtech/nym-mixnet/client/rpc/types"
-	"github.com/nymtech/nym-mixnet/client/rpc/utils"
-	"net"
+	"net/url"
 	"time"
 )
 
@@ -46,28 +47,68 @@ func main() {
 		},
 	}
 
-	conn, err := net.Dial("tcp", "127.0.0.1:9000")
+	// TCP_SOCKET:
+	//conn, err := net.Dial("tcp", "127.0.0.1:9000")
+	//if err != nil {
+	//	panic(err)
+	//}
+	//
+	//err = utils.WriteProtoMessage(msg, conn)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//
+	//err = utils.WriteProtoMessage(flushMsg, conn)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//
+	//time.Sleep(time.Second)
+	//
+	//res := &types.Response{}
+	//err = utils.ReadProtoMessage(res, conn)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//
+	//fmt.Printf("%v", res)
+
+	_ = flushMsg
+	// WEB_SOCKET:
+	u := url.URL{
+		Scheme: "ws",
+		Host:   "127.0.0.1:9000",
+		Path:   "/mix",
+	}
+	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
 		panic(err)
 	}
 
-	err = utils.WriteProtoMessage(msg, conn)
+	defer c.Close()
+
+	msgB, err := proto.Marshal(msg)
 	if err != nil {
 		panic(err)
 	}
-
-	err = utils.WriteProtoMessage(flushMsg, conn)
+	err = c.WriteMessage(websocket.BinaryMessage, msgB)
 	if err != nil {
 		panic(err)
 	}
 
 	time.Sleep(time.Second)
 
-	res := &types.Response{}
-	err = utils.ReadProtoMessage(res, conn)
+	resT, resB, err := c.ReadMessage()
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Printf("%v", res)
+	res := &types.Response{}
+	err = proto.Unmarshal(resB, res)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("Res type: %v (expect: %v)\n %v", resT, websocket.BinaryMessage, res)
+
 }

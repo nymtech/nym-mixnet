@@ -17,7 +17,7 @@ Package server is used to start local socket listener.
 It contains three server implementations:
 * gRPC server (TODO)
 * TCP socket server
-* websocket server (TODO)
+* websocket server
 */
 
 package server
@@ -27,6 +27,7 @@ import (
 	"github.com/nymtech/nym-mixnet/client"
 	"github.com/nymtech/nym-mixnet/client/rpc/tcpsocket"
 	"github.com/nymtech/nym-mixnet/client/rpc/types"
+	"github.com/nymtech/nym-mixnet/client/rpc/websocket"
 	"github.com/nymtech/nym-mixnet/logger"
 )
 
@@ -40,7 +41,7 @@ func NewSocketListener(address, typ string, logger *logger.Logger, c *client.Net
 	case "grpc":
 		panic("NOT IMPLEMENTED")
 	case "websocket":
-		panic("NOT IMPLEMENTED")
+		s = websocket.NewSocketServer(address, logger, c)
 	default:
 		err = fmt.Errorf("unknown server type: %s", typ)
 	}
