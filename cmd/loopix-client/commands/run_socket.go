@@ -16,13 +16,14 @@ package commands
 
 import (
 	"fmt"
+	"net"
+	"os"
+
 	"github.com/nymtech/nym-mixnet/client"
 	clientConfig "github.com/nymtech/nym-mixnet/client/config"
 	server "github.com/nymtech/nym-mixnet/client/rpc"
 	"github.com/nymtech/nym-mixnet/helpers"
 	"github.com/nymtech/nym-mixnet/logger"
-	"net"
-	"os"
 )
 
 const (
@@ -34,7 +35,7 @@ func RunSocketCmd(args []string, usage string) {
 	opts := newOpts("run [OPTIONS]", usage)
 	id := opts.Flags("--id").Label("ID").String("Id of the loopix-client we want to run", defaultID)
 	customConfigPath := opts.Flags("--customCfg").Label("CUSTOMCFG").String("Path to custom configuration file of the client", "")
-	socketType := opts.Flags("--socket").Label("SOCKETTYPE").String("Type of the socket we want to run on (tcp / grpc / websocket")
+	socketType := opts.Flags("--socket").Label("SOCKETTYPE").String("Type of the socket we want to run on (tcp / websocket)")
 	port := opts.Flags("--port").Label("PORT").String("Port to listen on")
 	params := opts.Parse(args)
 	if len(params) != 0 {
