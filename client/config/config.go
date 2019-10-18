@@ -143,6 +143,11 @@ func (cfg *Client) validateAndApplyDefaults() error {
 		cfg.HomeDirectory = defaultHomeDirectory
 	}
 
+	// if custom mixapps directory is specified it must have an absolute path
+	if len(cfg.MixAppsDirectory) == 0 {
+		cfg.MixAppsDirectory = defaultClientMixAppDirectory
+	}
+
 	// it is also required to specify ID otherwise we could not distinguish between multiple instances
 	if len(cfg.ID) == 0 {
 		return errors.New("config: client ID was not specified")
