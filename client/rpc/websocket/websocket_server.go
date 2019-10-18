@@ -15,8 +15,10 @@
 package websocket
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/websocket"
 	"github.com/nymtech/nym-mixnet/client"
@@ -46,6 +48,19 @@ const (
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  4096, // TODO: is this enough?
 	WriteBufferSize: 4096,
+}
+
+var jsonPbUnmarshaler = jsonpb.Unmarshaler{
+	AllowUnknownFields: false,
+	AnyResolver:        nil,
+}
+
+var jsonPbMarshaler = jsonpb.Marshaler{
+	EnumsAsInts:  false,
+	EmitDefaults: false,
+	Indent:       "  ",
+	OrigName:     false,
+	AnyResolver:  nil,
 }
 
 type SocketServer struct {
@@ -87,10 +102,17 @@ func (s *SocketServer) handleBinaryMixRequest(msg []byte) (int, []byte, error) {
 }
 
 func (s *SocketServer) handleTextMixRequest(msg []byte) (int, []byte, error) {
-	s.log.Warn("Unhandled text message")
-	return websocket.TextMessage, []byte("text messages are currently unhandled"), nil
-
-	// TODO: handle if request is in json format instead of protobuf
+	s.log.Debugf("Received json request: %v", string(msg))
+	req := &types.Request{}
+	if err := jsonPbUnmarshaler.Unmarshal(bytes.NewBuffer(msg), req); err != nil {
+		return websocket.TextMessage, nil, fmt.Errorf("failed to unmarshal send message: %v", err)
+	}
+	res := s.handleRequest(req)
+	jsonRes := bytes.NewBufferString("") // TODO: I doubt that's the best way for doing this
+	if err := jsonPbMarshaler.Marshal(jsonRes, res); err != nil {
+		return websocket.TextMessage, nil, fmt.Errorf("failed to marshal response: %v", err)
+	}
+	return websocket.TextMessage, jsonRes.Bytes(), nil
 }
 
 func (s *SocketServer) handleMixRequest(reqTyp int, req []byte) (int, []byte, error) {
@@ -182,11 +204,13 @@ func (s *SocketServer) serveMixClient(w http.ResponseWriter, r *http.Request) {
 			s.log.Errorf("failed to handle mix request: %v", err)
 			break
 		}
+		if reqTyp == websocket.TextMessage {
+			s.log.Debugf("sending json reply: %v", string(res))
+		}
 		if err := c.WriteMessage(resTyp, res); err != nil {
 			s.log.Errorf("failed to send reply: %v", err)
 			break
 		}
-
 	}
 }
 
