@@ -19,8 +19,19 @@ import (
 	"github.com/nymtech/nym-mixnet/client/rpc/types"
 )
 
+func returnSendError() *types.Response {
+	return &types.Response{
+		Value: &types.Response_Send{
+			Send: &types.ResponseSendMessage{},
+		},
+	}
+}
+
 func HandleSendMessage(req *types.Request_Send, c *client.NetClient) *types.Response {
 	sreq := req.Send
+	if req == nil || sreq == nil || sreq.Message == nil || sreq.Recipient == nil {
+		return returnSendError()
+	}
 	if err := c.SendMessage(sreq.Message, *sreq.Recipient); err != nil {
 		return &types.Response{
 			Value: &types.Response_Exception{
@@ -30,13 +41,7 @@ func HandleSendMessage(req *types.Request_Send, c *client.NetClient) *types.Resp
 			},
 		}
 	}
-	return &types.Response{
-		Value: &types.Response_Send{
-			Send: &types.ResponseSendMessage{
-
-			},
-		},
-	}
+	return returnSendError()
 }
 
 func HandleFetchMessages(req *types.Request_Fetch, c *client.NetClient) *types.Response {
@@ -53,9 +58,7 @@ func HandleFetchMessages(req *types.Request_Fetch, c *client.NetClient) *types.R
 func HandleFlush(req *types.Request_Flush) *types.Response {
 	return &types.Response{
 		Value: &types.Response_Flush{
-			Flush: &types.ResponseFlush{
-
-			},
+			Flush: &types.ResponseFlush{},
 		},
 	}
 }
