@@ -18,6 +18,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"net"
+	"net/http"
+	"sync"
+	"time"
+
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/websocket"
@@ -26,9 +31,6 @@ import (
 	"github.com/nymtech/nym-mixnet/client/rpc/types"
 	"github.com/nymtech/nym-mixnet/logger"
 	"github.com/sirupsen/logrus"
-	"net/http"
-	"sync"
-	"time"
 )
 
 const (
@@ -48,6 +50,14 @@ const (
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  4096, // TODO: is this enough?
 	WriteBufferSize: 4096,
+	// only allow requests from local
+	CheckOrigin: func(r *http.Request) bool {
+		ip, _, err := net.SplitHostPort(r.RemoteAddr)
+		if err != nil {
+			return false
+		}
+		return net.ParseIP(ip).IsLoopback()
+	},
 }
 
 var jsonPbUnmarshaler = jsonpb.Unmarshaler{
@@ -174,7 +184,7 @@ func (s *SocketServer) serveMixClient(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pingCh := make(chan struct{})
-	defer func(){
+	defer func() {
 		close(pingCh)
 		c.Close()
 	}()
@@ -271,8 +281,7 @@ func NewSocketServer(address string, logger *logger.Logger, c *client.NetClient)
 		log:     logger.GetLogger("websocket-server"),
 		client:  c,
 		srv: &http.Server{
-			Addr:
-			address,
+			Addr: address,
 		},
 	}
 
