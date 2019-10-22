@@ -90,6 +90,9 @@ func (s *SocketServer) handleRequest(req *types.Request) *types.Response {
 	case *types.Request_Fetch:
 		s.log.Info("Fetch request")
 		return requesthandler.HandleFetchMessages(r, s.client)
+	case *types.Request_Clients:
+		s.log.Info("Clients request")
+		return requesthandler.HandleGetClients(r, s.client)
 	//case *types.Request_Flush:
 	//	return requesthandler.HandleFlush(r) // doesn't do anything
 	default:

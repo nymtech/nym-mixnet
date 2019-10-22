@@ -41,7 +41,7 @@ var (
 	ErrInvalidMixes = errors.New("insufficient number of mixes provided")
 )
 
-// NetworkPKI holds PKI data about tne current network topology.
+// NetworkPKI holds PKI data about the current network topology.
 // This allows public-key encryption to happen.
 type NetworkPKI struct {
 	lastUpdated time.Time

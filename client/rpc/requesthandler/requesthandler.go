@@ -55,6 +55,18 @@ func HandleFetchMessages(req *types.Request_Fetch, c *client.NetClient) *types.R
 	}
 }
 
+func HandleGetClients(req *types.Request_Clients, c *client.NetClient) *types.Response {
+	clients := c.GetAllPossibleRecipients()
+
+	return &types.Response{
+		Value: &types.Response_Clients{
+			Clients: &types.ResponseGetClients{
+				Clients: clients,
+			},
+		},
+	}
+}
+
 func HandleFlush(req *types.Request_Flush) *types.Response {
 	return &types.Response{
 		Value: &types.Response_Flush{
