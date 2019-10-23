@@ -35,10 +35,10 @@ import (
 
 const (
 	// Time allowed to write a message to the peer.
-	writeWait = 10 * time.Second
+	writeWait = 40 * time.Second
 
 	// Time allowed to read the next pong message from the peer.
-	pongWait = 60 * time.Second
+	pongWait = 30 * time.Second
 
 	// Send pings to peer with this period. Must be less than pongWait.
 	pingPeriod = (pongWait * 9) / 10
@@ -90,6 +90,9 @@ func (s *SocketServer) handleRequest(req *types.Request) *types.Response {
 	case *types.Request_Fetch:
 		s.log.Info("Fetch request")
 		return requesthandler.HandleFetchMessages(r, s.client)
+	case *types.Request_Clients:
+		s.log.Info("Clients request")
+		return requesthandler.HandleGetClients(r, s.client)
 	//case *types.Request_Flush:
 	//	return requesthandler.HandleFlush(r) // doesn't do anything
 	default:
@@ -200,7 +203,12 @@ func (s *SocketServer) serveMixClient(w http.ResponseWriter, r *http.Request) {
 	}
 
 	go s.pingConnection(c, pingCh)
-	c.SetPongHandler(func(string) error { return c.SetReadDeadline(time.Now().Add(pongWait)) })
+	c.SetPongHandler(func(string) error {
+		if err := c.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
+			return err
+		}
+		return c.SetReadDeadline(time.Now().Add(pongWait))
+	})
 
 	for {
 		reqTyp, req, err := c.ReadMessage()

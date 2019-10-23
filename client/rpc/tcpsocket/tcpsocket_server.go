@@ -17,15 +17,16 @@ package tcpsocket
 import (
 	"bufio"
 	"fmt"
+	"io"
+	"net"
+	"sync"
+
 	"github.com/nymtech/nym-mixnet/client"
 	"github.com/nymtech/nym-mixnet/client/rpc/requesthandler"
 	"github.com/nymtech/nym-mixnet/client/rpc/types"
 	"github.com/nymtech/nym-mixnet/client/rpc/utils"
 	"github.com/nymtech/nym-mixnet/logger"
 	"github.com/sirupsen/logrus"
-	"io"
-	"net"
-	"sync"
 )
 
 // very heavily inspired by https://github.com/tendermint/tendermint/blob/f7f034a8befeeb84a88ae8f0092f9f465d9a2544/abci/server/socket_server.go
@@ -130,7 +131,7 @@ func (s *SocketServer) acceptConnectionsRoutine() {
 		s.log.Info("Accepted a new connection")
 		connID := s.addConn(conn)
 
-		closeConn := make(chan error, 2)              // Push to signal connection closed
+		closeConn := make(chan error, 2)             // Push to signal connection closed
 		responses := make(chan *types.Response, 100) // A channel to buffer responses
 
 		// Read requests from conn and deal with them
@@ -188,6 +189,9 @@ func (s *SocketServer) handleRequest(req *types.Request, responses chan<- *types
 	case *types.Request_Fetch:
 		s.log.Info("Fetch request")
 		responses <- requesthandler.HandleFetchMessages(r, s.client)
+	case *types.Request_Clients:
+		s.log.Info("Clients request")
+		responses <- requesthandler.HandleGetClients(r, s.client)
 	case *types.Request_Flush:
 		responses <- requesthandler.HandleFlush(r)
 	default:

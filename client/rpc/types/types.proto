@@ -7,7 +7,8 @@ message Request {
     oneof value {
         RequestSendMessage send = 2;
         RequestFetchMessages fetch = 3;
-        RequestFlush flush = 4;
+        RequestGetClients clients = 4;
+        RequestFlush flush = 5;
     }
 }
 
@@ -19,6 +20,9 @@ message RequestSendMessage {
 message RequestFetchMessages {
 }
 
+message RequestGetClients {
+}
+
 message RequestFlush {
 }
 
@@ -27,7 +31,8 @@ message Response {
         ResponseException exception = 1;
         ResponseSendMessage send = 2;
         ResponseFetchMessages fetch = 3;
-        ResponseFlush flush = 4;
+        ResponseGetClients clients = 4;
+        ResponseFlush flush = 5;
     }
 }
 
@@ -36,6 +41,10 @@ message ResponseException {
 }
 
 message ResponseSendMessage {
+}
+
+message ResponseGetClients {
+    repeated config.ClientConfig clients = 1;
 }
 
 message ResponseFlush {

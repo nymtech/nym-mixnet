@@ -200,9 +200,24 @@ func (c *NetClient) UpdateNetworkView() error {
 
 func (c *NetClient) checkTopology() error {
 	if c.Network.ShouldUpdate() {
-		c.UpdateNetworkView()
+		return c.UpdateNetworkView()
 	}
 	return nil
+}
+
+// GetAllPossibleRecipients returns slice containing all recipients at all available providers
+func (c *NetClient) GetAllPossibleRecipients() []*config.ClientConfig {
+	// explicitly update network
+	if c.UpdateNetworkView() != nil {
+		return nil
+	}
+
+	// because of how protobuf works, we need to convert the slice of configs to slice of pointer to configs
+	clients := make([]*config.ClientConfig, len(c.Network.Clients))
+	for i := range c.Network.Clients {
+		clients[i] = &c.Network.Clients[i]
+	}
+	return clients
 }
 
 // SendMessage responsible for sending a real message. Takes as input the message bytes
