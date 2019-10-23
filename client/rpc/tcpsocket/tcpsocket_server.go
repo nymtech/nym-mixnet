@@ -192,6 +192,9 @@ func (s *SocketServer) handleRequest(req *types.Request, responses chan<- *types
 	case *types.Request_Clients:
 		s.log.Info("Clients request")
 		responses <- requesthandler.HandleGetClients(r, s.client)
+	case *types.Request_Details:
+		s.log.Info("Details request")
+		responses <- requesthandler.HandleOwnDetails(r, s.client)
 	case *types.Request_Flush:
 		responses <- requesthandler.HandleFlush(r)
 	default:

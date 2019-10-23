@@ -205,6 +205,10 @@ func (c *NetClient) checkTopology() error {
 	return nil
 }
 
+func (c *NetClient) GetOwnDetails() *config.ClientConfig {
+	return &c.config
+}
+
 // GetAllPossibleRecipients returns slice containing all recipients at all available providers
 func (c *NetClient) GetAllPossibleRecipients() []*config.ClientConfig {
 	// explicitly update network
