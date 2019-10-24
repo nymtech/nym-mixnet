@@ -8,7 +8,8 @@ message Request {
         RequestSendMessage send = 2;
         RequestFetchMessages fetch = 3;
         RequestGetClients clients = 4;
-        RequestFlush flush = 5;
+        RequestOwnDetails details = 5;
+        RequestFlush flush = 6;
     }
 }
 
@@ -23,6 +24,9 @@ message RequestFetchMessages {
 message RequestGetClients {
 }
 
+message RequestOwnDetails {
+}
+
 message RequestFlush {
 }
 
@@ -32,7 +36,8 @@ message Response {
         ResponseSendMessage send = 2;
         ResponseFetchMessages fetch = 3;
         ResponseGetClients clients = 4;
-        ResponseFlush flush = 5;
+        ResponseOwnDetails details = 5;
+        ResponseFlush flush = 6;
     }
 }
 
@@ -45,6 +50,10 @@ message ResponseSendMessage {
 
 message ResponseGetClients {
     repeated config.ClientConfig clients = 1;
+}
+
+message ResponseOwnDetails {
+    config.ClientConfig details = 1;
 }
 
 message ResponseFlush {

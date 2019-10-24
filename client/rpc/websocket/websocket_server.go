@@ -44,7 +44,7 @@ const (
 	pingPeriod = (pongWait * 9) / 10
 
 	// Maximum message size allowed from peer.
-	maxMessageSize = 512
+	maxMessageSize = 2048
 )
 
 var upgrader = websocket.Upgrader{
@@ -93,6 +93,9 @@ func (s *SocketServer) handleRequest(req *types.Request) *types.Response {
 	case *types.Request_Clients:
 		s.log.Info("Clients request")
 		return requesthandler.HandleGetClients(r, s.client)
+	case *types.Request_Details:
+		s.log.Info("Details request")
+		return requesthandler.HandleOwnDetails(r, s.client)
 	//case *types.Request_Flush:
 	//	return requesthandler.HandleFlush(r) // doesn't do anything
 	default:

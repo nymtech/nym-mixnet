@@ -67,6 +67,16 @@ func HandleGetClients(req *types.Request_Clients, c *client.NetClient) *types.Re
 	}
 }
 
+func HandleOwnDetails(req *types.Request_Details, c *client.NetClient) *types.Response {
+	return &types.Response{
+		Value: &types.Response_Details{
+			Details: &types.ResponseOwnDetails{
+				Details: c.GetOwnDetails(),
+			},
+		},
+	}
+}
+
 func HandleFlush(req *types.Request_Flush) *types.Response {
 	return &types.Response{
 		Value: &types.Response_Flush{
