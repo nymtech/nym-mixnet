@@ -32,5 +32,5 @@ func main() {
 	info := map[string]string{
 		"run": "Run a Loopix mixnode",
 	}
-	optparse.Commands("loopix-mixnode", "0.1.0", cmds, info, logo)
+	optparse.Commands("loopix-mixnode", "0.2.0", cmds, info, logo)
 }

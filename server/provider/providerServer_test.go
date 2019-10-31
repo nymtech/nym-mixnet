@@ -159,7 +159,7 @@ func createTestPacket(t *testing.T) *sphinx.SphinxPacket {
 		Mixes:          []config.MixConfig{mixServer.GetConfig()},
 		EgressProvider: providerServer.config,
 	}
-	sphinxPacket, err := sphinx.PackForwardMessage(path, []float64{0.1, 0.2, 0.3}, "Hello world")
+	sphinxPacket, err := sphinx.PackForwardMessage(path, []float64{0.1, 0.2, 0.3}, []byte("Hello world"))
 	if err != nil {
 		t.Fatal(err)
 		return nil

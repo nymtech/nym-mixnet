@@ -46,7 +46,7 @@ const (
 // In order to encapsulate the message PackForwardMessage computes two parts of the packet - the header and
 // the encrypted payload. If creating of any of the packet block failed, an error is returned. Otherwise,
 // a Sphinx packet format is returned.
-func PackForwardMessage(path config.E2EPath, delays []float64, message string) (SphinxPacket, error) {
+func PackForwardMessage(path config.E2EPath, delays []float64, message []byte) (SphinxPacket, error) {
 	nodes := []config.MixConfig{path.IngressProvider}
 	nodes = append(nodes, path.Mixes...)
 	nodes = append(nodes, path.EgressProvider)
@@ -201,9 +201,9 @@ func encapsulateHeader(headerInitials []HeaderInitials,
 // and the AES_CTR encryption.
 // encapsulateContent returns the encrypted payload in byte representation. If the AES_CTR
 // encryption failed encapsulateContent returns an error.
-func encapsulateContent(headerInitials []HeaderInitials, message string) ([]byte, error) {
+func encapsulateContent(headerInitials []HeaderInitials, message []byte) ([]byte, error) {
 
-	enc := []byte(message)
+	enc := message
 
 	for i := len(headerInitials) - 1; i >= 0; i-- {
 		sharedKey, err := KDF(headerInitials[i].SecretHash)

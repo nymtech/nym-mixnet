@@ -126,7 +126,7 @@ func TestCryptoClient_EncodeMessage(t *testing.T) {
 	}
 	client.Provider = provider
 
-	encoded, err := client.EncodeMessage("Hello world", recipient)
+	encoded, err := client.EncodeMessage([]byte("Hello world"), recipient)
 	if err != nil {
 		t.Fatal(err)
 	}

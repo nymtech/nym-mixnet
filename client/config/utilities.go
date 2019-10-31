@@ -105,6 +105,9 @@ pub_key_file = "{{ .Client.PublicKey }}"
 # ID of the provider to which the client should send messages.
 provider_id = "{{ .Client.ProviderID }}"
 
+# directory for mixapps, such as a chat client, to store their app-specific data.
+mixapps_directory = "{{ .Client.MixAppsDirectory }}"
+
 ##### advanced configuration options #####
 
 # Absolute path to the home loopix Clients directory.

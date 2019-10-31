@@ -30,11 +30,14 @@ func main() {
 
 		  `
 	cmds := map[string]func([]string, string){
-		"run":  cmd.RunCmd,
-		"init": cmd.InitCmd,
+		"run":    cmd.RunCmd,
+		"init":   cmd.InitCmd,
+		"socket": cmd.RunSocketCmd,
 	}
 	info := map[string]string{
-		"run": "Run a persistent Loopix client process",
+		"run":    "Run a persistent Loopix client process",
+		"init":   "Initialise a Loopix client",
+		"socket": "Run a background Loopix client listening on a specified socket",
 	}
-	optparse.Commands("loopix-client", "0.1.0", cmds, info, logo)
+	optparse.Commands("loopix-client", "0.2.0", cmds, info, logo)
 }

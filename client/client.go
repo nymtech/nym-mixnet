@@ -28,8 +28,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/AlecAivazis/survey/v2"
-	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/golang/protobuf/proto"
 	"github.com/nymtech/nym-directory/models"
 	clientConfig "github.com/nymtech/nym-mixnet/client/config"
@@ -49,27 +47,48 @@ const (
 	loopLoad = "LoopCoverMessage"
 )
 
+// TODO: what is the point of this interface currently?
 // Client is the client networking interface
 type Client interface {
 	networker.NetworkClient
 	networker.NetworkServer
 
 	Start() error
-	SendMessage(message string, recipient config.ClientConfig) error
+	SendMessage(message []byte, recipient config.ClientConfig) error
 	ReadInNetworkFromTopology(pkiName string) error
+}
+
+type ReceivedMessages struct {
+	sync.Mutex
+	messages [][]byte
 }
 
 // NetClient is a queuing TCP network client for the mixnet.
 type NetClient struct {
 	*clientcore.CryptoClient
 	// TODO: somehow rename or completely remove config.ClientConfig because it's waaaay too confusing right now
-	cfg      *clientConfig.Config
-	config   config.ClientConfig
-	token    []byte // TODO: combine with the 'Provider' field considering it's provider specific
-	outQueue chan []byte
-	haltedCh chan struct{}
-	haltOnce sync.Once
-	log      *logrus.Logger
+	cfg              *clientConfig.Config
+	config           config.ClientConfig
+	token            []byte // TODO: combine with the 'Provider' field considering it's provider specific
+	outQueue         chan []byte
+	haltedCh         chan struct{}
+	haltOnce         sync.Once
+	log              *logrus.Logger
+	receivedMessages ReceivedMessages
+}
+
+func (c *NetClient) GetReceivedMessages() [][]byte {
+	c.receivedMessages.Lock()
+	defer c.receivedMessages.Unlock()
+	msgsPtr := c.receivedMessages.messages
+	c.receivedMessages.messages = make([][]byte, 0, 20)
+	return msgsPtr
+}
+
+func (c *NetClient) addNewMessage(msg []byte) {
+	c.receivedMessages.Lock()
+	defer c.receivedMessages.Unlock()
+	c.receivedMessages.messages = append(c.receivedMessages.messages, msg)
 }
 
 // OutQueue returns a reference to the client's outQueue. It's a queue
@@ -144,11 +163,6 @@ func (c *NetClient) Start() error {
 
 	c.startTraffic()
 
-	// if public is zeroed, it means either something went terribly wrong
-	// or we are running a benchmark. In either case, we don't want to be accepting inputs
-	if !helpers.IsZeroElement(c.GetPublicKey()) {
-		go c.startInputRoutine()
-	}
 	return nil
 }
 
@@ -171,108 +185,48 @@ func (c *NetClient) halt() {
 	close(c.haltedCh)
 }
 
-func toChoosable(client config.ClientConfig) string {
-	b64Key := base64.URLEncoding.EncodeToString(client.PubKey)
-	b64ProviderKey := base64.URLEncoding.EncodeToString(client.Provider.PubKey)
-	// while normally it's unsafe to directly index string, it's safe here
-	// as id is guaranteed to only hold ascii characters due to being b64 encoding of the key
-	return fmt.Sprintf("ID: %s\t@[Provider]\t%s", b64Key, b64ProviderKey)
-}
-
-func makeChoosables(clients []config.ClientConfig) (map[string]config.ClientConfig, []string) {
-	choosableClients := make(map[string]config.ClientConfig)
-	options := make([]string, len(clients))
-	for i, client := range clients {
-		choosableClient := toChoosable(client)
-		options[i] = choosableClient
-		choosableClients[choosableClient] = client // basically a mapping from the string back to original struct
+func (c *NetClient) UpdateNetworkView() error {
+	newTopology, err := topology.GetNetworkTopology(c.cfg.Client.DirectoryServerTopologyEndpoint)
+	if err != nil {
+		c.log.Errorf("error while reading network topology: %v", err)
+		return err
 	}
-	return choosableClients, options
-}
-
-func shouldStopInput(msg string) bool {
-	quitMessages := []string{
-		"quit",
-		"/q",
-		":q",
-		":q!",
-		"exit",
-	}
-
-	for _, qm := range quitMessages {
-		if qm == msg {
-			return true
-		}
-	}
-
-	return false
-}
-
-func (c *NetClient) startInputRoutine() {
-
-	choosableClients, choosableOptions := makeChoosables(c.Network.Clients)
-
-	var chosenClientOption string
-	prompt := &survey.Select{
-		Message: "Choose another client to communicate with:",
-		Options: choosableOptions,
-	}
-	if err := survey.AskOne(prompt, &chosenClientOption, nil); err == terminal.InterruptErr {
-		// we got an interrupt so we're killing whole client
-		c.log.Warningf("Received an interrupt - stopping entire client")
-		c.Shutdown()
-		return
-	}
-
-	chosenClient := choosableClients[chosenClientOption]
-
-	for {
-		select {
-		case <-c.haltedCh:
-			return
-		default:
-		}
-		messageToSend := ""
-		b64Key := base64.URLEncoding.EncodeToString(chosenClient.GetPubKey())
-		prompt := &survey.Input{
-			Message: fmt.Sprintf("Type in a message to send to %s...", b64Key),
-		}
-		if err := survey.AskOne(prompt, &messageToSend); err == terminal.InterruptErr {
-			// we got an interrupt so we're killing whole client
-			c.log.Warningf("Received an interrupt - stopping entire client")
-			c.Shutdown()
-			return
-		}
-		if shouldStopInput(messageToSend) {
-			c.log.Warningf("Received a stop signal. Stopping the input routine")
-			return
-		}
-
-		c.log.Infof("Sending: %v to %v", messageToSend, chosenClient.GetId())
-		if err := c.SendMessage(messageToSend, chosenClient); err != nil {
-			c.log.Errorf("Failed to send %v to %x...: %v", messageToSend, chosenClient.GetPubKey()[:8], err)
-		}
-	}
-}
-
-func (c *NetClient) checkTopology() error {
-	if c.Network.ShouldUpdate() {
-		newTopology, err := topology.GetNetworkTopology(c.cfg.Client.DirectoryServerTopologyEndpoint)
-		if err != nil {
-			c.log.Errorf("error while reading network topology: %v", err)
-			return err
-		}
-		if err := c.ReadInNetworkFromTopology(newTopology); err != nil {
-			c.log.Errorf("error while trying to update topology: %v", err)
-			return err
-		}
+	if err := c.ReadInNetworkFromTopology(newTopology); err != nil {
+		c.log.Errorf("error while trying to update topology: %v", err)
+		return err
 	}
 	return nil
 }
 
-// SendMessage responsible for sending a real message. Takes as input the message string
+func (c *NetClient) checkTopology() error {
+	if c.Network.ShouldUpdate() {
+		return c.UpdateNetworkView()
+	}
+	return nil
+}
+
+func (c *NetClient) GetOwnDetails() *config.ClientConfig {
+	return &c.config
+}
+
+// GetAllPossibleRecipients returns slice containing all recipients at all available providers
+func (c *NetClient) GetAllPossibleRecipients() []*config.ClientConfig {
+	// explicitly update network
+	if c.UpdateNetworkView() != nil {
+		return nil
+	}
+
+	// because of how protobuf works, we need to convert the slice of configs to slice of pointer to configs
+	clients := make([]*config.ClientConfig, len(c.Network.Clients))
+	for i := range c.Network.Clients {
+		clients[i] = &c.Network.Clients[i]
+	}
+	return clients
+}
+
+// SendMessage responsible for sending a real message. Takes as input the message bytes
 // and the public information about the destination.
-func (c *NetClient) SendMessage(message string, recipient config.ClientConfig) error {
+func (c *NetClient) SendMessage(message []byte, recipient config.ClientConfig) error {
 	// before we send a message, ensure our topology is up to date
 	if err := c.checkTopology(); err != nil {
 		c.log.Errorf("error in updating topology: %v", err)
@@ -289,7 +243,7 @@ func (c *NetClient) SendMessage(message string, recipient config.ClientConfig) e
 
 // encodeMessage encapsulates the given message into a sphinx packet destinated for recipient
 // and wraps with the flag pointing that it is the communication packet
-func (c *NetClient) encodeMessage(message string, recipient config.ClientConfig) ([]byte, error) {
+func (c *NetClient) encodeMessage(message []byte, recipient config.ClientConfig) ([]byte, error) {
 	sphinxPacket, err := c.EncodeMessage(message, recipient)
 	if err != nil {
 		c.log.Errorf("Error in sending message - create sphinx packet returned an error: %v", err)
@@ -446,8 +400,8 @@ func (c *NetClient) getMessagesFromProvider() error {
 		case loopLoad:
 			c.log.Debugf("Received loop cover message %v", packetDataStr)
 		default:
-			fmt.Fprintf(os.Stdout, "\nReceived: %s\n?> ", packetDataStr) // print to stdout regardless of logging location
 			c.log.Infof("Received new message: %v", packetDataStr)
+			c.addNewMessage(packetData)
 		}
 	}
 
@@ -461,6 +415,9 @@ func (c *NetClient) controlOutQueue() error {
 	c.log.Debugf("Queue controller started")
 	for {
 		select {
+		case <-c.haltedCh:
+			c.log.Infof("Halting controlOutQueue")
+			return nil
 		case realPacket := <-c.outQueue:
 			response, err := c.send(realPacket, c.Provider.Host, c.Provider.Port)
 			if err != nil {
@@ -493,14 +450,20 @@ func (c *NetClient) controlOutQueue() error {
 // to fetch received messages
 func (c *NetClient) controlMessagingFetching() {
 	for {
-		if err := c.getMessagesFromProvider(); err != nil {
-			c.log.Errorf("Could not get message from provider: %v", err)
-			continue
-		}
-		// c.log.Infof("Sent request to provider to fetch messages")
-		err := delayBeforeContinue(c.cfg.Debug.FetchMessageRate)
-		if err != nil {
-			c.log.Errorf("Error in ControlMessagingFetching - generating random exp. value failed: %v", err)
+		select {
+		case <-c.haltedCh:
+			c.log.Infof("Stopping controlMessagingFetching")
+			return
+		default:
+			if err := c.getMessagesFromProvider(); err != nil {
+				c.log.Errorf("Could not get message from provider: %v", err)
+				continue
+			}
+			// c.log.Infof("Sent request to provider to fetch messages")
+			err := delayBeforeContinue(c.cfg.Debug.FetchMessageRate)
+			if err != nil {
+				c.log.Errorf("Error in ControlMessagingFetching - generating random exp. value failed: %v", err)
+			}
 		}
 	}
 }
@@ -509,7 +472,7 @@ func (c *NetClient) controlMessagingFetching() {
 // a sphinx packet. The loop message is destinated back to the sender
 // createLoopCoverMessage returns a byte representation of the encapsulated packet and an error
 func (c *NetClient) createLoopCoverMessage() ([]byte, error) {
-	sphinxPacket, err := c.EncodeMessage(loopLoad, c.config)
+	sphinxPacket, err := c.EncodeMessage([]byte(loopLoad), c.config)
 	if err != nil {
 		return nil, err
 	}
@@ -526,20 +489,26 @@ func (c *NetClient) createLoopCoverMessage() ([]byte, error) {
 func (c *NetClient) runLoopCoverTrafficStream() error {
 	c.log.Debugf("Stream of loop cover traffic started")
 	for {
-		loopPacket, err := c.createLoopCoverMessage()
-		if err != nil {
-			return err
-		}
-		response, err := c.send(loopPacket, c.Provider.Host, c.Provider.Port)
-		if err != nil {
-			c.log.Errorf("Could not send loop cover traffic message: %v", err)
-			return err
-		}
-		c.log.Debugf("Loop message sent")
-		c.log.Debugf("Received response: %v", response)
+		select {
+		case <-c.haltedCh:
+			c.log.Infof("Halting loopCoverTrafficStream")
+			return nil
+		default:
+			loopPacket, err := c.createLoopCoverMessage()
+			if err != nil {
+				return err
+			}
+			response, err := c.send(loopPacket, c.Provider.Host, c.Provider.Port)
+			if err != nil {
+				c.log.Errorf("Could not send loop cover traffic message: %v", err)
+				return err
+			}
+			c.log.Debugf("Loop message sent")
+			c.log.Debugf("Received response: %v", response)
 
-		if err := delayBeforeContinue(c.cfg.Debug.LoopCoverTrafficRate); err != nil {
-			return err
+			if err := delayBeforeContinue(c.cfg.Debug.LoopCoverTrafficRate); err != nil {
+				return err
+			}
 		}
 	}
 }
@@ -632,6 +601,9 @@ func NewClient(cfg *clientConfig.Config) (*NetClient, error) {
 		cfg:      cfg,
 		haltedCh: make(chan struct{}),
 		log:      log,
+		receivedMessages: ReceivedMessages{
+			messages: make([][]byte, 0, 20),
+		},
 	}
 
 	c.log.Infof("Logging level set to %v", c.cfg.Logging.Level)
@@ -643,8 +615,7 @@ func NewClient(cfg *clientConfig.Config) (*NetClient, error) {
 		b64Key,
 	)
 
-	fmt.Fprint(os.Stdout, keyInfoStr + "\n\n")
-
+	fmt.Fprint(os.Stdout, keyInfoStr+"\n\n")
 
 	c.config = config.ClientConfig{Id: b64Key,
 		Host:     "", // TODO: remove

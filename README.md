@@ -42,18 +42,15 @@ To run the network, i.e., mixnodes and providers run:
 This spins up 3 mixnodes and 1 provider. You can pass arguments to the script
 (e.g. `./scripts/run_network.sh 6` if you want to run 6 mixnodes instead of 3. 
 
-To simulate 2 clients that can message each other, run:
+To initialise a mix client, run:
 
 ```shell
-./scripts/run_client1.sh
+./build/loopix-client init --id <YOUR_ID> --local
 ```
 
-Then in another terminal:
-
+To run the previously initialised client, run:
 ```shell
-./scripts/run_client2.sh
+./build/loopix-client run --id <YOUR_ID> 
 ```
 
-You can enter messages in each of the client terminals. Hitting `<enter>` will cause the message to send to the other client. 
-
-Client1 shows only messages being sent and received, so it doesn't scroll as actively and annoyingly. Client2 has a lot more log messages in it: this is not as nice to use from a human perspective, but it shows all the drop traffic, cover traffic, and real messages being sent, so you get a much better feel for what's going on. 
+If you run the command in two different terminal windows whilst providing different IDs, you will be able to communicate between those clients.

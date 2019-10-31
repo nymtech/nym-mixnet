@@ -65,7 +65,7 @@ func (bc *BenchClient) sendMessages(n int, interval time.Duration) {
 		for i := 0; i < n; i++ {
 			msg := fmt.Sprintf("%v%v", payloadPrefix, i)
 			fmt.Println("Sending", msg)
-			if err := bc.SendMessage(msg, bc.recipient); err != nil {
+			if err := bc.SendMessage([]byte(msg), bc.recipient); err != nil {
 				// if there was error while sending message, we need to panic as otherwise the result might be biased
 				panic(err)
 			}
@@ -131,7 +131,7 @@ func (bc *BenchClient) RunBench() error {
 }
 
 func (bc *BenchClient) pregeneratePacket(message string, recipient config.ClientConfig) error {
-	sphinxPacket, err := bc.EncodeMessage(message, recipient)
+	sphinxPacket, err := bc.EncodeMessage([]byte(message), recipient)
 	if err != nil {
 		return err
 	}

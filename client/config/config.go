@@ -27,6 +27,7 @@ import (
 const (
 	defaultLoopixDirectory        = ".loopix"
 	defaultLoopixClientsDirectory = "clients"
+	defaultClientMixAppDirectory  = "mixapps"
 	defaultConfigDirectory        = "config"
 	defaultConfigFileName         = "config.toml"
 
@@ -36,7 +37,6 @@ const (
 	defaultPublicKeyFileName  = "public_key.pem"
 
 	defaultLoopCoverTrafficRate = 10.0
-	defaultDropCoverTrafficRate = 10.0
 	defaultFetchMessageRate     = 10.0
 	defaultMessageSendingRate   = 10.0
 
@@ -81,6 +81,10 @@ type Client struct {
 	// DirectoryServerTopologyEndpoint specifies URL to the topology endpoint of the directory server.
 	DirectoryServerTopologyEndpoint string `toml:"directory_server_topology"`
 
+	// MixAppsDirectory specifies directory for mixapps, such as a chat client,
+	// to store their app-specific data.
+	MixAppsDirectory string `toml:"mixapps_directory"`
+
 	// PrivateKey specifies path to file containing private key.
 	PrivateKey string `toml:"priv_key_file"`
 
@@ -104,6 +108,7 @@ func DefaultClientConfig(clientID string) (*Client, error) {
 	return &Client{
 		HomeDirectory:                   defaultHomeDirectory,
 		ID:                              clientID,
+		MixAppsDirectory:                defaultClientMixAppDirectory,
 		DirectoryServerTopologyEndpoint: defaultDirectoryServerTopologyEndpoint,
 		PrivateKey:                      defaultPrivateKeyPath,
 		PublicKey:                       defaultPublicKeyPath,
@@ -124,6 +129,10 @@ func (cfg *Client) PublicKeyFile() string {
 	return rootify(cfg.PublicKey, cfg.Home())
 }
 
+func (cfg *Client) FullMixAppsDir() string {
+	return rootify(cfg.MixAppsDirectory, cfg.Home())
+}
+
 func (cfg *Client) validateAndApplyDefaults() error {
 	// if custom home directory is specified it must have an absolute path
 	if len(cfg.HomeDirectory) > 0 {
@@ -132,6 +141,11 @@ func (cfg *Client) validateAndApplyDefaults() error {
 		}
 	} else {
 		cfg.HomeDirectory = defaultHomeDirectory
+	}
+
+	// if custom mixapps directory is specified it must have an absolute path
+	if len(cfg.MixAppsDirectory) == 0 {
+		cfg.MixAppsDirectory = defaultClientMixAppDirectory
 	}
 
 	// it is also required to specify ID otherwise we could not distinguish between multiple instances

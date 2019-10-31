@@ -32,5 +32,5 @@ func main() {
 	info := map[string]string{
 		"run": "Run a Loopix provider for offline storage",
 	}
-	optparse.Commands("loopix-provider", "0.1.0", cmds, info, logo)
+	optparse.Commands("loopix-provider", "0.2.0", cmds, info, logo)
 }
