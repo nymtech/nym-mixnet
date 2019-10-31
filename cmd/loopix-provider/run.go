@@ -15,8 +15,10 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
+	"github.com/nymtech/nym-mixnet/constants"
 	"github.com/nymtech/nym-mixnet/helpers"
 	"github.com/nymtech/nym-mixnet/server/provider"
 	"github.com/nymtech/nym-mixnet/sphinx"
@@ -24,10 +26,50 @@ import (
 )
 
 const (
-	defaultHost = ""
-	defaultID   = "Provider"
-	defaultPort = "1789"
+	defaultHost           = ""
+	defaultID             = "Provider"
+	defaultPort           = "1789"
+	defaultPrivateKeyFile = "privateKey.key"
+	defaultPublicKeyFile  = "publicKey.key"
 )
+
+func loadKeys() (*sphinx.PrivateKey, *sphinx.PublicKey, error) {
+	prvKey := new(sphinx.PrivateKey)
+	pubKey := new(sphinx.PublicKey)
+
+	if _, err := os.Stat(defaultPrivateKeyFile); os.IsNotExist(err) {
+		return nil, nil, err
+	}
+
+	if _, err := os.Stat(defaultPublicKeyFile); os.IsNotExist(err) {
+		return nil, nil, err
+	}
+
+	if err := helpers.FromPEMFile(prvKey, defaultPrivateKeyFile, constants.PrivateKeyPEMType); err != nil {
+		return nil, nil, fmt.Errorf("Failed to load the private key: %v", err)
+	}
+
+	if err := helpers.FromPEMFile(pubKey, defaultPublicKeyFile, constants.PublicKeyPEMType); err != nil {
+		return nil, nil, fmt.Errorf("Failed to load the public key: %v", err)
+	}
+
+	fmt.Fprintf(os.Stdout, "Loaded existing keys\n")
+	return prvKey, pubKey, nil
+}
+
+func saveKeys(privP *sphinx.PrivateKey, pubP *sphinx.PublicKey) {
+	if err := helpers.ToPEMFile(privP, defaultPrivateKeyFile, constants.PrivateKeyPEMType); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to save private key: %v", err)
+		os.Exit(1)
+	}
+	fmt.Fprintf(os.Stdout, "Saved generated private key to %v\n", defaultPrivateKeyFile)
+
+	if err := helpers.ToPEMFile(pubP, defaultPublicKeyFile, constants.PublicKeyPEMType); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to save public key: %v", err)
+		os.Exit(1)
+	}
+	fmt.Fprintf(os.Stdout, "Saved generated public key to %v\n", defaultPublicKeyFile)
+}
 
 func cmdRun(args []string, usage string) {
 	opts := newOpts("run [OPTIONS]", usage)
@@ -50,12 +92,18 @@ func cmdRun(args []string, usage string) {
 		host = &ip
 	}
 
-	pubP, privP, err := sphinx.GenerateKeyPair()
+	privP, pubP, err := loadKeys()
 	if err != nil {
-		panic(err)
+		privP, pubP, err = sphinx.GenerateKeyPair()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to generate new keypair: %v", err)
+			os.Exit(1)
+		}
+
+		saveKeys(privP, pubP)
 	}
 
-	providerServer, err := provider.NewProviderServer(*id, *host, *port, pubP, privP)
+	providerServer, err := provider.NewProviderServer(*id, *host, *port, privP, pubP)
 	if err != nil {
 		panic(err)
 	}
