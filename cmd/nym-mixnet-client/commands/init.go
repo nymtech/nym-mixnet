@@ -30,7 +30,7 @@ import (
 
 func InitCmd(args []string, usage string) {
 	opts := newOpts("run [OPTIONS]", usage)
-	id := opts.Flags("--id").Label("ID").String("Id of the loopix-client we want to create config for", "")
+	id := opts.Flags("--id").Label("ID").String("Id of the nym-mixnet-client we want to create config for", "")
 	providerID := opts.Flags("--provider").Label("PROVIDER").String("Id of the provider we have preference "+
 		"to connect to. If left empty, a random provider will be chosen", "")
 	local := opts.Flags("--local").Label("LOCAL").Bool("Flag to indicate whether the client is expected " +

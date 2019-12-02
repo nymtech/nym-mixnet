@@ -31,7 +31,7 @@ const (
 //nolint: lll
 func RunCmd(args []string, usage string) {
 	opts := newOpts("run [OPTIONS]", usage)
-	id := opts.Flags("--id").Label("ID").String("Id of the loopix-client we want to run", defaultID)
+	id := opts.Flags("--id").Label("ID").String("Id of the nym-mixnet-client we want to run", defaultID)
 	customConfigPath := opts.Flags("--customCfg").Label("CUSTOMCFG").String("Path to custom configuration file of the client", "")
 
 	params := opts.Parse(args)
@@ -77,5 +77,5 @@ func RunCmd(args []string, usage string) {
 }
 
 func newOpts(command string, usage string) *optparse.Parser {
-	return optparse.New("Usage: loopix-client " + command + "\n\n  " + usage + "\n")
+	return optparse.New("Usage: nym-mixnet-client " + command + "\n\n  " + usage + "\n")
 }
