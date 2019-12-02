@@ -459,3 +459,48 @@ func TestProcessSphinxPayload(t *testing.T) {
 	}
 	assert.Equal(t, []byte(message), decMsg)
 }
+
+func BenchmarkHeaderCreation(b *testing.B) {
+	_, pub1, _ := GenerateKeyPair()
+	_, pub2, _ := GenerateKeyPair()
+	_, pub3, _ := GenerateKeyPair()
+	_, pub4, _ := GenerateKeyPair()
+
+
+	m1 := config.NewMixConfig("Node1", "localhost", "3331", pub1.Bytes(), 1)
+	m2 := config.NewMixConfig("Node2", "localhost", "3332", pub2.Bytes(), 2)
+	m3 := config.NewMixConfig("Node3", "localhost", "3333", pub3.Bytes(), 3)
+	route := []config.MixConfig{m1, m2, m3}
+	delays := []float64{0,0,0}
+	dest := config.NewClientConfig("client", "", "", pub4.Bytes(), config.MixConfig{})
+
+	var header Header
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, header, _ = createHeader(route, delays, dest)
+	}
+	_ = header
+
+}
+
+func BenchmarkSharedKeyGeneration(b *testing.B) {
+	_, pub1, _ := GenerateKeyPair()
+	_, pub2, _ := GenerateKeyPair()
+	_, pub3, _ := GenerateKeyPair()
+
+	m1 := config.NewMixConfig("Node1", "localhost", "3331", pub1.Bytes(), 1)
+	m2 := config.NewMixConfig("Node2", "localhost", "3332", pub2.Bytes(), 2)
+	m3 := config.NewMixConfig("Node3", "localhost", "3333", pub3.Bytes(), 3)
+	route := []config.MixConfig{m1, m2, m3}
+
+	x, _ := RandomElement()
+
+
+	var headerInitials []HeaderInitials
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		headerInitials, _ = getSharedSecrets(route, x)
+	}
+	_ = headerInitials
+
+}
