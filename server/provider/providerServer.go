@@ -272,7 +272,7 @@ func (p *ProviderServer) handleConnection(conn net.Conn) {
 		}
 	}()
 
-	buff := make([]byte, 1024)
+	buff := make([]byte, 2048)
 	reqLen, err := conn.Read(buff)
 	if err != nil {
 		p.log.Errorf("Error while reading from the connection: %v", err)
