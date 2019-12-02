@@ -21,23 +21,24 @@ import (
 
 func main() {
 	var logo = `
-  _                      _
- | |    ___   ___  _ __ (_)_  __
- | |   / _ \ / _ \| '_ \| \ \/ /
- | |___ (_) | (_) | |_) | |>  <
- |_____\___/ \___/| .__/|_/_/\_\
-		  |_|            (client)
-
-		  `
+                        
+  _ __  _   _ _ __ ___  
+ | '_ \| | | | '_ \ _ \
+ | | | | |_| | | | | | |
+ |_| |_|\__, |_| |_| |_|
+        |___/  
+          
+         (mixnet-client)
+`
 	cmds := map[string]func([]string, string){
 		"run":    cmd.RunCmd,
 		"init":   cmd.InitCmd,
 		"socket": cmd.RunSocketCmd,
 	}
 	info := map[string]string{
-		"run":    "Run a persistent Loopix client process",
-		"init":   "Initialise a Loopix client",
-		"socket": "Run a background Loopix client listening on a specified socket",
+		"run":    "Run a persistent Nym Mixnet client process",
+		"init":   "Initialise a Nym Mixnet client",
+		"socket": "Run a background Nym Mixnet client listening on a specified socket",
 	}
-	optparse.Commands("loopix-client", "0.2.0", cmds, info, logo)
+	optparse.Commands("nym-mixnet-client", "0.2.1", cmds, info, logo)
 }
