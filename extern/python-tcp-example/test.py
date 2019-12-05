@@ -28,6 +28,7 @@ def varint_to_bytes(value):
 async def read_varint(reader):
     value = await reader.read(1)
     value = int.from_bytes(value, byteorder="big")
+    #print("value", value)
     if value < VARINT_TWO_BYTES:
         return value
     elif value <= MAX_UINT16:
@@ -38,22 +39,12 @@ async def read_varint(reader):
         data = await reader.read(8)
     return int.from_bytes(data, byteorder="big")
 
-async def run_client():
-    reader, writer = await asyncio.open_connection(
-        '127.0.0.1', 9001)
-
-    request_details = proto.types.Request(
-        details=proto.types.RequestOwnDetails())
-    data = request_details.SerializeToString()
+async def send(writer, message):
+    data = message.SerializeToString()
     size_data = varint_to_bytes(len(data))
     writer.write(size_data + data)
 
-    flush_request = proto.types.Request(
-        flush=proto.types.RequestFlush())
-    data = flush_request.SerializeToString()
-    size_data = varint_to_bytes(len(data))
-    writer.write(size_data + data)
-
+async def read_response(reader):
     #print("Read one byte...")
     data_size = await read_varint(reader)
     #print(data_size)
@@ -62,10 +53,74 @@ async def run_client():
 
     response = proto.types.Response()
     response.ParseFromString(data)
-    print(response)
+    return response
 
-    print('Close the connection')
-    writer.close()
+async def get_own_details(connection):
+    reader, writer = connection
+
+    request_details = proto.types.Request(
+        details=proto.types.RequestOwnDetails())
+    await send(writer, request_details)
+
+    flush_request = proto.types.Request(
+        flush=proto.types.RequestFlush())
+    await send(writer, flush_request)
+
+    response = await read_response(reader)
+    details = response.details.details
+
+    return details
+
+async def send_message(message, recipient, connection):
+    reader, writer = connection
+
+    send_request = proto.types.Request(
+        send=proto.types.RequestSendMessage(
+            message=message, recipient=recipient))
+    await send(writer, send_request)
+
+    flush_request = proto.types.Request(
+        flush=proto.types.RequestFlush())
+    await send(writer, flush_request)
+
+    flush_response = await read_response(reader)
+    print(flush_response)
+
+    send_response = await read_response(reader)
+    print(send_response)
+
+async def fetch_messages(connection):
+    reader, writer = connection
+
+    fetch_request = proto.types.Request(
+        fetch=proto.types.RequestFetchMessages())
+    await send(writer, fetch_request)
+
+    flush_request = proto.types.Request(
+        flush=proto.types.RequestFlush())
+    await send(writer, flush_request)
+
+    flush_response = await read_response(reader)
+    print(flush_response)
+
+    fetch_response = await read_response(reader)
+    print(fetch_response)
+
+    return fetch_response.fetch.messages
+
+async def run_client():
+    connection = await asyncio.open_connection(
+        '127.0.0.1', 9001)
+
+    my_details = await get_own_details(connection)
+    print(my_details)
+
+    await send_message(b"foomp", my_details, connection)
+
+    messages = await fetch_messages(connection)
+    print("Messages:", messages)
+
+    print('Finished')
 
 asyncio.run(run_client())
 
