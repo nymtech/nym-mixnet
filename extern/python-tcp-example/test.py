@@ -1,53 +1,14 @@
 import asyncio
 import proto
-import struct
-
-VARINT_TWO_BYTES = 0xfd
-VARINT_FOUR_BYTES = 0xfe
-VARINT_EIGHT_BYTES = 0xff
-MAX_UINT16 = 2**16 - 1
-MAX_UINT32 = 2**32 - 1
-MAX_UINT64 = 2**64 - 1
-assert MAX_UINT16 == 0xffff
-assert MAX_UINT32 == 0xffffffff
-assert MAX_UINT64 == 0xffffffffffffffff
-
-def varint_to_bytes(value):
-    if value < VARINT_TWO_BYTES:
-        return bytes([value])
-    elif value <= MAX_UINT16:
-        return (bytes([VARINT_TWO_BYTES]) +
-                value.to_bytes(2, byteorder="big"))
-    elif value <= MAX_UINT32:
-        return (bytes([VARINT_FOUR_BYTES]) +
-                value.to_bytes(4, byteorder="big"))
-    elif value <= MAX_UINT64:
-        return (bytes([VARINT_EIGHT_BYTES]) +
-                value.to_bytes(8, byteorder="big"))
-
-async def read_varint(reader):
-    value = await reader.read(1)
-    value = int.from_bytes(value, byteorder="big")
-    #print("value", value)
-    if value < VARINT_TWO_BYTES:
-        return value
-    elif value <= MAX_UINT16:
-        data = await reader.read(2)
-    elif value <= MAX_UINT32:
-        data = await reader.read(4)
-    elif value <= MAX_UINT64:
-        data = await reader.read(8)
-    return int.from_bytes(data, byteorder="big")
+import util
 
 async def send(writer, message):
     data = message.SerializeToString()
-    size_data = varint_to_bytes(len(data))
+    size_data = util.varint_to_bytes(len(data))
     writer.write(size_data + data)
 
 async def read_response(reader):
-    #print("Read one byte...")
-    data_size = await read_varint(reader)
-    #print(data_size)
+    data_size = await util.read_varint(reader)
     data = await reader.read(data_size)
     #print("Received:", data)
 
@@ -55,69 +16,70 @@ async def read_response(reader):
     response.ParseFromString(data)
     return response
 
-async def get_own_details(connection):
-    reader, writer = connection
+class NymProxy:
 
-    request_details = proto.types.Request(
-        details=proto.types.RequestOwnDetails())
-    await send(writer, request_details)
+    def __init__(self, hostname="127.0.0.1", port=9001):
+        self._hostname = hostname
+        self._port = port
 
-    flush_request = proto.types.Request(
-        flush=proto.types.RequestFlush())
-    await send(writer, flush_request)
+    async def start(self):
+        self._reader, self._writer = await asyncio.open_connection(
+            self._hostname, self._port)
 
-    response = await read_response(reader)
-    details = response.details.details
+    async def send(self, message, recipient):
+        send_request = proto.types.Request(
+            send=proto.types.RequestSendMessage(
+                message=message, recipient=recipient))
+        await self._send(send_request)
 
-    return details
+        return await self._flush_collect('send')
 
-async def send_message(message, recipient, connection):
-    reader, writer = connection
+    async def fetch(self):
+        fetch_request = proto.types.Request(
+            fetch=proto.types.RequestFetchMessages())
+        await self._send(fetch_request)
 
-    send_request = proto.types.Request(
-        send=proto.types.RequestSendMessage(
-            message=message, recipient=recipient))
-    await send(writer, send_request)
+        response = await self._flush_collect('fetch')
+        return response.fetch.messages
 
-    flush_request = proto.types.Request(
-        flush=proto.types.RequestFlush())
-    await send(writer, flush_request)
+    async def clients(self):
+        pass
 
-    flush_response = await read_response(reader)
-    print(flush_response)
+    async def details(self):
+        request_details = proto.types.Request(
+            details=proto.types.RequestOwnDetails())
+        await self._send(request_details)
 
-    send_response = await read_response(reader)
-    print(send_response)
+        response = await self._flush_collect('details')
+        return response.details.details
 
-async def fetch_messages(connection):
-    reader, writer = connection
+    async def _do_flush(self):
+        flush_request = proto.types.Request(
+            flush=proto.types.RequestFlush())
+        await self._send(flush_request)
 
-    fetch_request = proto.types.Request(
-        fetch=proto.types.RequestFetchMessages())
-    await send(writer, fetch_request)
+    async def _collect_response(self, request_type, number_responses):
+        responses = [await self._read() for i in range(number_responses)]
+        return next(response for response in responses
+                    if response.WhichOneof('value') == request_type)
 
-    flush_request = proto.types.Request(
-        flush=proto.types.RequestFlush())
-    await send(writer, flush_request)
+    async def _flush_collect(self, request_type):
+        await self._do_flush()
+        return await self._collect_response(request_type, 2)
 
-    flush_response = await read_response(reader)
-    print(flush_response)
-
-    fetch_response = await read_response(reader)
-    print(fetch_response)
-
-    return fetch_response.fetch.messages
+    async def _read(self):
+        return await read_response(self._reader)
+    async def _send(self, request):
+        await send(self._writer, request)
 
 async def run_client():
-    connection = await asyncio.open_connection(
-        '127.0.0.1', 9001)
+    nym = NymProxy()
+    await nym.start()
 
-    my_details = await get_own_details(connection)
+    my_details = await nym.details()
     print(my_details)
-
-    await send_message(b"foomp", my_details, connection)
-
-    messages = await fetch_messages(connection)
+    await nym.send(b'fooompdd', my_details)
+    messages = await nym.fetch()
     print("Messages:", messages)
 
     print('Finished')
