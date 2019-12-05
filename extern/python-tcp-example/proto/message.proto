@@ -1,0 +1,12 @@
+syntax = "proto3";
+package message;
+
+// fields are actually ordered in the order of priority for implementation
+message ChatMessage {
+    bytes Content = 1;
+    bytes SenderPublicKey = 2;
+    bytes SenderProviderPublicKey = 3;
+    int64 MessageNonce = 4;
+    int64 SenderTimestamp = 5; // in unix nano
+    bytes Signature = 6;
+}
