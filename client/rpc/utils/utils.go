@@ -90,15 +90,15 @@ func PutVarUintSimple(buffer []byte, value uint64) uint {
         return 1
     } else if value <= math.MaxUint16 {
         buffer[0] = uint8(varintTwoBytes)
-        binary.LittleEndian.PutUint16(buffer, uint16(value))
+        binary.BigEndian.PutUint16(buffer[1:], uint16(value))
         return 3
     } else if value <= math.MaxUint32 {
         buffer[0] = uint8(varintFourBytes)
-        binary.LittleEndian.PutUint32(buffer, uint32(value))
+        binary.BigEndian.PutUint32(buffer[1:], uint32(value))
         return 5
     } else {
         buffer[0] = uint8(varintEightBytes)
-        binary.LittleEndian.PutUint64(buffer, uint64(value))
+        binary.BigEndian.PutUint64(buffer[1:], uint64(value))
         return 9
     }
 }

@@ -10,6 +10,7 @@ async def send(writer, message):
 async def read_response(reader):
     data_size = await util.read_varint(reader)
     data = await reader.read(data_size)
+    #print("Data size:", data_size)
     #print("Received:", data)
 
     response = proto.types.Response()
@@ -27,28 +28,33 @@ class NymProxy:
             self._hostname, self._port)
 
     async def send(self, message, recipient):
-        send_request = proto.types.Request(
+        request = proto.types.Request(
             send=proto.types.RequestSendMessage(
                 message=message, recipient=recipient))
-        await self._send(send_request)
+        await self._send(request)
 
         return await self._flush_collect('send')
 
     async def fetch(self):
-        fetch_request = proto.types.Request(
+        request = proto.types.Request(
             fetch=proto.types.RequestFetchMessages())
-        await self._send(fetch_request)
+        await self._send(request)
 
         response = await self._flush_collect('fetch')
         return response.fetch.messages
 
     async def clients(self):
-        pass
+        request = proto.types.Request(
+            clients=proto.types.RequestGetClients())
+        await self._send(request)
+
+        response = await self._flush_collect('clients')
+        return response.clients.clients
 
     async def details(self):
-        request_details = proto.types.Request(
+        request = proto.types.Request(
             details=proto.types.RequestOwnDetails())
-        await self._send(request_details)
+        await self._send(request)
 
         response = await self._flush_collect('details')
         return response.details.details
@@ -60,6 +66,7 @@ class NymProxy:
 
     async def _collect_response(self, request_type, number_responses):
         responses = [await self._read() for i in range(number_responses)]
+        #print("Responses:", responses)
         return next(response for response in responses
                     if response.WhichOneof('value') == request_type)
 
@@ -81,6 +88,10 @@ async def run_client():
     await nym.send(b'fooompdd', my_details)
     messages = await nym.fetch()
     print("Messages:", messages)
+    print()
+
+    clients = await nym.clients()
+    print("Client #4:", clients[4])
 
     print('Finished')
 
