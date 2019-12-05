@@ -34,9 +34,9 @@ const (
 
 func cmdRun(args []string, usage string) {
 	opts := newOpts("run [OPTIONS]", usage)
-	id := opts.Flags("--id").Label("ID").String("Id of the loopix-client we want to run", defaultID)
-	host := opts.Flags("--host").Label("HOST").String("The host on which the loopix-client is running", defaultHost)
-	port := opts.Flags("--port").Label("PORT").String("Port on which loopix-client listens", defaultPort)
+	id := opts.Flags("--id").Label("ID").String("Id of the loopix-mixnode we want to run", defaultID)
+	host := opts.Flags("--host").Label("HOST").String("The host on which the loopix-mixnode is running", defaultHost)
+	port := opts.Flags("--port").Label("PORT").String("Port on which loopix-mixnode listens", defaultPort)
 	layer := opts.Flags("--layer").Label("Layer").Int("Mixnet layer of this particular node", defaultLayer)
 
 	params := opts.Parse(args)
