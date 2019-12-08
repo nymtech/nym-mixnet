@@ -134,7 +134,7 @@ func ReadVarUintSimple(reader io.ByteReader) (uint64, error) {
         if err != nil {
             return 0, err
         }
-        return uint64(binary.BigEndian.Uint64(buffer)), nil
+        return uint64(binary.BigEndian.Uint32(buffer)), nil
     case varintTwoBytes:
         buffer := make([]byte, 2)
         err = ReadNBytes(reader, buffer, 2)
