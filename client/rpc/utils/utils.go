@@ -19,10 +19,15 @@ import (
 	"encoding/binary"
 	"github.com/golang/protobuf/proto"
 	"io"
+    "math"
 )
 
 const (
 	maxRequestSize = 1048576 // 1MB
+
+    varintTwoBytes = 0xfd
+    varintFourBytes = 0xfe
+    varintEightBytes = 0xff
 )
 
 
@@ -41,7 +46,7 @@ func ReadProtoMessage(msg proto.Message, r io.Reader) error {
 	if !ok {
 		reader = bufio.NewReader(r)
 	}
-	length64, err := binary.ReadVarint(reader)
+	length64, err := ReadVarUintSimple(reader)
 	if err != nil {
 		return err
 	}
@@ -61,7 +66,7 @@ func ReadProtoMessage(msg proto.Message, r io.Reader) error {
 // Apache 2.0 license
 
 func encodeByteSlice(w io.Writer, bz []byte) (err error) {
-	err = encodeVarint(w, int64(len(bz)))
+	err = encodeVarint(w, uint64(len(bz)))
 	if err != nil {
 		return
 	}
@@ -69,9 +74,77 @@ func encodeByteSlice(w io.Writer, bz []byte) (err error) {
 	return
 }
 
-func encodeVarint(w io.Writer, i int64) (err error) {
+func encodeVarint(w io.Writer, i uint64) (err error) {
 	var buf [10]byte
-	n := binary.PutVarint(buf[:], i)
+	n := PutVarUintSimple(buf[:], i)
 	_, err = w.Write(buf[0:n])
 	return
 }
+
+// Bitcoin-style variable uints
+// https://learnmeabitcoin.com/guide/varint
+
+func PutVarUintSimple(buffer []byte, value uint64) uint {
+    if value < varintTwoBytes {
+        buffer[0] = uint8(value)
+        return 1
+    } else if value <= math.MaxUint16 {
+        buffer[0] = uint8(varintTwoBytes)
+        binary.BigEndian.PutUint16(buffer[1:], uint16(value))
+        return 3
+    } else if value <= math.MaxUint32 {
+        buffer[0] = uint8(varintFourBytes)
+        binary.BigEndian.PutUint32(buffer[1:], uint32(value))
+        return 5
+    } else {
+        buffer[0] = uint8(varintEightBytes)
+        binary.BigEndian.PutUint64(buffer[1:], uint64(value))
+        return 9
+    }
+}
+
+func ReadNBytes(reader io.ByteReader, buffer []byte, number_bytes int) error {
+    for i := 0; i < number_bytes; i++ {
+        value, err := reader.ReadByte()
+        if err != nil {
+            return err
+        }
+        buffer[i] = value
+    }
+    return nil
+}
+
+func ReadVarUintSimple(reader io.ByteReader) (uint64, error) {
+    value, err := reader.ReadByte()
+    if err != nil {
+        return 0, err
+    }
+
+    switch value {
+    case varintEightBytes:
+        buffer := make([]byte, 8)
+        err = ReadNBytes(reader, buffer, 8)
+        if err != nil {
+            return 0, err
+        }
+        return binary.BigEndian.Uint64(buffer), nil
+    case varintFourBytes:
+        buffer := make([]byte, 4)
+        err = ReadNBytes(reader, buffer, 4)
+        if err != nil {
+            return 0, err
+        }
+        return uint64(binary.BigEndian.Uint32(buffer)), nil
+    case varintTwoBytes:
+        buffer := make([]byte, 2)
+        err = ReadNBytes(reader, buffer, 2)
+        if err != nil {
+            return 0, err
+        }
+        return uint64(binary.BigEndian.Uint16(buffer)), nil
+    default:
+        return uint64(value), nil
+    }
+    return 0, nil
+}
+

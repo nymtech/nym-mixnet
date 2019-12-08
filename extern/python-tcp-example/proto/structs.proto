@@ -1,0 +1,35 @@
+syntax = "proto3";
+package config;
+
+option go_package = "github.com/nymtech/nym-mixnet/config";
+
+message MixConfig {
+    string Id = 1;
+    string Host = 2;
+    string Port = 3;
+    bytes PubKey = 4;
+    uint64 Layer = 5;
+}
+
+message ClientConfig {
+    string Id = 1;
+    string Host = 2;
+    string Port = 3;
+    bytes PubKey = 4;
+    MixConfig Provider = 5;
+}
+
+message GeneralPacket {
+    bytes Flag = 1;
+    bytes Data = 2;
+}
+
+message ProviderResponse {
+    uint64 NumberOfPackets = 1;
+    repeated bytes Packets = 2;
+}
+
+message PullRequest {
+    bytes Token = 1;
+    bytes ClientPublicKey = 2;
+}

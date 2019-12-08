@@ -1,0 +1,64 @@
+syntax = "proto3";
+package types;
+
+import "structs.proto";
+
+message Request {
+    oneof value {
+        RequestSendMessage send = 2;
+        RequestFetchMessages fetch = 3;
+        RequestGetClients clients = 4;
+        RequestOwnDetails details = 5;
+        RequestFlush flush = 6;
+    }
+}
+
+message RequestSendMessage {
+    bytes message = 1;
+    config.ClientConfig recipient = 2;
+}
+
+message RequestFetchMessages {
+}
+
+message RequestGetClients {
+}
+
+message RequestOwnDetails {
+}
+
+message RequestFlush {
+}
+
+message Response {
+    oneof value {
+        ResponseException exception = 1;
+        ResponseSendMessage send = 2;
+        ResponseFetchMessages fetch = 3;
+        ResponseGetClients clients = 4;
+        ResponseOwnDetails details = 5;
+        ResponseFlush flush = 6;
+    }
+}
+
+message ResponseException {
+    string error = 1;
+}
+
+message ResponseSendMessage {
+}
+
+message ResponseGetClients {
+    repeated config.ClientConfig clients = 1;
+}
+
+message ResponseOwnDetails {
+    config.ClientConfig details = 1;
+}
+
+message ResponseFlush {
+}
+
+message ResponseFetchMessages {
+    repeated bytes messages = 1; // the message is implementation specific; it might be marshaled 'ChatMessage' or something completely else
+}
