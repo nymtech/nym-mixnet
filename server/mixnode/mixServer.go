@@ -280,7 +280,7 @@ func (m *MixServer) listenForIncomingConnections() {
 func (m *MixServer) handleConnection(conn net.Conn) error {
 	defer conn.Close()
 
-	buff := make([]byte, 1024)
+	buff := make([]byte, 2048)
 	reqLen, err := conn.Read(buff)
 	if err != nil {
 		return err

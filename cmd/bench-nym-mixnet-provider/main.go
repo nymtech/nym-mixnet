@@ -18,19 +18,20 @@ import "github.com/tav/golly/optparse"
 
 func main() {
 	var logo = `
-  _                      _
- | |    ___   ___  _ __ (_)_  __
- | |   / _ \ / _ \| '_ \| \ \/ /
- | |___ (_) | (_) | |_) | |>  <
- |_____\___/ \___/| .__/|_/_/\_\
-		  |_|            (mixnode)
-
-		  `
+                        
+  _ __  _   _ _ __ ___  
+ | '_ \| | | | '_ \ _ \
+ | | | | |_| | | | | | |
+ |_| |_|\__, |_| |_| |_|
+        |___/  
+          
+(mixnet-OUTDATED-benchmark-provider)
+`
 	cmds := map[string]func([]string, string){
 		"run": cmdRun,
 	}
 	info := map[string]string{
-		"run": "Run a Loopix mixnode",
+		"run": "Run a benchmark Nym mixnet provider",
 	}
-	optparse.Commands("loopix-mixnode", "0.2.0", cmds, info, logo)
+	optparse.Commands("bench-nym-mixnet-provider", "0.2.1", cmds, info, logo)
 }

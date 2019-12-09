@@ -33,7 +33,7 @@ const (
 //nolint: lll
 func cmdRun(args []string, usage string) {
 	opts := newOpts("run [OPTIONS]", usage)
-	port := opts.Flags("--port").Label("PORT").String("Port on which loopix-provider listens", defaultBenchmarkProviderPort)
+	port := opts.Flags("--port").Label("PORT").String("Port on which nym-mixnet-provider listens", defaultBenchmarkProviderPort)
 	numMessages := opts.Flags("--num").Label("NUMMESSAGES").Int("Number of benchmark messages to send", 0)
 
 	params := opts.Parse(args)
@@ -78,5 +78,5 @@ func cmdRun(args []string, usage string) {
 }
 
 func newOpts(command string, usage string) *optparse.Parser {
-	return optparse.New("Usage: loopix-provider " + command + "\n\n  " + usage + "\n")
+	return optparse.New("Usage: nym-mixnet-provider " + command + "\n\n  " + usage + "\n")
 }

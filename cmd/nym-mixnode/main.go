@@ -18,19 +18,20 @@ import "github.com/tav/golly/optparse"
 
 func main() {
 	var logo = `
-  _                      _
- | |    ___   ___  _ __ (_)_  __
- | |   / _ \ / _ \| '_ \| \ \/ /
- | |___ (_) | (_) | |_) | |>  <
- |_____\___/ \___/| .__/|_/_/\_\
-		  |_|            (provider)
-
-		  `
+                        
+  _ __  _   _ _ __ ___  
+ | '_ \| | | | '_ \ _ \
+ | | | | |_| | | | | | |
+ |_| |_|\__, |_| |_| |_|
+        |___/  
+          
+(mixnode)
+`
 	cmds := map[string]func([]string, string){
 		"run": cmdRun,
 	}
 	info := map[string]string{
-		"run": "Run a Loopix provider for offline storage",
+		"run": "Run a Nym mixnode",
 	}
-	optparse.Commands("loopix-provider", "0.2.0", cmds, info, logo)
+	optparse.Commands("nym-mixnode", "0.2.1", cmds, info, logo)
 }
