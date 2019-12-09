@@ -25,11 +25,11 @@ import (
 )
 
 const (
-	defaultLoopixDirectory        = ".loopix"
-	defaultLoopixClientsDirectory = "clients"
-	defaultClientMixAppDirectory  = "mixapps"
-	defaultConfigDirectory        = "config"
-	defaultConfigFileName         = "config.toml"
+	defaultNymDirectory          = ".nym"
+	defaultNymClientsDirectory   = "clients"
+	defaultClientMixAppDirectory = "mixapps"
+	defaultConfigDirectory       = "config"
+	defaultConfigFileName        = "config.toml"
 
 	defaultLogLevel = "info"
 
