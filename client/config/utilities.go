@@ -110,8 +110,8 @@ mixapps_directory = "{{ .Client.MixAppsDirectory }}"
 
 ##### advanced configuration options #####
 
-# Absolute path to the home loopix Clients directory.
-loopix_home_directory = "{{ .Client.HomeDirectory }}"
+# Absolute path to the home Nym Clients directory.
+nym_home_directory = "{{ .Client.HomeDirectory }}"
 
 ##### logging configuration options #####
 [logging]
