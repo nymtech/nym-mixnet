@@ -1,4 +1,4 @@
-// Copyright-2019 The Loopix-Messaging Authors
+// Copyright 2019 The Loopix-Messaging Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,19 +18,20 @@ import "github.com/tav/golly/optparse"
 
 func main() {
 	var logo = `
-  _                      _
- | |    ___   ___  _ __ (_)_  __
- | |   / _ \ / _ \| '_ \| \ \/ /
- | |___ (_) | (_) | |_) | |>  <
- |_____\___/ \___/| .__/|_/_/\_\
-		  |_|  (benchmark-client)
-
-		  `
+                        
+  _ __  _   _ _ __ ___  
+ | '_ \| | | | '_ \ _ \
+ | | | | |_| | | | | | |
+ |_| |_|\__, |_| |_| |_|
+        |___/  
+          
+(mixnet-provider)
+`
 	cmds := map[string]func([]string, string){
 		"run": cmdRun,
 	}
 	info := map[string]string{
-		"run": "Run a persistent a benchmark Loopix client process",
+		"run": "Run a Nym mixnet provider for offline storage",
 	}
-	optparse.Commands("bench-loopix-client", "0.2.0", cmds, info, logo)
+	optparse.Commands("nym-provider", "0.3.0", cmds, info, logo)
 }

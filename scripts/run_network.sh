@@ -36,12 +36,12 @@ for (( j=0; j<$NUMMIXES; j++ ))
 # Will make it later either configurable by flags or config file.
 do
     let layer=j%MAX_LAYERS+1
-    $PWD/build/loopix-mixnode run --id "Mix$j" --port $((9980+$j)) --host "localhost" --layer $layer &
+    $PWD/build/nym-mixnode run --id "Mix$j" --port $((9980+$j)) --host "localhost" --layer $layer &
     sleep 1
 done
 
 sleep 1
-$PWD/build/loopix-provider run --id Provider --host "localhost" --port 9997
+$PWD/build/nym-mixnet-provider run --id Provider --host "localhost" --port 9997
 
 # trap call ctrl_c()
 trap ctrl_c SIGINT SIGTERM SIGTSTP

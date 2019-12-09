@@ -95,5 +95,5 @@ func cmdRun(args []string, usage string) {
 }
 
 func newOpts(command string, usage string) *optparse.Parser {
-	return optparse.New("Usage: loopix-client " + command + "\n\n  " + usage + "\n")
+	return optparse.New("Usage: nym-mixnet-client " + command + "\n\n  " + usage + "\n")
 }
