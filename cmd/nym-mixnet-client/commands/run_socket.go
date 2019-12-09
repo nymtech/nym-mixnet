@@ -32,7 +32,7 @@ const (
 
 //nolint: lll
 func RunSocketCmd(args []string, usage string) {
-	opts := newOpts("run [OPTIONS]", usage)
+	opts := newOpts("socket [OPTIONS]", usage)
 	id := opts.Flags("--id").Label("ID").String("Id of the nym-mixnet-client we want to run", defaultID)
 	customConfigPath := opts.Flags("--customCfg").Label("CUSTOMCFG").String("Path to custom configuration file of the client", "")
 	socketType := opts.Flags("--socket").Label("SOCKETTYPE").String("Type of the socket we want to run on (tcp / websocket)")
