@@ -7,7 +7,7 @@ require (
 	github.com/flynn/go-shlex v0.0.0-20150515145356-3f9db97f8568 // indirect
 	github.com/golang/protobuf v1.3.2
 	github.com/gorilla/websocket v1.4.1
-	github.com/nymtech/nym-directory v0.0.3
+	github.com/nymtech/nym-directory v0.0.4
 	github.com/pelletier/go-toml v1.4.0
 	github.com/sirupsen/logrus v1.4.2
 	github.com/stretchr/testify v1.4.0
