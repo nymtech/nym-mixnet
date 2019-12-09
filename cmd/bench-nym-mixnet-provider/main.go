@@ -33,5 +33,5 @@ func main() {
 	info := map[string]string{
 		"run": "Run a benchmark Nym mixnet provider",
 	}
-	optparse.Commands("bench-nym-mixnet-provider", "0.3.0", cmds, info, logo)
+	optparse.Commands("bench-nym-mixnet-provider", "0.4.0", cmds, info, logo)
 }
