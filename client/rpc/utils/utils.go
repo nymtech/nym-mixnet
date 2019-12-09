@@ -41,11 +41,14 @@ func ReadProtoMessage(msg proto.Message, r io.Reader) error {
 	if !ok {
 		reader = bufio.NewReader(r)
 	}
-	length64, err := binary.ReadVarint(reader)
-	if err != nil {
+
+	length_as_bytes:= make([]byte, 8)
+	if _, err := r.Read(length_as_bytes); err != nil {
 		return err
 	}
-	length := int(length64)
+
+	length := binary.BigEndian.Uint64(length_as_bytes)
+
 	if length < 0 || length > maxRequestSize {
 		return io.ErrShortBuffer
 	}
@@ -56,12 +59,8 @@ func ReadProtoMessage(msg proto.Message, r io.Reader) error {
 	return proto.Unmarshal(buf, msg)
 }
 
-// below two functions were copied from
-// https://github.com/tendermint/tendermint/blob/f7f034a8befeeb84a88ae8f0092f9f465d9a2544/abci/types/messages.go
-// Apache 2.0 license
-
 func encodeByteSlice(w io.Writer, bz []byte) (err error) {
-	err = encodeVarint(w, int64(len(bz)))
+	err = encodeBigEndianLen(w, uint64(len(bz)))
 	if err != nil {
 		return
 	}
@@ -69,9 +68,9 @@ func encodeByteSlice(w io.Writer, bz []byte) (err error) {
 	return
 }
 
-func encodeVarint(w io.Writer, i int64) (err error) {
-	var buf [10]byte
-	n := binary.PutVarint(buf[:], i)
-	_, err = w.Write(buf[0:n])
+func encodeBigEndianLen(w io.Writer, i uint64) (err error) {
+	var buf = make([]byte, 8)
+	binary.BigEndian.PutUint64(buf, i)
+	_, err = w.Write(buf)
 	return
 }
