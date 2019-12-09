@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 /*
-	Package logger provides the functionalities for log actions of loopix entities.
+	Package logger provides the functionalities for log actions of Nym entities.
 	Code was adapted from the nymtech/nym/logger package.
 	However backend log library was replaced from gopkg.in/op/go-log.v1 to github.com/sirupsen/logrus
 	due to being more stable and supported.
