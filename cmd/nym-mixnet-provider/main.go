@@ -33,5 +33,5 @@ func main() {
 	info := map[string]string{
 		"run": "Run a Nym mixnet provider for offline storage",
 	}
-	optparse.Commands("nym-provider", "0.2.1", cmds, info, logo)
+	optparse.Commands("nym-provider", "0.3.0", cmds, info, logo)
 }

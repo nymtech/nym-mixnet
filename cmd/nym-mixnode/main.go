@@ -33,5 +33,5 @@ func main() {
 	info := map[string]string{
 		"run": "Run a Nym mixnode",
 	}
-	optparse.Commands("nym-mixnode", "0.2.1", cmds, info, logo)
+	optparse.Commands("nym-mixnode", "0.3.0", cmds, info, logo)
 }
