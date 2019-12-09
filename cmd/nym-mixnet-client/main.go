@@ -40,5 +40,5 @@ func main() {
 		"init":   "Initialise a Nym Mixnet client",
 		"socket": "Run a background Nym Mixnet client listening on a specified socket",
 	}
-	optparse.Commands("nym-mixnet-client", "0.3.0", cmds, info, logo)
+	optparse.Commands("nym-mixnet-client", "0.4.0", cmds, info, logo)
 }
