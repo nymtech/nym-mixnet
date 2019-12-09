@@ -1,4 +1,4 @@
-// Copyright 2019 The Loopix-Messaging Authors
+// Copyright 2019 The Nym Mixnet Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -33,5 +33,5 @@ func main() {
 	info := map[string]string{
 		"run": "Run a Nym mixnode",
 	}
-	optparse.Commands("nym-mixnode", "0.3.0", cmds, info, logo)
+	optparse.Commands("nym-mixnode", "0.4.0", cmds, info, logo)
 }

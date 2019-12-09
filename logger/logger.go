@@ -1,4 +1,4 @@
-// Copyright 2019 The Loopix-Messaging Authors
+// Copyright 2019 The Nym Mixnet Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 /*
-	Package logger provides the functionalities for log actions of loopix entities.
+	Package logger provides the functionalities for log actions of Nym entities.
 	Code was adapted from the nymtech/nym/logger package.
 	However backend log library was replaced from gopkg.in/op/go-log.v1 to github.com/sirupsen/logrus
 	due to being more stable and supported.

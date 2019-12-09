@@ -1,4 +1,4 @@
-// Copyright 2019 The Loopix-Messaging Authors
+// Copyright 2019 The Nym Mixnet Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -110,8 +110,8 @@ mixapps_directory = "{{ .Client.MixAppsDirectory }}"
 
 ##### advanced configuration options #####
 
-# Absolute path to the home loopix Clients directory.
-loopix_home_directory = "{{ .Client.HomeDirectory }}"
+# Absolute path to the home Nym Clients directory.
+nym_home_directory = "{{ .Client.HomeDirectory }}"
 
 ##### logging configuration options #####
 [logging]

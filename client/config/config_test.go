@@ -1,4 +1,4 @@
-// Copyright 2019 The Loopix-Messaging Authors
+// Copyright 2019 The Nym Mixnet Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@ func TestDefaultConfigPath(t *testing.T) {
 	// I think hardcoding this value is actually a good way to ensure we don't unexpectedly change something
 	configPath, err := DefaultConfigPath("foo")
 	homeDir := os.ExpandEnv("$HOME")
-	assert.Equal(t, filepath.Join(homeDir, "/.loopix/clients/foo/config/config.toml"), configPath)
+	assert.Equal(t, filepath.Join(homeDir, "/.nym/clients/foo/config/config.toml"), configPath)
 	assert.Nil(t, err)
 
 }
@@ -245,7 +245,7 @@ func TestWriteConfig(t *testing.T) {
 	assert.Nil(t, err)
 	outFilePath := filepath.Join(tmpDir, outFile)
 
-	fullCfg.Client.HomeDirectory = "/foomp/.loopix"
+	fullCfg.Client.HomeDirectory = "/foomp/.nym"
 	fullCfg.Client.DirectoryServerTopologyEndpoint = "localhost:8080"
 
 	// set some nondefault values

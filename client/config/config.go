@@ -1,4 +1,4 @@
-// Copyright 2019 The Loopix-Messaging Authors
+// Copyright 2019 The Nym Mixnet Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,11 +25,11 @@ import (
 )
 
 const (
-	defaultLoopixDirectory        = ".loopix"
-	defaultLoopixClientsDirectory = "clients"
-	defaultClientMixAppDirectory  = "mixapps"
-	defaultConfigDirectory        = "config"
-	defaultConfigFileName         = "config.toml"
+	defaultNymDirectory          = ".nym"
+	defaultNymClientsDirectory   = "clients"
+	defaultClientMixAppDirectory = "mixapps"
+	defaultConfigDirectory       = "config"
+	defaultConfigFileName        = "config.toml"
 
 	defaultLogLevel = "info"
 
@@ -46,16 +46,16 @@ const (
 
 //nolint: gochecknoglobals
 var (
-	// TODO: if/when we decide to create configs for other loopix entities (i.e. providers, mixnodes)
-	// there should be a 'master' home of $HOME/.loopix from which we would have the subdirectories of
+	// TODO: if/when we decide to create configs for other mixnet entities (i.e. providers, mixnodes)
+	// there should be a 'master' home of $HOME/.nym from which we would have the subdirectories of
 	// Mixnodes, Providers, Clients, etc.
-	defaultHomeDirectory  = os.ExpandEnv(filepath.Join("$HOME", defaultLoopixDirectory, defaultLoopixClientsDirectory))
+	defaultHomeDirectory  = os.ExpandEnv(filepath.Join("$HOME", defaultNymDirectory, defaultNymClientsDirectory))
 	defaultPrivateKeyPath = filepath.Join(defaultConfigDirectory, defaultPrivateKeyFileName)
 	defaultPublicKeyPath  = filepath.Join(defaultConfigDirectory, defaultPublicKeyFileName)
 )
 
 // DefaultConfigPath returns absolute path to the default configuration file of the particular client.
-// The returned path should be $HOME/.loopix/Clients/clientID/config/config.toml
+// The returned path should be $HOME/.nym/Clients/clientID/config/config.toml
 func DefaultConfigPath(clientID string) (string, error) {
 	if len(clientID) == 0 {
 		return "", errors.New("invalid clientID provided")
@@ -68,11 +68,11 @@ func DefaultConfigPath(clientID string) (string, error) {
 	), nil
 }
 
-// Client is the Loopix Client configuration.
+// Client is the Nym Client configuration.
 type Client struct {
-	// HomeDirectory specifies absolute path to the home loopix Clients directory.
+	// HomeDirectory specifies absolute path to the home nym Clients directory.
 	// It is expected to use default value and hence .toml file should not redefine this field.
-	HomeDirectory string `toml:"loopix_home_directory"`
+	HomeDirectory string `toml:"nym_home_directory"`
 
 	// ID specifies the human readable ID of this particular client.
 	// If not provided a random id will be generated instead.
@@ -170,7 +170,7 @@ func (cfg *Client) validateAndApplyDefaults() error {
 	return nil
 }
 
-// Logging is the Loopix Client logging configuration.
+// Logging is the Nym Client logging configuration.
 type Logging struct {
 	// Disable disables logging entirely.
 	Disable bool `toml:"disable"`
@@ -194,12 +194,12 @@ func (cfg *Logging) validate() error {
 func DefaultLoggingConfig(clientID string) *Logging {
 	return &Logging{
 		Disable: false,
-		File:    filepath.Join("/tmp", "loopix_"+clientID+".log"),
+		File:    filepath.Join("/tmp", "nym_"+clientID+".log"),
 		Level:   defaultLogLevel,
 	}
 }
 
-// Debug is the Loopix Client debug configuration.
+// Debug is the Nym Client debug configuration.
 type Debug struct {
 	// LoopCoverTrafficRate defines the rate at which clients are sending loop packets in the loop cover traffic stream.
 	// The value is the parameter of an exponential distribution, and is the reciprocal of the
@@ -250,7 +250,7 @@ func DefaultDebugConfig() *Debug {
 	}
 }
 
-// Config is the top level Loopix Client configuration.
+// Config is the top level Nym Client configuration.
 type Config struct {
 	Client  *Client  `toml:"client"`
 	Logging *Logging `toml:"logging"`
